@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11110f" />
+    <title>ArcanumMP — The original campaign. Together.</title>
+    <meta
+      name="description"
+      content="Return to Arcanum with up to three friends. Four-player campaign co-op, Windows and Linux cross-play, and an interface you can make your own. A free community mod. Original game required."
+    />
+    <meta
+      property="og:title"
+      content="ArcanumMP — The original campaign. Together."
+    />
+    <meta
+      property="og:description"
+      content="Four players. Magick, machinery, and an old world worth sharing."
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:image"
+      content="https://panbartosz.github.io/ArcanumMP/assets/images/poster.jpg"
+    />
+    <link rel="icon" href="assets/emblem.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="masthead">
+      <a class="wordmark" href="#" aria-label="ArcanumMP home"
+        ><img src="assets/emblem.svg" alt="" width="32" height="32" /><span
+          >ARCANUM<small>MULTIPLAYER</small></span
+        ></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="#watch">The trailer</a><a href="#features">The mod</a
+        ><a href="#download" class="nav-download"
+          >Download <span aria-hidden="true">↓</span></a
+        ><a
+          class="source-link"
+          href="https://github.com/PanBartosz/ArcanumMP"
+          aria-label="Source on GitHub"
+          >GitHub ↗</a
+        >
+      </nav>
+    </header>
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-world" aria-hidden="true"></div>
+        <div class="hero-engraving" aria-hidden="true"></div>
+        <p class="eyebrow">The original campaign. Now for four.</p>
+        <h1 id="hero-title">Arcanum<span>Multiplayer</span></h1>
+        <div class="ornament" aria-hidden="true"><span>◇</span></div>
+        <h2>An old world. <em>New company.</em></h2>
+        <p class="hero-copy">
+          Return to Arcanum with up to three friends.<br />Build your own
+          character. Share the journey.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#download"
+            >Gather your party <span aria-hidden="true">↓</span></a
+          ><a class="button text-button" href="#watch"
+            ><span class="small-play" aria-hidden="true">▶</span> Watch the
+            trailer</a
+          >
+        </div>
+        <p class="platforms">
+          WINDOWS <span>◇</span> LINUX <span>◇</span> ORIGINAL GAME REQUIRED
+        </p>
+      </section>
+      <section
+        id="watch"
+        class="watch section-wrap"
+        aria-labelledby="watch-title"
+      >
+        <div class="section-caption">
+          <span class="eyebrow">See it in motion</span>
+          <h2 id="watch-title">The original campaign. <em>Together.</em></h2>
+          <span class="edition">FIRST PUBLIC RELEASE <span>01</span></span>
+        </div>
+        <div class="film-frame">
+          <div class="corner tl"></div>
+          <div class="corner tr"></div>
+          <div class="corner bl"></div>
+          <div class="corner br"></div>
+          <video
+            id="trailer"
+            controls
+            playsinline
+            preload="none"
+            poster="assets/images/poster.jpg"
+            aria-label="ArcanumMP gameplay trailer"
+          >
+            <source src="assets/ArcanumMP-trailer.mp4" type="video/mp4" />
+            <track
+              kind="captions"
+              src="assets/trailer.vtt"
+              srclang="en"
+              label="English"
+            />
+            Your browser cannot play this video.
+            <a href="https://github.com/PanBartosz/ArcanumMP/releases/latest"
+              >Download the trailer</a
+            >.
+          </video>
+        </div>
+        <div class="film-note">
+          <span>Actual gameplay · Staged encounters</span
+          ><a href="https://github.com/PanBartosz/ArcanumMP/releases/latest"
+            >Watch the full feature showcase ↗</a
+          >
+        </div>
+      </section>
+      <section
+        id="features"
+        class="feature-story section-wrap"
+        aria-labelledby="party-title"
+      >
+        <div class="story-text">
+          <p class="eyebrow"><span class="chapter">I</span> Shared adventure</p>
+          <h2 id="party-title">
+            Four characters.<br /><em>One strange world.</em>
+          </h2>
+          <p>
+            Bring a swordsman, a gunslinger, a mage — or whatever peculiar build
+            Arcanum inspires. Each player controls their own character in the
+            same campaign.
+          </p>
+          <p>
+            Explore in different directions. Fight side by side. Share dialogue,
+            travel and saves, then pick up where your party left off.
+          </p>
+          <div class="margin-note">
+            <span aria-hidden="true">✧</span> Up to four players · Windows &
+            Linux cross-play
+          </div>
+        </div>
+        <figure class="story-image party-image">
+          <img
+            src="assets/images/party.jpg"
+            alt="Four connected game views with different player characters exploring Tarant"
+            loading="lazy"
+            width="1280"
+            height="720"
+          />
+          <figcaption>Different characters. The same adventure.</figcaption>
+        </figure>
+      </section>
+      <section class="interface-story" aria-labelledby="interface-title">
+        <div class="section-wrap">
+          <div class="center-intro">
+            <p class="eyebrow">
+              <span class="chapter">II</span> A familiar world, a better view
+            </p>
+            <h2 id="interface-title">Make room for <em>your Arcanum.</em></h2>
+            <p>
+              Keep the character of the original. Arrange the rest around the
+              way you play.
+            </p>
+          </div>
+          <figure class="wide-demo film-frame">
+            <video
+              id="layout-demo"
+              controls
+              playsinline
+              muted
+              loop
+              preload="none"
+              poster="assets/images/interface.jpg"
+              aria-label="Live demonstration of moving and resizing the combat log"
+            >
+              <source src="assets/layout-demo.mp4" type="video/mp4" />
+            </video>
+            <figcaption>
+              Move it. Resize it. Choose its transparency. Your layout stays
+              yours.
+            </figcaption>
+          </figure>
+          <div class="interface-notes">
+            <div>
+              <h3>A HUD that fits</h3>
+              <p>
+                Place portraits, turn order and the combat log where you want
+                them. Give each panel its own size and transparency.
+              </p>
+            </div>
+            <div>
+              <h3>A world you can see</h3>
+              <p>
+                Zoom with the wheel, pan with the middle mouse button, and
+                choose widescreen, UI size and readable text.
+              </p>
+            </div>
+            <div>
+              <h3>Less searching. More playing.</h3>
+              <p>
+                Find items, spells and skills quickly. Compare equipment, mark
+                junk, check recipes and keep your own quest notes.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section
+        class="feature-story combat-story section-wrap"
+        aria-labelledby="combat-title"
+      >
+        <figure class="story-image">
+          <img
+            src="assets/images/combat.jpg"
+            alt="An equipped multiplayer party fighting native enemies with spells and weapons outside Tulla"
+            loading="lazy"
+            width="1280"
+            height="720"
+          />
+          <figcaption>
+            Steel, gunpowder and magick. Bring your own approach.
+          </figcaption>
+        </figure>
+        <div class="story-text">
+          <p class="eyebrow">
+            <span class="chapter">III</span> Read the battlefield
+          </p>
+          <h2 id="combat-title">
+            Know whose turn it is.<br /><em>And what just happened.</em>
+          </h2>
+          <p>
+            Play in real time or take turns. Follow the fight with visible
+            initiative, action-point previews and a shared combat log.
+          </p>
+          <p>
+            Watch your party's health, fatigue and conditions. Select an ability
+            and click a portrait to target it — including enemies in the turn
+            order.
+          </p>
+          <div class="margin-note">
+            <span aria-hidden="true">✧</span> Many of these improvements work in
+            single-player, too.
+          </div>
+        </div>
+      </section>
+      <section
+        class="world-strip section-wrap"
+        aria-label="Places to rediscover"
+      >
+        <div class="world-heading">
+          <span class="eyebrow">A world worth returning to</span
+          ><span class="fine-rule"></span>
+        </div>
+        <div class="places">
+          <figure>
+            <img
+              src="assets/images/tarant.jpg"
+              alt="The streets and waterways of Tarant"
+              loading="lazy"
+              width="640"
+              height="360"
+            />
+            <figcaption>Tarant</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="assets/images/qintarra.jpg"
+              alt="The forest city of Qintarra"
+              loading="lazy"
+              width="640"
+              height="360"
+            />
+            <figcaption>Qintarra</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="assets/images/tulla.jpg"
+              alt="The stone gates and magical lights of Tulla"
+              loading="lazy"
+              width="640"
+              height="360"
+            />
+            <figcaption>Tulla</figcaption>
+          </figure>
+        </div>
+      </section>
+      <section
+        id="download"
+        class="download-section"
+        aria-labelledby="download-title"
+      >
+        <div class="section-wrap">
+          <p class="eyebrow">Your next playthrough starts here</p>
+          <h2 id="download-title">Some worlds are better <em>shared.</em></h2>
+          <p class="download-intro">
+            A free community mod. Bring your own copy of Arcanum.
+          </p>
+          <div class="download-buttons">
+            <a
+              class="button primary"
+              href="https://github.com/PanBartosz/ArcanumMP/releases/download/v0.1.0/ArcanumMP-v0.1.0-Windows-x86_64.zip"
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="m2 4 9-1v9H2zm11-1 9-1v10h-9zM2 14h9v9l-9-1zm11 0h9v10l-9-1z"
+                />
+              </svg>
+              Download for Windows <span aria-hidden="true">↓</span></a
+            ><a
+              class="button secondary"
+              href="https://github.com/PanBartosz/ArcanumMP/releases/download/v0.1.0/ArcanumMP-v0.1.0-Linux-x86_64.tar.gz"
+              >Download for Linux <span aria-hidden="true">↓</span></a
+            >
+          </div>
+          <p class="release-link">
+            v0.1.0 · x86-64 <span>·</span>
+            <a
+              href="https://github.com/PanBartosz/ArcanumMP/releases/tag/v0.1.0"
+              >Release notes & checksums ↗</a
+            >
+          </p>
+          <p class="system-note">
+            Linux build: glibc 2.44+. On an older distribution,
+            <a
+              href="https://github.com/PanBartosz/ArcanumMP/blob/main/docs/BUILDING.md"
+              >build from source</a
+            >.
+          </p>
+          <ol class="getting-started">
+            <li>
+              <span>01</span>
+              <div>
+                <h3>Have the original game</h3>
+                <p>
+                  Each player needs a writable Arcanum installation with
+                  matching game data and patches.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>02</span>
+              <div>
+                <h3>Copy the files</h3>
+                <p>
+                  Put the bundle's <code>bin/</code> contents in your game
+                  folder. Keep the included libraries and your existing saves.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>03</span>
+              <div>
+                <h3>Invite your party</h3>
+                <p>
+                  Launch ArcanumMP and choose Multiplayer. Host or join, create
+                  your characters, and begin.
+                </p>
+              </div>
+            </li>
+          </ol>
+          <a
+            class="guide-link"
+            href="https://github.com/PanBartosz/ArcanumMP/blob/main/docs/PLAYER_GUIDE.md"
+            >Read the player guide <span aria-hidden="true">→</span></a
+          >
+        </div>
+      </section>
+      <section class="faq section-wrap" aria-labelledby="faq-title">
+        <h2 id="faq-title">Before you <em>set out.</em></h2>
+        <div class="questions">
+          <details>
+            <summary>Do I need the original Arcanum?</summary>
+            <p>
+              Yes. This mod supplies the engine and multiplayer improvements.
+              Original game data is required separately and is not included. All
+              players should use matching game data, patches and mod builds.
+            </p>
+          </details>
+          <details>
+            <summary>Can we play over the internet?</summary>
+            <p>
+              The mod supports LAN discovery and direct IP connections. A VPN
+              that connects your group into a virtual LAN is an option for
+              remote play. Direct connections require the host to be reachable
+              through their network and firewall.
+            </p>
+          </details>
+          <details>
+            <summary>Can I use the new interface on my own?</summary>
+            <p>
+              Yes. The log, inventory and action search, zoom, display options
+              and many other interface improvements also work in single-player.
+            </p>
+          </details>
+          <details>
+            <summary>How do I report a problem?</summary>
+            <p>
+              Open an issue on
+              <a href="https://github.com/PanBartosz/ArcanumMP/issues">GitHub</a
+              >. Tell us your game/mod version, where it happened and what each
+              player saw. A save and clear reproduction steps help.
+            </p>
+          </details>
+        </div>
+      </section>
+    </main>
+    <footer class="footer section-wrap">
+      <div class="footer-brand">ARCANUM<span>MP</span></div>
+      <p>
+        A community project built on
+        <a href="https://github.com/alexbatalov/arcanum-ce"
+          >Arcanum Community Edition</a
+        >.<br />Original game by Troika Games / Sierra Entertainment.
+        Unofficial; original game required.
+      </p>
+      <div class="footer-links">
+        <a href="https://github.com/PanBartosz/ArcanumMP">Source</a
+        ><a href="https://github.com/PanBartosz/ArcanumMP/blob/main/LICENSE.md"
+          >License</a
+        ><a href="credits.html">Credits</a><a href="#">Back to top ↑</a>
+      </div>
+    </footer>
+    <script src="script.js" defer></script>
+  </body>
+</html>
