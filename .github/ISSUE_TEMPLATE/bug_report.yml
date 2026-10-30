@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a reproducible gameplay, multiplayer or UI problem.
+body:
+  - type: input
+    id: build
+    attributes:
+      label: Build and protocol
+      description: Include the archive name or source commit and the game's protocol.
+    validations:
+      required: true
+  - type: textarea
+    id: session
+    attributes:
+      label: Session
+      description: Operating systems, host/client role, party size, real-time or turn-based mode, game patches and campaign location.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Give the shortest reliable sequence and mention whether other players see it.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add screenshots, relevant logs or a shareable reproduction. Describe prepared stats/items or other staging. Keep identity files and original game data private.

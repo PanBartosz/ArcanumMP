@@ -1,0 +1,168 @@
+{
+  "tool": "built-in imagegen",
+  "date": "2026-10-30",
+  "prompt_file": "art-update-prompts.md",
+  "assets": [
+    {
+      "name": "iron-panel",
+      "size": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "combat-journal",
+      "size": [
+        64,
+        64
+      ]
+    },
+    {
+      "name": "status-dead",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "status-unconscious",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "status-poisoned",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "status-tired",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "status-stunned",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "status-paralyzed",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "status-blinded",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "status-injured",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "status-encumbered",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "control-close",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "control-compact",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "control-expand",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "control-wide",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "control-opacity",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "control-move",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "control-resize",
+      "size": [
+        48,
+        48
+      ]
+    },
+    {
+      "name": "turn-card",
+      "size": [
+        256,
+        112
+      ]
+    },
+    {
+      "name": "turn-card-active",
+      "size": [
+        256,
+        112
+      ]
+    },
+    {
+      "name": "action-slot",
+      "size": [
+        256,
+        96
+      ]
+    },
+    {
+      "name": "portrait-bezel",
+      "size": [
+        256,
+        256
+      ]
+    },
+    {
+      "name": "button-face",
+      "size": [
+        256,
+        96
+      ]
+    }
+  ]
+}
