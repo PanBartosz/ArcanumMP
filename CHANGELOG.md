@@ -6,6 +6,17 @@ should use matching executables and game data. Current compatibility is
 
 ## Unreleased
 
+### v0.2.3 — Polish dialogue on Windows
+
+- Normalize resource-path separators before Windows DAT archive lookups. Polish
+  dialogue now resolves on clients where the translated interface and films
+  already worked but conversations fell back to English.
+- The native dialogue check now compares canonical/native resource reads and
+  rejects an untranslated Polish retail page. Verified with Polish Windows/Wine
+  chooser and observer, Polish Linux host and an English Linux observer.
+- Existing language packs, saves and preferences stay usable. No translation
+  re-import is required; compatibility remains protocol 60.
+
 ### v0.2.2 — Polish setup without Python
 
 - Self-contained Windows/Linux tools import Eselter 1.7 from the adjacent

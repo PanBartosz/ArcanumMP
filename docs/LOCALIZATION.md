@@ -57,6 +57,10 @@ See the [Polish instructions](../tools/polish_setup/README.md).
 The standalone setup also works with 0.2.1. Version 0.2.2 packages the same game
 engine as 0.2.1, together with the new setup utility.
 
+**Windows dialogue fix:** update the game executable to **0.2.3** or newer if
+Polish menus/films work but conversations remain English. The installed language
+data is already suitable; it does not need to be imported again.
+
 ### Developer alternative: preparing the pack with Python
 
 Extract the download using [innoextract](https://constexpr.org/innoextract/),
@@ -151,3 +155,23 @@ unchanged game-data/identity markers and temporary-file cleanup. Import unit
 checks also cover component selection and publication rollback. The Windows
 extractor's component-path and legacy path-length cases are handled explicitly.
 No game-engine or campaign retest was needed: the game binaries are unchanged.
+
+## Windows dialogue correction in 0.2.3
+
+Canonical text references use `/`, whereas the Windows DAT index uses `\`.
+Windows file-system reads accepted both separators, but archive searches compared
+the path literally. Reading the original dialogue template therefore failed,
+and local presentation retained the host's English text. Translated UI messages
+and loose movie/font resources use different reads, explaining the partial
+localization. The common TIG path conversion now normalizes both spellings to
+the native separator before indexing and lookup.
+
+The reported behavior was reproduced on the previous executable. The corrected
+four-engine session used a Polish Linux host, Polish Windows/Wine chooser,
+English Linux observer and Polish Windows/Wine observer. Both Windows clients
+resolved the same Polish retail replies as the host; the English observer kept
+English, canonical transport bytes matched and both choices executed once.
+The native dialogue probe now checks resource-read parity and a translated
+Polish first page, so its previous English-only Windows coverage cannot silently
+pass this case. Retained evidence: `build/localization/windows-dialogue-before/`
+and `build/localization/windows-dialogue-after/`.

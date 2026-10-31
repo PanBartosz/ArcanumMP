@@ -2058,6 +2058,26 @@ static bool movement_probe(CoopSession* session, bool owned_delete, bool raw_del
     return good;
 }
 
+static bool dialogue_resource_paths(const CoopTextRef* ref)
+{
+    char native[COOP_TEXT_PATH];
+    snprintf(native,sizeof(native),"%s",ref->path);
+    for(char* p=native;*p;p++)if(*p=='/')*p='\\';
+    TigFile* canonical=tig_file_fopen(ref->path,"rb");
+    TigFile* legacy=tig_file_fopen(native,"rb");
+    bool good=canonical&&legacy;
+    if(good)good=tig_file_filelength(canonical)>0&&tig_file_filelength(canonical)==tig_file_filelength(legacy);
+    while(good) {
+        char a[4096],b[4096];
+        size_t n=tig_file_fread(a,1,sizeof(a),canonical),m=tig_file_fread(b,1,sizeof(b),legacy);
+        if(n!=m||memcmp(a,b,n)){good=false;break;}
+        if(n<sizeof(a))break;
+    }
+    fprintf(stderr,"ARCMP dialogue resource paths source=%s canonical=%d native=%d identical=%d\n",ref->path,canonical!=NULL,legacy!=NULL,good);
+    if(canonical&&tig_file_fclose(canonical))good=false;
+    if(legacy&&tig_file_fclose(legacy))good=false;
+    return good;
+}
 static bool dialogue_probe(CoopSession* session)
 {
     held_gameplay = coop_gameplay_create(session, 1);
@@ -2111,6 +2131,10 @@ static bool dialogue_probe(CoopSession* session)
                 view->revision, view->conversation, view->chooser, view->mode, view->option_count, view->reply);
             CoopDialogueView local = *view;
             coop_language_view(&local);
+            if(view->revision==1) {
+                if(!dialogue_resource_paths(&view->text_refs[0]))good=fail("canonical dialogue path cannot read the original resource");
+                if(!strcmp(coop_language_active(),"pl")&&!strcmp(local.reply,view->reply))good=fail("Polish retail dialogue fell back to original text");
+            }
             fprintf(stderr, "ARCMP personal dialogue language=%s source=%s:%d reply=%.160s\n",
                 coop_language_active(),view->text_refs[0].path,view->text_refs[0].key,local.reply);
             recorded = view->revision;

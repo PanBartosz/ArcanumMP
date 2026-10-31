@@ -8,17 +8,21 @@
 
 void compat_windows_path_to_native(char* path)
 {
-#ifdef _WIN32
-    (void)path;
-#else
     char* pch = path;
     while (*pch != '\0') {
+#ifdef _WIN32
+        // DAT keys use native separators too. The CRT accepts '/', but the
+        // archive's exact path lookup does not.
+        if (*pch == '/') {
+            *pch = '\\';
+        }
+#else
         if (*pch == '\\') {
             *pch = '/';
         }
+#endif
         pch++;
     }
-#endif
 }
 
 void compat_resolve_path(char* path)

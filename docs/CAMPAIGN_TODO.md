@@ -28,3 +28,11 @@ will follow reports from actual play. See [current status](STATUS.md),
   and retained backups. Both real imports match all 903 presentation resources.
 
 [Setup instructions](LOCALIZATION.md#simple-setup--no-python).
+
+## Fixed in 0.2.3
+
+- [x] Polish Windows dialogue falling back to English despite Polish menus and
+  movies. Normalize canonical DAT paths; verify both a Windows/Wine chooser
+  and observer with Polish/English participants. No pack re-import is needed.
+
+[Cause and verification](LOCALIZATION.md#windows-dialogue-correction-in-023).
