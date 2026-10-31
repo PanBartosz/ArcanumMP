@@ -79,6 +79,13 @@ when its matching downloads are public, rather than only available locally.
 Temporary diagnostic compiles are not player releases. Website, documentation
 or media updates alone leave the game release number unchanged.
 
+Version 0.2.2 adds the standalone Polish setup utility. The game engine binaries
+are retained unchanged from 0.2.1; package metadata records their original source
+alongside the new release/setup source. Bundles include the helper next to the
+game, its licenses and exact source. Separate small setup downloads support
+players who already have the game. Do not describe retained engine binaries as
+newly compiled.
+
 ### Initial source snapshot
 
 For the initial publication, export the reviewed current source into a new local

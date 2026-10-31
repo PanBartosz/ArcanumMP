@@ -7,8 +7,8 @@ their own character while the host runs the shared campaign. The new
 playability tools also support single-player use.
 
 [Website & trailer](https://panbartosz.github.io/ArcanumMP/) ·
-[Download for Windows](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.2.1/ArcanumMP-v0.2.1-Windows-x86_64.zip) ·
-[Download for Linux](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.2.1/ArcanumMP-v0.2.1-Linux-x86_64.tar.gz)
+[Download for Windows](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.2.2/ArcanumMP-v0.2.2-Windows-x86_64.zip) ·
+[Download for Linux](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.2.2/ArcanumMP-v0.2.2-Linux-x86_64.tar.gz)
 
 ![ArcanumMP: four connected game instances](site/assets/images/poster.jpg)
 
@@ -36,7 +36,7 @@ playability tools also support single-player use.
 - **Keep your campaign:** named saves, coordinated quick saves/loads, recovery
   checkpoints and reserved character ownership when reconnecting.
 - **Play in your own language:** independent English/Polish selection, including
-  mixed-language parties. [Polish language data setup](docs/LOCALIZATION.md).
+  mixed-language parties. [Polish setup without Python](docs/LOCALIZATION.md#simple-setup--no-python).
 - **Loot feedback:** empty bodies and containers show **Empty / Pusto** on hover.
 
 See the [feature inventory](docs/FEATURES.md) and [changelog](CHANGELOG.md).
@@ -84,7 +84,7 @@ Widescreen and UI-size changes apply after restart. See
 
 ## Compatibility
 
-**Latest release: v0.2.1.** All players should use matching mod builds
+**Latest release: v0.2.2.** All players should use matching mod builds
 and game data. Keep your saves, player identity and settings when updating.
 The prebuilt Linux executable requires glibc 2.44 or newer; older distributions
 can use the [source build](docs/BUILDING.md). Both bundles target x86-64.

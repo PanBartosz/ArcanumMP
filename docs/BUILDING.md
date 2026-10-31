@@ -74,6 +74,10 @@ for ASan/UBSan. The root GitHub workflow runs the asset-free checks on Linux.
 
 ## Private development runtimes
 
+The optional standalone Polish setup utility is built separately from the game;
+see [its build and input provenance](../tools/polish_setup/README.md#build-and-provenance).
+Player downloads contain a self-contained executable and do not require Python.
+
 Keep the retail installation unchanged and give each game instance its own
 writable runtime. This optional helper links immutable data and copies loose
 files, configuration and cache locations; it refuses to overwrite a runtime.

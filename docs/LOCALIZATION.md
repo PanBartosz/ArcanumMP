@@ -37,7 +37,27 @@ restart. Copy the folder without changing the common game's `data/`, `modules/`
 or `.dat` files. The game refuses a new language selection when its text pack
 is absent; if a previously selected pack is removed it starts in English.
 
-### Preparing the pack from Eselter 1.7
+### Simple setup — no Python
+
+Download the **Polish Setup** for Windows/Linux from the
+[0.2.2 release](https://github.com/PanBartosz/ArcanumMP/releases/tag/v0.2.2),
+or use the helper already included in the new drop-in's `bin/` directory.
+
+1. Close the game and put **`ArcanumMP-Polski.exe`** / **`ArcanumMP-Polski`**
+   beside the game executable.
+2. Put the author's **`Arcanum_UAP2.0.2PL.1.exe`** in the same folder.
+3. Run **ArcanumMP-Polski**, wait for the success message, then launch the game.
+
+The helper embeds its extractor, verifies the author package and prepares the
+presentation pack. It automatically selects Polish for the next launch.
+It preserves an existing language folder as a backup. Saves, identities and
+common gameplay data stay unchanged. Each player keeps their own language.
+See the [Polish instructions](../tools/polish_setup/README.md).
+
+The standalone setup also works with 0.2.1. Version 0.2.2 packages the same game
+engine as 0.2.1, together with the new setup utility.
+
+### Developer alternative: preparing the pack with Python
 
 Extract the download using [innoextract](https://constexpr.org/innoextract/),
 then run the supplied Python importer. The following example uses the stock
@@ -119,3 +139,15 @@ tokens. Translated gameplay instructions are never executed.
 The scoped evidence is retained locally under `build/localization/`; no campaign
 route replay was needed for this change. This does not certify every line of
 the third-party translation or every community patch combination.
+
+## Standalone setup verification for 0.2.2
+
+Both executables imported the real Eselter 1.7 archive and produced all 903
+presentation resources byte-for-byte equal to the previous importer. The Linux
+run had no Python or external extractor on PATH; Windows ran under Wine. Checks
+covered accented/spaced game paths, launch from an unrelated working directory,
+missing/invalid inputs, retained previous data, automatic personal selection,
+unchanged game-data/identity markers and temporary-file cleanup. Import unit
+checks also cover component selection and publication rollback. The Windows
+extractor's component-path and legacy path-length cases are handled explicitly.
+No game-engine or campaign retest was needed: the game binaries are unchanged.

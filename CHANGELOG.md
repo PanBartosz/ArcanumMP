@@ -6,6 +6,15 @@ should use matching executables and game data. Current compatibility is
 
 ## Unreleased
 
+### v0.2.2 — Polish setup without Python
+
+- Self-contained Windows/Linux tools import Eselter 1.7 from the adjacent
+  download, verify its checksum and select Polish for the next launch.
+- Existing language data is backed up; saves, identities and shared gameplay
+  data remain unchanged. The Windows tool handles component paths and Unicode.
+- Included beside the game in drop-ins and available as separate small downloads.
+- Game engine binaries are unchanged from 0.2.1; compatibility remains protocol 60.
+
 ### v0.2.1 — translation text lifetime
 
 - Keep cached translated lines valid during long sessions, including when a UI

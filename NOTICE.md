@@ -28,6 +28,13 @@ are separate third-party data. Import support does not relicense or bundle those
 assets. [LOCALIZATION.md](docs/LOCALIZATION.md) records the author download,
 verified hashes and presentation-only import procedure.
 
+The optional Polish setup utility embeds unmodified innoextract 1.9 by Daniel
+Scharrer (https://constexpr.org/innoextract/), under the zlib license. Utility
+bundles retain the extractor's license/dependency notices and original binary
+and source archives. The Linux desktop helper statically links the same pinned
+SDL3 used by the game; its zlib notice is included. Polish game data is supplied
+separately by the user.
+
 The website uses Cormorant Garamond by the Cormorant Project Authors under
 SIL Open Font License 1.1; the font and notice are under `site/assets/fonts/`.
 The current public films use excerpts of "Arcadia" and "Five Armies" by Kevin

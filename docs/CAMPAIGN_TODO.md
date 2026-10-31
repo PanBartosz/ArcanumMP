@@ -21,3 +21,10 @@ will follow reports from actual play. See [current status](STATUS.md),
 - [x] Empty/Pusto feedback on looted bodies and containers.
 
 [Language setup and scoped verification](LOCALIZATION.md).
+
+## Completed in 0.2.2
+
+- [x] Self-contained Windows/Linux Polish setup, automatic language selection
+  and retained backups. Both real imports match all 903 presentation resources.
+
+[Setup instructions](LOCALIZATION.md#simple-setup--no-python).
