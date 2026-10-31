@@ -14,3 +14,16 @@ Pages branch contains the complete playable site, while the main branch retains
 its source. The same trailer is attached to the GitHub Release. YouTube can be
 embedded later if a published video is supplied; the current site uses a native
 HTML video player and loads no third-party embed or tracking scripts.
+
+## Responsive checks
+
+After changing layout or typography, review both pages at 320, 360, 390 and
+430 CSS pixels, around the 680px layout breakpoint, and on desktop. Check the
+title's text bounds as well as document overflow: the decorative hero clips
+its background, so an oversized word can be cut off without a horizontal
+scrollbar. Check with the local font loaded and the Georgia fallback.
+
+Keep navigation usable on narrow screens, including the return link on credits.
+Scroll through lazy-loaded images before reviewing the whole page, and check
+both native video players and FAQ controls. Gallery images need `height: auto`
+to override their HTML height when their width changes.
