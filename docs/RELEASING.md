@@ -59,6 +59,27 @@ site is https://panbartosz.github.io/ArcanumMP/ . Version 0.1.0 is the first pub
 release. Earlier protocol numbers are engineering milestones, not prior public
 releases.
 
+### Ongoing distribution
+
+Publish each new ready-to-play game build immediately as a newly numbered
+GitHub Release in `PanBartosz/ArcanumMP`. This is the normal delivery channel
+for players and has standing maintainer authorization. A new build is delivered
+when its matching downloads are public, rather than only available locally.
+
+- Increment the public version for every delivered game build: the next patch
+  after `v0.1.0` is `v0.1.1`; use a minor increment for a substantial feature
+  release. Keep the network protocol version separate from the release number.
+- Publish matching Windows/Linux archives, `SHA256SUMS.txt`, the exact source
+  revision and concise player-facing notes about changes and compatibility.
+- Verify the uploaded file sizes and hashes, and confirm the release is public.
+  Preserve previous versions and their tags/assets for rollback.
+- Update the README and website download links to the current game version.
+
+Temporary diagnostic compiles are not player releases. Website, documentation
+or media updates alone leave the game release number unchanged.
+
+### Initial source snapshot
+
 For the initial publication, export the reviewed current source into a new local
 Git repository and make one initial commit. Keep the original development
 repository/history and local evidence intact. Do not push its historical refs.
