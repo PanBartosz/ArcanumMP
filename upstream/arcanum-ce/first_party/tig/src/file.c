@@ -93,6 +93,8 @@ static TigFileRepository* tig_file_repositories_head;
 
 // 0x62B2B0
 static TigFileIgnore* tig_file_ignore_head;
+static TigFileReadOverride read_override;
+void tig_file_read_override_set(TigFileReadOverride callback) { read_override=callback; }
 
 // 0x52DFE0
 bool tig_file_mkdir_native(const char* path)
@@ -2226,6 +2228,9 @@ bool tig_file_extract(const char* filename, char* path)
 {
     char native_filename[TIG_MAX_PATH];
 
+    if(read_override&&read_override(filename,native_filename,sizeof(native_filename)))
+        return tig_file_extract_native(native_filename,path);
+
     strcpy(native_filename, filename);
     compat_windows_path_to_native(native_filename);
     compat_resolve_path(native_filename);
@@ -2247,6 +2252,9 @@ void tig_file_list_create(TigFileList* list, const char* pattern)
 bool tig_file_exists(const char* path, TigFileInfo* info)
 {
     char native_path[TIG_MAX_PATH];
+
+    if(read_override&&read_override(path,native_path,sizeof(native_path)))
+        return tig_file_exists_native(native_path,info);
 
     strcpy(native_path, path);
     compat_windows_path_to_native(native_path);
@@ -2301,6 +2309,9 @@ int tig_file_rename(const char* old_file_name, const char* new_file_name)
 TigFile* tig_file_fopen(const char* path, const char* mode)
 {
     char native_path[TIG_MAX_PATH];
+
+    if(mode&&mode[0]=='r'&&!strchr(mode,'+')&&read_override&&read_override(path,native_path,sizeof(native_path)))
+        return tig_file_fopen_native(native_path,mode);
 
     if (path[0] == '\0') {
         return NULL;

@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "ui/item_ui.h"
 #include "coop/runtime.h"
 
@@ -79,7 +80,7 @@ bool item_ui_coop_use(int64_t item, bool self)
     else {
         TargetDescriptor td;
         target_descriptor_set_obj(&td, pc);
-        if (!coop_runtime_use_item(item, self ? &td : NULL, false)) intgame_message_window_display_str(-1, "Finish your current action first.");
+        if (!coop_runtime_use_item(item, self ? &td : NULL, false)) intgame_message_window_display_str(-1, coop_tr("Finish your current action first."));
     }
     return true;
 }
@@ -174,7 +175,7 @@ void item_ui_apply(TargetDescriptor* td)
     if (coop_runtime_gameplay()) {
         if (!qword_6810D8 || !obj_handle_is_valid(qword_6810D8)) item_ui_deactivate();
         else if (coop_runtime_use_item(qword_6810D8, td, tig_kb_get_modifier(SDL_KMOD_ALT))) item_ui_deactivate();
-        else intgame_message_window_display_str(-1, "Finish your current action first.");
+        else intgame_message_window_display_str(-1, coop_tr("Finish your current action first."));
         return;
     }
 

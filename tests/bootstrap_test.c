@@ -192,6 +192,8 @@ static void verify_dialogue_continuation(void)
     state->starts[0] = state->current; state->queued = 1;
     state->state_script = 1324; state->options = 1; state->journal_page = COOP_JOURNAL_PAGES;
     strcpy(state->reply, "A retained reply"); strcpy(state->selected, "What happened?");
+    state->text_refs[0]=(CoopTextRef){.path="dlg/01324virgil.dlg",.key=1,.variant=1};
+    state->text_refs[2]=(CoopTextRef){.path="mes/gd_pc2m.mes",.key=100};
     strcpy(state->text[0], "Continue"); strcpy(state->actions[0], "gf1 1"); state->target[0] = 10;
     CHECK(coop_dialogue_recovery_admit(state, &state->current));
     CoopDialogueStart opening = state->current;
@@ -203,25 +205,35 @@ static void verify_dialogue_continuation(void)
     CHECK(coop_dialogue_recovery_admit(state, &opening) && state->opened == 2);
     size_t size;
     uint8_t* bytes = coop_dialogue_recovery_encode(state, &size);
-    CHECK(bytes && !memcmp(bytes, "ACDLGR05", 8) && coop_dialogue_recovery_decode(restored, bytes, size));
+    CHECK(bytes && !memcmp(bytes, "ACDLGR06", 8) && coop_dialogue_recovery_decode(restored, bytes, size));
     CHECK(restored->journal_page == COOP_JOURNAL_PAGES && !strcmp(restored->selected, state->selected)
         && restored->queued == 1 && !strcmp(restored->actions[0], state->actions[0]));
     CHECK(restored->opened == 2 && !coop_dialogue_recovery_admit(restored, &state->current));
+    CHECK(!strcmp(restored->text_refs[0].path,state->text_refs[0].path)&&restored->text_refs[0].variant==1&&restored->text_refs[2].key==100);
     /* Older readers' layouts end before the saved opening admissions. */
     size_t admission_size = 4 + state->opened * (2 * COOP_OBJECT_ID_BYTES + 16);
-    size_t v4_size = size - 4;
+    size_t queue_size=2*COOP_OBJECT_ID_BYTES+16,metadata_size=0;
+    for(unsigned i=0;i<COOP_DIALOGUE_OPTIONS+2;i++)metadata_size+=12+strlen(state->text_refs[i].path);
+    size_t metadata_at=size-4-4-admission_size-queue_size-metadata_size;
+    size_t v5_size=size-metadata_size;
+    uint8_t* v5=malloc(v5_size);CHECK(v5);
+    memcpy(v5,bytes,metadata_at);memcpy(v5,"ACDLGR05",8);
+    memcpy(v5+metadata_at,bytes+metadata_at+metadata_size,size-metadata_at-metadata_size);
+    coop_object_write32(v5+v5_size-4,coop_snapshot_crc(v5,v5_size-4));
+    CHECK(coop_dialogue_recovery_decode(restored,v5,v5_size)&&!restored->text_refs[0].path[0]);
+    size_t v4_size = v5_size - 4;
     uint8_t* v4 = malloc(v4_size); CHECK(v4);
-    memcpy(v4, bytes, v4_size - 4); memcpy(v4, "ACDLGR04", 8);
+    memcpy(v4, v5, v4_size - 4); memcpy(v4, "ACDLGR04", 8);
     coop_object_write32(v4 + v4_size - 4, coop_snapshot_crc(v4, v4_size - 4));
     CHECK(coop_dialogue_recovery_decode(restored, v4, v4_size) && !restored->notice_count && restored->opened == 2);
     free(v4);
-    size_t v3_size = size - admission_size - 4;
+    size_t v3_size = v5_size - admission_size - 4;
     uint8_t* v3 = malloc(v3_size); CHECK(v3);
-    memcpy(v3, bytes, v3_size - 4); memcpy(v3, "ACDLGR03", 8);
+    memcpy(v3, v5, v3_size - 4); memcpy(v3, "ACDLGR03", 8);
     coop_object_write32(v3 + v3_size - 4, coop_snapshot_crc(v3, v3_size - 4));
     CHECK(coop_dialogue_recovery_decode(restored, v3, v3_size) && !restored->opened && restored->mode == state->mode);
     /* Version1 put the queued callbacks directly after the active options. */
-    size_t extension = 12 + strlen(state->selected), queue_size = 2 * COOP_OBJECT_ID_BYTES + 16;
+    size_t extension = 12 + strlen(state->selected);
     size_t prefix = v3_size - 4 - queue_size - extension, old_size = v3_size - extension;
     uint8_t* old = malloc(old_size); CHECK(old);
     memcpy(old, v3, prefix); memcpy(old, "ACDLGR01", 8);
@@ -275,7 +287,7 @@ static void verify_dialogue_continuation(void)
     CHECK(state->opened == COOP_DIALOGUE_STARTS && !coop_dialogue_recovery_admit(state, &opening));
     opening = state->current;
     CHECK(coop_dialogue_recovery_admit(state, &opening));
-    free(v3); free(companion); free(v2); free(old); free(bytes); free(restored); free(state);
+    free(v5); free(v3); free(companion); free(v2); free(old); free(bytes); free(restored); free(state);
 }
 static void verify_current_sidecars(void)
 {

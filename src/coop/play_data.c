@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/play_data.h"
 #include "coop/modern.h"
 #include "coop/authority.h"
@@ -141,10 +142,10 @@ static void item_description(int64_t pc,int64_t obj,char* text,size_t size)
     int type=obj_field_int32_get(obj,OBJ_F_TYPE);
     if (type==OBJ_TYPE_WEAPON) {
         int low,high; item_damage_min_max(obj,DAMAGE_TYPE_NORMAL,&low,&high);
-        snprintf(text,size,"%s\nHealth damage: %d-%d\nSpeed: %d | Range: %d\nMinimum strength: %d\nWeight: %d | Value: %d%s",name,low,high,
-            item_weapon_magic_speed(obj,pc),item_weapon_range(obj,pc),item_weapon_min_strength(obj,pc),item_weight(obj,pc),item_worth(obj),item_is_identified(obj) ? "" : "\nUnidentified: magical properties are unknown.");
-    } else if (type==OBJ_TYPE_ARMOR) snprintf(text,size,"%s\nArmor class adjustment: %d\nCoverage: %d\nWeight: %d | Value: %d%s",name,item_armor_ac_adj(obj,pc,false),item_armor_coverage(obj),item_weight(obj,pc),item_worth(obj),item_is_identified(obj) ? "" : "\nUnidentified: magical properties are unknown.");
-    else snprintf(text,size,"%s\nWeight: %d | Value: %d%s",name,item_weight(obj,pc),item_worth(obj),item_is_identified(obj) ? "" : "\nUnidentified");
+        snprintf(text,size,coop_tr("%s\nHealth damage: %d-%d\nSpeed: %d | Range: %d\nMinimum strength: %d\nWeight: %d | Value: %d%s"),name,low,high,
+            item_weapon_magic_speed(obj,pc),item_weapon_range(obj,pc),item_weapon_min_strength(obj,pc),item_weight(obj,pc),item_worth(obj),item_is_identified(obj) ? "" : coop_tr("\nUnidentified: magical properties are unknown."));
+    } else if (type==OBJ_TYPE_ARMOR) snprintf(text,size,coop_tr("%s\nArmor class adjustment: %d\nCoverage: %d\nWeight: %d | Value: %d%s"),name,item_armor_ac_adj(obj,pc,false),item_armor_coverage(obj),item_weight(obj,pc),item_worth(obj),item_is_identified(obj) ? "" : coop_tr("\nUnidentified: magical properties are unknown."));
+    else snprintf(text,size,coop_tr("%s\nWeight: %d | Value: %d%s"),name,item_weight(obj,pc),item_worth(obj),item_is_identified(obj) ? "" : coop_tr("\nUnidentified"));
 }
 static unsigned recipes_known(int64_t pc,int* output,unsigned capacity)
 {
@@ -171,7 +172,7 @@ static void ingredient_uses(int64_t pc,int64_t item,char* text,size_t size)
             if (prototype && obj_field_handle_get(item,OBJ_F_PROTOTYPE_HANDLE)==prototype) used=true;
         }
         if (used) {
-            size_t length=strlen(text); snprintf(text+length,size-length,"%s%s",shown ? ", " : "\nUsed in known recipes: ",schematic_ui_product_name(recipes[i]));
+            size_t length=strlen(text); snprintf(text+length,size-length,"%s%s",shown ? ", " : coop_tr("\nUsed in known recipes: "),schematic_ui_product_name(recipes[i]));
             if (++shown>=5) break;
         }
     }
@@ -192,8 +193,8 @@ unsigned coop_play_inventory(PlayRow* rows,const char* query,unsigned category)
             int64_t equipped=item_wield_get(pc,slot);
             if (equipped && equipped!=obj) {
                 char compare[480]; item_description(pc,equipped,compare,sizeof(compare));
-                size_t n=strlen(row.detail); snprintf(row.detail+n,sizeof(row.detail)-n,"\n\nEquipped in this slot:\n%s",compare);
-            } else if (equipped==obj) { size_t n=strlen(row.detail); snprintf(row.detail+n,sizeof(row.detail)-n,"\nCurrently equipped."); }
+                size_t n=strlen(row.detail); snprintf(row.detail+n,sizeof(row.detail)-n,coop_tr("\n\nEquipped in this slot:\n%s"),compare);
+            } else if (equipped==obj) { size_t n=strlen(row.detail); snprintf(row.detail+n,sizeof(row.detail)-n,coop_tr("\nCurrently equipped.")); }
         }
         ingredient_uses(pc,obj,row.detail,sizeof(row.detail)); rows[used++]=row;
     }
@@ -203,20 +204,20 @@ static void action_detail(int64_t pc,PlayRow* row)
 {
     if (combat_turn_based_is_active() && combat_turn_based_whos_turn_get()!=pc) {
         row->available=false;
-        snprintf(row->detail,sizeof(row->detail),"%s\nWait for your turn to use this action.",row->name); return;
+        snprintf(row->detail,sizeof(row->detail),coop_tr("%s\nWait for your turn to use this action."),row->name); return;
     }
     if (row->kind==HOTKEY_SPELL) {
         int cost=spell_cast_cost(row->id,pc);
         row->available=critter_is_active(pc) && spell_is_known(pc,row->id) && magictech_can_charge_spell_fatigue(pc,row->id);
-        snprintf(row->detail,sizeof(row->detail),"%s\nCast: %d fatigue | Range: %d\n%s\n\n%s",row->name,cost,magictech_get_range(row->id),
-            row->available ? "Ready to select a target." : "Unavailable: check consciousness, fatigue and spell knowledge.",spell_description(row->id));
+        snprintf(row->detail,sizeof(row->detail),coop_tr("%s\nCast: %d fatigue | Range: %d\n%s\n\n%s"),row->name,cost,magictech_get_range(row->id),
+            row->available ? coop_tr("Ready to select a target.") : coop_tr("Unavailable: check consciousness, fatigue and spell knowledge."),spell_description(row->id));
     } else if (row->kind==HOTKEY_SKILL) {
         static const int skills[]={SKILL_PROWLING,SKILL_PICK_POCKET,SKILL_DISARM_TRAPS,SKILL_REPAIR};
         if (row->id<0 || row->id>=4) { row->available=false; return; }
         int skill=skills[row->id];
         int level=skill<BASIC_SKILL_COUNT ? basic_skill_level(pc,skill) : tech_skill_level(pc,skill-BASIC_SKILL_COUNT);
         row->available=critter_is_active(pc);
-        snprintf(row->detail,sizeof(row->detail),"%s\nSkill level: %d\n%s\nSelect this skill, then choose its target in the world.",row->name,level,row->available ? "Ready" : "Unavailable: character is incapacitated.");
+        snprintf(row->detail,sizeof(row->detail),coop_tr("%s\nSkill level: %d\n%s\nSelect this skill, then choose its target in the world."),row->name,level,row->available ? coop_tr("Ready") : coop_tr("Unavailable: character is incapacitated."));
     }
 }
 unsigned coop_play_actions(PlayRow* rows,const char* query)
@@ -266,8 +267,8 @@ bool coop_play_action_slot(unsigned slot,PlayRow* row)
 }
 static const char* quest_status(int state)
 {
-    static const char* names[]={"Unknown","Mentioned","Accepted","Achieved","Completed","Completed by another","Failed"};
-    return state>=0 && state<QUEST_STATE_COUNT ? names[state] : "Updated";
+    const char* names[]={coop_tr("Unknown"),coop_tr("Mentioned"),coop_tr("Accepted"),coop_tr("Achieved"),coop_tr("Completed"),coop_tr("Completed by another"),coop_tr("Failed")};
+    return state>=0 && state<QUEST_STATE_COUNT ? names[state] : coop_tr("Updated");
 }
 unsigned coop_play_quests(PlayRow* rows,const char* query,bool recent)
 {
@@ -279,7 +280,7 @@ unsigned coop_play_quests(PlayRow* rows,const char* query,bool recent)
         char description[1200]={0}; quest_copy_description(pc,q.num,description,sizeof(description));
         if (!matches(description,query)) continue;
         snprintf(row.name,sizeof(row.name),"[%s] %.110s",quest_status(q.state),description);
-        snprintf(row.detail,sizeof(row.detail),"%s\n%s%s\n\n%s",quest_status(q.state),recent ? "Changed since last review. Previous: " : "",recent ? quest_status(seen[q.num]) : "",description);
+        snprintf(row.detail,sizeof(row.detail),"%s\n%s%s\n\n%s",quest_status(q.state),recent ? coop_tr("Changed since last review. Previous: ") : "",recent ? quest_status(seen[q.num]) : "",description);
         rows[used++]=row;
     }
     return used;
@@ -298,7 +299,7 @@ unsigned coop_play_recipes(PlayRow* rows,const char* query,bool craftable)
         const char* name=schematic_ui_product_name(ids[i]); if (!matches(name,query)) continue;
         PlayRow row={.id=ids[i],.available=true}; snprintf(row.name,sizeof(row.name),"%s",name);
         SchematicInfo info={0}; schematic_ui_info_get(ids[i],&info);
-        snprintf(row.detail,sizeof(row.detail),"%s | Produces %d\n",name,info.qty);
+        snprintf(row.detail,sizeof(row.detail),coop_tr("%s | Produces %d\n"),name,info.qty);
         const int* parts[]={info.item1,info.item2};
         for (unsigned part=0;part<2;part++) {
             char ingredient[128]="Unknown component"; bool found=false,expert=true;
@@ -313,10 +314,10 @@ unsigned coop_play_recipes(PlayRow* rows,const char* query,bool craftable)
                 }
             }
             row.available &= found && expert;
-            size_t n=strlen(row.detail); snprintf(row.detail+n,sizeof(row.detail)-n,"\n%s: %s%s",ingredient,found ? "present" : "MISSING",expert ? "" : " | insufficient technical expertise");
+            size_t n=strlen(row.detail); snprintf(row.detail+n,sizeof(row.detail)-n,"\n%s: %s%s",ingredient,found ? coop_tr("present") : coop_tr("MISSING"),expert ? "" : coop_tr(" | insufficient technical expertise"));
         }
         if (craftable && !row.available) continue;
-        size_t n=strlen(row.detail); snprintf(row.detail+n,sizeof(row.detail)-n,"\n\n%s",row.available ? "Ready to craft using the original recipe." : "Collect missing ingredients or increase the listed expertise.");
+        size_t n=strlen(row.detail); snprintf(row.detail+n,sizeof(row.detail)-n,"\n\n%s",row.available ? coop_tr("Ready to craft using the original recipe.") : coop_tr("Collect missing ingredients or increase the listed expertise."));
         rows[used++]=row;
     }
     return used;
@@ -332,22 +333,22 @@ static bool sale_eligible(int64_t pc,int64_t item)
 const char* coop_play_bulk_status(void) { return bulk_status; }
 void coop_play_bulk_start(void)
 {
-    if (bulk_phase) { bulk_phase=0; snprintf(bulk_status,sizeof(bulk_status),"Sale stopped."); return; }
-    if (!inven_ui_play_merchant()) { snprintf(bulk_status,sizeof(bulk_status),"Open a merchant's barter window first, then return here to sell marked junk."); return; }
+    if (bulk_phase) { bulk_phase=0; snprintf(bulk_status,sizeof(bulk_status),coop_tr("Sale stopped.")); return; }
+    if (!inven_ui_play_merchant()) { snprintf(bulk_status,sizeof(bulk_status),coop_tr("Open a merchant's barter window first, then return here to sell marked junk.")); return; }
     bulk_sold=bulk_skipped=0; bulk_phase=1; bulk_deadline=SDL_GetTicks()+10000;
-    snprintf(bulk_status,sizeof(bulk_status),"Selling eligible marked items. Click Sell again to stop.");
+    snprintf(bulk_status,sizeof(bulk_status),coop_tr("Selling eligible marked items. Click Sell again to stop."));
 }
 void coop_play_bulk_tick(void)
 {
     if (!bulk_phase) return;
     int64_t pc=player_get_local_pc_obj(),npc=inven_ui_play_merchant();
-    if (!pc || !npc || SDL_GetTicks()>bulk_deadline) { bulk_phase=0; snprintf(bulk_status,sizeof(bulk_status),"Sale stopped: merchant unavailable or request timed out."); return; }
+    if (!pc || !npc || SDL_GetTicks()>bulk_deadline) { bulk_phase=0; snprintf(bulk_status,sizeof(bulk_status),coop_tr("Sale stopped: merchant unavailable or request timed out.")); return; }
     CoopGameplay* g=coop_runtime_gameplay(); CoopServices* services=g ? coop_gameplay_services(g) : NULL;
     if (services && coop_services_busy(services)) return;
     if (bulk_phase==1) {
         int64_t item=0;
         for (unsigned i=0;i<junk_count;i++) { int64_t candidate=obj_pool_perm_lookup(junk[i]); if (sale_eligible(pc,candidate)) { item=candidate; break; } }
-        if (!item) { bulk_phase=0; snprintf(bulk_status,sizeof(bulk_status),"Sold %u item(s); %u refused. Equipped items, keys and documents were protected.",bulk_sold,bulk_skipped); return; }
+        if (!item) { bulk_phase=0; snprintf(bulk_status,sizeof(bulk_status),coop_tr("Sold %u item(s); %u refused. Equipped items, keys and documents were protected."),bulk_sold,bulk_skipped); return; }
         bulk_item=obj_get_id(item); bulk_deadline=SDL_GetTicks()+10000;
         if (services) {
             bulk_result=coop_services_last_result(services,NULL); coop_runtime_service_item(item,false); bulk_phase=2;

@@ -108,8 +108,19 @@ bool coop_journal_decode(CoopJournal* j, const void* data, size_t size)
         CoopDialogueView view;
         size_t prefix = end ? 5 + (size_t)(end - speaker) : length;
         good = end && speaker_valid(speaker) && prefix < length
-            && coop_dialogue_view_decode(bytes + offset + prefix, length - prefix, &view)
-            && coop_journal_append(next, &view, speaker);
+            && coop_dialogue_view_decode(bytes + offset + prefix, length - prefix, &view);
+        if (good) {
+            /* Preserve legacy pages verbatim. Upgrading every old page while
+             * loading could exceed the journal byte limit and evict history
+             * before the save is even opened. New entries use the new format. */
+            uint8_t* page=malloc(length);
+            if(!page) good=false;
+            else {
+                memcpy(page,bytes+offset,length);
+                next->pages[next->count++]=(JournalPage){page,length};
+                next->bytes+=length;
+            }
+        }
         offset += length;
     }
     good &= offset == size - 4 && next->count == count;

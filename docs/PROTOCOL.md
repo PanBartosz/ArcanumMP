@@ -1,7 +1,14 @@
-# LAN wire protocol, version 59
+# LAN wire protocol, version 60
 
-All participants must use protocol 59. Native campaign saves/settings are
-unchanged. Version 59 changes only the world-transfer envelope; action ownership,
+All participants must use protocol 60. Version 60 adds presentation references
+to dialogue views (`ACD2`) and saved dialogue recovery (`ACDLGR06`). A reference
+is a canonical resource path, numeric text key and text variant. Each player
+resolves it locally; original conditions, actions and choice indices remain
+authoritative. Personal language files do not enter the gameplay fingerprint.
+Older `ACD1` transcripts and recovery formats 1–5 remain readable. See
+[dialogue serialization](DIALOGUE.md#protocol-6) and [language setup](LOCALIZATION.md).
+
+Version 59 changed only the world-transfer envelope; action ownership,
 canonical state, CRC validation and apply/ACK barriers retain their semantics.
 
 `WORLD_BEGIN` (type 32) is now 20 bytes: epoch, revision, wire length, canonical

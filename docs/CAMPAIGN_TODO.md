@@ -12,3 +12,12 @@ Manual multiplayer play has also covered much of the first area.
 No demonstrated campaign progression blocker is currently listed. Further fixes
 will follow reports from actual play. See [current status](STATUS.md),
 [the player guide](PLAYER_GUIDE.md) and [contributing](../CONTRIBUTING.md).
+
+## Completed in 0.2.0
+
+- [x] Obtain and verify Eselter Polish translation 1.7.
+- [x] Personal language selection, mixed-language dialogue/recovery and Polish
+  added UI; four mixed-language engines verified, including Windows/Wine.
+- [x] Empty/Pusto feedback on looted bodies and containers.
+
+[Language setup and scoped verification](LOCALIZATION.md).

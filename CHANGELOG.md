@@ -2,9 +2,24 @@
 
 These are development milestones, not published release tags. All players
 should use matching executables and game data. Current compatibility is
-**protocol 59**.
+**protocol 60**.
 
 ## Unreleased
+
+### v0.2.0 — personal languages and empty loot
+
+- Independent language selection in the original options and playability
+  settings. English and Polish players can share the same campaign.
+- Presentation-only support for Eselter's Polish translation 1.7, including
+  original-game text, fonts, interface art and available media; third-party
+  language assets are imported separately.
+- Polish text for the added menus, tools, help, conditions and combat feedback.
+- Dialogue resource references survive transport, transcripts and recovery;
+  native service prices retain their authoritative amounts. Older saves remain
+  readable and language choice stays outside the gameplay fingerprint.
+- **Empty / Pusto** hover and interaction labels on looted bodies and containers,
+  updated as items are removed or put back.
+- Update all players together. [Language setup and verification](docs/LOCALIZATION.md).
 
 ### v0.1.0 — first public release
 
@@ -76,4 +91,4 @@ should use matching executables and game data. Current compatibility is
 
 See the [feature inventory](docs/FEATURES.md),
 [readiness qualifications](docs/FINAL_READINESS.md), detailed
-[protocol guides](docs/README.md) and history.
+[protocol guides](docs/README.md).

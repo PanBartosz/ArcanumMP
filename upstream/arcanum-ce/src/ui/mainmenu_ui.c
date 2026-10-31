@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "ui/mainmenu_ui.h"
 
 #include <stdio.h>
@@ -1422,7 +1423,7 @@ bool mainmenu_ui_init(GameInitInfo* init_info)
         return false;
     }
 
-    settings_register(&settings, "show version", "0", NULL);
+    settings_register(&settings, coop_tr("show version"), "0", NULL);
 
     mainmenu_fonts_init();
 
@@ -2454,7 +2455,7 @@ bool mainmenu_ui_load_game_execute(int btn)
     if (coop_runtime_phase() != COOP_RUNTIME_OFF) {
         sub_5412D0();
         bool sent = coop_saves_ui_open(coop_runtime_phase() == COOP_RUNTIME_LOBBY ? COOP_SAVES_RESUME : COOP_SAVES_LOAD);
-        if (!sent) intgame_message_window_display_str(-1, "The party cannot load a checkpoint right now.");
+        if (!sent) intgame_message_window_display_str(-1, coop_tr("The party cannot load a checkpoint right now."));
         return sent;
     }
     int index;
@@ -3141,7 +3142,7 @@ bool mainmenu_ui_save_game_execute(int btn)
     if (coop_runtime_phase() != COOP_RUNTIME_OFF) {
         sub_5412D0();
         bool sent = coop_saves_ui_open(COOP_SAVES_SAVE);
-        if (!sent) intgame_message_window_display_str(-1, "The party cannot save right now.");
+        if (!sent) intgame_message_window_display_str(-1, coop_tr("The party cannot save right now."));
         return sent;
     }
     int v1;
@@ -3184,7 +3185,7 @@ bool mainmenu_ui_save_game_execute(int btn)
                     snprintf(&(fname[4]), sizeof(fname) - 4, "%04d", num);
                     name = fname;
                 } else {
-                    name = "Slot0000";
+                    name = coop_tr("Slot0000");
                 }
             } else {
                 if (mainmenu_ui_gsl.names[0] != NULL) {
@@ -3199,11 +3200,11 @@ bool mainmenu_ui_save_game_execute(int btn)
                     snprintf(&(fname[4]), sizeof(fname) - 4, "%04d", num);
                     name = fname;
                 } else {
-                    name = "Slot0000";
+                    name = coop_tr("Slot0000");
                 }
             }
         } else {
-            name = "Slot0000";
+            name = coop_tr("Slot0000");
         }
     }
 
@@ -4551,7 +4552,7 @@ void mainmenu_ui_charedit_refresh(TigRect* rect)
                 }
                 charedit_refresh();
             } else {
-                intgame_message_window_display_str(-1, "Identity changed. Your character points have been reset.");
+                intgame_message_window_display_str(-1, coop_tr("Identity changed. Your character points have been reset."));
             }
         }
     }
@@ -4944,7 +4945,7 @@ void mainmenu_ui_create_window_func(bool should_display)
         if (mes_file_entry.num != -1
             && (button->flags & 0x4) == 0) {
             if (mainmenu_ui_window_type == MM_WINDOW_MAINMENU && idx == 1) {
-                mes_file_entry.str = "Multiplayer";
+                mes_file_entry.str = coop_tr("Multiplayer");
             } else if (mainmenu_ui_window_type == MM_WINDOW_MAINMENU && idx > 1) {
                 MesFileEntry label = { window->num + idx - 1, NULL };
                 mes_get_msg(mainmenu_ui_mainmenu_mes_file, &label);
@@ -5012,7 +5013,7 @@ void mainmenu_ui_create_window_func(bool should_display)
         TigRect hint = { 10, 550, 780, 20 };
         tig_font_push(dword_64BC04[0]);
         tig_window_text_write(mainmenu_ui_window_handle,
-            "Pause: pause/resume party. F12: party controls and chat.", &hint);
+            coop_tr("Pause: pause/resume party. F12: party controls and chat."), &hint);
         tig_font_pop();
     }
 
@@ -5704,7 +5705,7 @@ void mainmenu_ui_refresh_button_text(int btn, unsigned int flags)
 
         if (window->num != -1 && (button->flags & 0x4) == 0) {
             if (mainmenu_ui_window_type == MM_WINDOW_MAINMENU && btn == 1) {
-                mes_file_entry.str = "Multiplayer";
+                mes_file_entry.str = coop_tr("Multiplayer");
             } else {
                 mes_file_entry.num = window->num + btn - (mainmenu_ui_window_type == MM_WINDOW_MAINMENU && btn > 1);
                 mes_get_msg(mainmenu_ui_mainmenu_mes_file, &mes_file_entry);

@@ -3,6 +3,7 @@
 #include "coop/lobby_ui.h"
 #include "coop/runtime.h"
 #include "coop/engine_probe.h"
+#include "coop/language_engine.h"
 
 #include <SDL3/SDL_main.h>
 #include "coop/display.h"
@@ -253,6 +254,7 @@ int main(int argc, char** argv)
     init_info.flags |= TIG_INITIALIZE_SET_WINDOW_NAME;
     init_info.window_name = "Arcanum: Of Steamworks & Magick Obscura - Community Edition";
 
+    coop_language_engine_init();
     coop_display_startup(pch != NULL);
     if (tig_init(&init_info) != TIG_OK) {
         return EXIT_FAILURE;

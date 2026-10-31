@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/saves_ui.h"
 #include "coop/runtime.h"
 #include "coop/engine_dialogue.h"
@@ -29,7 +30,7 @@ static void text(const char* value, int x, int y, int width, MainMenuColor color
 {
     TigRect rect = { x, y, width, 24 };
     tig_font_push(mainmenu_ui_font(MM_FONT_FLARE12, color));
-    tig_window_text_write(window, value, &rect);
+    tig_window_text_write(window, coop_tr_rendered(value), &rect);
     tig_font_pop();
 }
 static bool inside(const TigRect* rect, int x, int y)
@@ -39,7 +40,7 @@ static bool inside(const TigRect* rect, int x, int y)
 static void default_name(void)
 {
     time_t now = time(NULL); struct tm* date = localtime(&now);
-    if (!date || !strftime(name, sizeof(name), "Campaign %Y-%m-%d %H:%M", date)) snprintf(name, sizeof(name), "Campaign save");
+    if (!date || !strftime(name, sizeof(name), coop_tr("Campaign %Y-%m-%d %H:%M"), date)) snprintf(name, sizeof(name), coop_tr("Campaign save"));
 }
 static void choose(unsigned row)
 {
@@ -77,49 +78,49 @@ static bool can_use(const CoopSaveEntry* entry)
 static void primary(void)
 {
     const CoopSaveEntry* entry = selected();
-    if (!can_use(entry)) { snprintf(feedback, sizeof(feedback), "Select an available save slot. All saved owners must be present to load."); return; }
+    if (!can_use(entry)) { snprintf(feedback, sizeof(feedback), coop_tr("Select an available save slot. All saved owners must be present to load.")); return; }
     if (mode == COOP_SAVES_SAVE && entry->status == COOP_CHECKPOINT_OK && confirm != 1) {
-        confirm = 1; snprintf(feedback, sizeof(feedback), "Replace the selected save? Choose Confirm save to continue."); return;
+        confirm = 1; snprintf(feedback, sizeof(feedback), coop_tr("Replace the selected save? Choose Confirm save to continue.")); return;
     }
     bool good = mode == COOP_SAVES_RESUME ? coop_runtime_resume_slot(entry)
         : coop_runtime_checkpoint_request(mode == COOP_SAVES_SAVE ? COOP_CONTROL_SAVE : COOP_CONTROL_LOAD, entry, name);
     if (good) coop_saves_ui_close();
-    else snprintf(feedback, sizeof(feedback), "%s", mode == COOP_SAVES_RESUME && coop_runtime_status()[0] ? coop_runtime_status() : "The party cannot do that right now. Finish the current operation and refresh the list.");
+    else snprintf(feedback, sizeof(feedback), "%s", mode == COOP_SAVES_RESUME && coop_runtime_status()[0] ? coop_runtime_status() : coop_tr("The party cannot do that right now. Finish the current operation and refresh the list."));
 }
 static void remove_copy(void)
 {
     const CoopSaveEntry* entry = selected();
     if (!entry || !entry->slot || entry->slot >= COOP_SAVE_SLOTS || entry->status != COOP_CHECKPOINT_OK || !coop_session_is_host(coop_runtime_session())) return;
-    if (confirm != 2) { confirm = 2; snprintf(feedback, sizeof(feedback), "Remove this local copy? Other players keep theirs. Choose Confirm remove."); return; }
+    if (confirm != 2) { confirm = 2; snprintf(feedback, sizeof(feedback), coop_tr("Remove this local copy? Other players keep theirs. Choose Confirm remove.")); return; }
     if (coop_runtime_remove_slot(entry) == COOP_CHECKPOINT_OK) request_page(page);
-    else { confirm = 0; snprintf(feedback, sizeof(feedback), "The save changed or could not be removed. Refresh the list."); }
+    else { confirm = 0; snprintf(feedback, sizeof(feedback), coop_tr("The save changed or could not be removed. Refresh the list.")); }
 }
 static void draw(void)
 {
     TigRect whole = { 0, 0, bounds.width, bounds.height };
     tig_window_fill(window, &whole, tig_color_make(36, 26, 18));
     tig_window_box(window, &whole, tig_color_make(186, 141, 67));
-    const char* heading = mode == COOP_SAVES_SAVE ? "SAVE PARTY CAMPAIGN" : mode == COOP_SAVES_LOAD ? "LOAD PARTY CAMPAIGN" : "RESUME PARTY CAMPAIGN";
+    const char* heading = mode == COOP_SAVES_SAVE ? coop_tr("SAVE PARTY CAMPAIGN") : mode == COOP_SAVES_LOAD ? coop_tr("LOAD PARTY CAMPAIGN") : coop_tr("RESUME PARTY CAMPAIGN");
     text(heading, 18, 12, 450, MM_COLOR_GOLD);
-    text("Quick save", 510, 12, 110, MM_COLOR_GOLD); text("Recovery", 635, 12, 105, MM_COLOR_GOLD);
+    text(coop_tr("Quick save"), 510, 12, 110, MM_COLOR_GOLD); text(coop_tr("Recovery"), 635, 12, 105, MM_COLOR_GOLD);
     char label[256];
-    snprintf(label, sizeof(label), "Saves for this party | Page %u/%u | %s", page + 1, COOP_SAVE_PAGES,
-        mode == COOP_SAVES_SAVE ? "Choose a slot and name" : "Loading requires every traveller's agreement");
+    snprintf(label, sizeof(label), coop_tr("Saves for this party | Page %u/%u | %s"), page + 1, COOP_SAVE_PAGES,
+        mode == COOP_SAVES_SAVE ? coop_tr("Choose a slot and name") : coop_tr("Loading requires every traveller's agreement"));
     text(label, 18, 40, 722, MM_COLOR_WHITE);
     CoopSaveCatalog* catalog = coop_runtime_save_catalog();
     const CoopSavePage* current = coop_save_catalog_current(catalog);
     bool pending = coop_save_catalog_pending(catalog) || !current || current->page != page;
-    if (pending) text("Reading the host's saved campaigns...", 30, 90, 700, MM_COLOR_WHITE);
+    if (pending) text(coop_tr("Reading the host's saved campaigns..."), 30, 90, 700, MM_COLOR_WHITE);
     else for (unsigned row = 0; row < current->count; row++) {
         const CoopSaveEntry* entry = &current->entries[row];
         TigRect box = { 18, 72 + (int)row * 54, 724, 50 };
         if (row == selection) tig_window_box(window, &box, tig_color_make(186, 141, 67));
         char automatic[24];
-        snprintf(automatic, sizeof(automatic), "Autosave %u", entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? entry->slot - COOP_SAVE_AUTOSAVE_FIRST + 1 : 0);
-        const char* kind = entry->slot == 0 ? "Quick save" : entry->slot == COOP_SAVE_RECOVERY ? "Recovery"
+        snprintf(automatic, sizeof(automatic), coop_tr("Autosave %u"), entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? entry->slot - COOP_SAVE_AUTOSAVE_FIRST + 1 : 0);
+        const char* kind = entry->slot == 0 ? coop_tr("Quick save") : entry->slot == COOP_SAVE_RECOVERY ? coop_tr("Recovery")
             : entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? automatic : NULL;
         if (kind) snprintf(label, sizeof(label), "%s | %s", kind, entry->status == COOP_CHECKPOINT_OK ? entry->info.description : "");
-        else snprintf(label, sizeof(label), "%02u | %s", entry->slot, entry->status == COOP_CHECKPOINT_OK ? entry->info.description : entry->status == COOP_CHECKPOINT_MISSING ? "Empty slot" : "Unavailable save");
+        else snprintf(label, sizeof(label), "%02u | %s", entry->slot, entry->status == COOP_CHECKPOINT_OK ? entry->info.description : entry->status == COOP_CHECKPOINT_MISSING ? coop_tr("Empty slot") : coop_tr("Unavailable save"));
         text(label, 30, box.y + 3, 700, row == selection ? MM_COLOR_GOLD : MM_COLOR_WHITE);
         if (entry->status == COOP_CHECKPOINT_OK) {
             char saved[48] = "Unknown date"; time_t when = (time_t)entry->modified;
@@ -128,19 +129,19 @@ static void draw(void)
             char* area = NULL; unsigned members = 0;
             for (unsigned n = 0; n < COOP_MAX_PLAYERS; n++) members += (entry->info.members >> n) & 1u;
             if (!map_get_name((int)entry->info.map, &area)) area = NULL;
-            snprintf(label, sizeof(label), "%s | %s | %u travellers", saved, area ? area : "Campaign", members);
+            snprintf(label, sizeof(label), "%s | %s | %u travellers", saved, area ? area : coop_tr("Campaign"), members);
         } else {
-            static const char* errors[] = { "", "No save in this slot.", "This save is damaged.", "Requires different game files.", "Belongs to a different party.", "Could not read this save." };
-            snprintf(label, sizeof(label), "%s", entry->status <= COOP_CHECKPOINT_IO ? errors[entry->status] : "Unavailable save.");
+            const char* errors[] = { "", coop_tr("No save in this slot."), coop_tr("This save is damaged."), coop_tr("Requires different game files."), coop_tr("Belongs to a different party."), coop_tr("Could not read this save.") };
+            snprintf(label, sizeof(label), "%s", entry->status <= COOP_CHECKPOINT_IO ? errors[entry->status] : coop_tr("Unavailable save."));
         }
         text(label, 30, box.y + 25, 700, MM_COLOR_GRAY);
     }
     const CoopSaveEntry* entry = selected();
-    text(mode == COOP_SAVES_SAVE ? "Save name (click to edit):" : "Selected campaign:", 20, 292, 400, MM_COLOR_GRAY);
+    text(mode == COOP_SAVES_SAVE ? coop_tr("Save name (click to edit):") : coop_tr("Selected campaign:"), 20, 292, 400, MM_COLOR_GRAY);
     TigRect edit = { 18, 316, 724, 27 }; tig_window_box(window, &edit, tig_color_make(editing ? 232 : 130, editing ? 190 : 105, 67));
     text(name, 26, 317, 706, mode == COOP_SAVES_SAVE ? MM_COLOR_GOLD : MM_COLOR_WHITE);
-    const char* labels[] = { "< Previous", "Next >", mode == COOP_SAVES_SAVE ? (confirm == 1 ? "Confirm save" : entry && entry->status == COOP_CHECKPOINT_OK ? "Overwrite..." : "Save here")
-        : mode == COOP_SAVES_RESUME ? "Resume campaign" : "Propose load", confirm == 2 ? "Confirm remove" : "Remove local", "Refresh", "Close" };
+    const char* labels[] = { "< Previous", coop_tr("Next >"), mode == COOP_SAVES_SAVE ? (confirm == 1 ? coop_tr("Confirm save") : entry && entry->status == COOP_CHECKPOINT_OK ? coop_tr("Overwrite...") : coop_tr("Save here"))
+        : mode == COOP_SAVES_RESUME ? coop_tr("Resume campaign") : coop_tr("Propose load"), confirm == 2 ? coop_tr("Confirm remove") : coop_tr("Remove local"), coop_tr("Refresh"), coop_tr("Close") };
     for (unsigned i = 0; i < 6; i++) {
         bool enabled = i == 0 ? page > 0 : i == 1 ? page + 1 < COOP_SAVE_PAGES : i == 2 ? can_use(entry)
             : i == 3 ? entry && entry->status == COOP_CHECKPOINT_OK && entry->slot && entry->slot < COOP_SAVE_SLOTS && coop_session_is_host(coop_runtime_session()) : true;
@@ -148,7 +149,7 @@ static void draw(void)
         tig_window_box(window, &button, tig_color_make(130, 105, 67));
         text(labels[i], buttons[i].x + 5, buttons[i].y + 3, buttons[i].width - 8, enabled ? MM_COLOR_GOLD : MM_COLOR_GRAY);
     }
-    text(feedback[0] ? feedback : "Left/Right: pages | Home: quick save | End: recovery/autosaves | Enter: choose | Esc: close", 18, 390, 724, MM_COLOR_WHITE);
+    text(feedback[0] ? feedback : coop_tr("Left/Right: pages | Home: quick save | End: recovery/autosaves | Enter: choose | Esc: close"), 18, 390, 724, MM_COLOR_WHITE);
     drawn = SDL_GetTicks();
 }
 static bool input(TigMessage* message)

@@ -20,7 +20,7 @@ bool coop_engine_dialogue_save(void);
 bool coop_engine_dialogue_load(void);
 bool coop_engine_dialogue_float(int64_t npc, int64_t pc, const char* text, int speech);
 void coop_engine_dialogue_publish(const DialogState* state, bool active);
-void coop_engine_dialogue_selected(const char* text);
+void coop_engine_dialogue_selected(const char* text,const CoopTextRef* reference);
 bool coop_engine_dialogue_present(void* context, const CoopDialogueView* view, bool chooser);
 bool coop_engine_dialogue_choose(void* context, unsigned option);
 bool coop_engine_dialogue_submit(unsigned option);

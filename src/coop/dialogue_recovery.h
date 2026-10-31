@@ -3,7 +3,8 @@
 #include "coop/dialogue.h"
 #include "coop/journal.h"
 #include "coop/object_state.h"
-enum { COOP_DIALOGUE_STARTS = 32, COOP_DIALOGUE_ACTION_TEXT = 4096,
+enum { COOP_DIALOGUE_STARTS = 32,
+    COOP_DIALOGUE_ACTION_TEXT = 4096,
     COOP_DIALOGUE_RECOVERY_LIMIT = 131072 };
 typedef struct CoopDialogueNotice {
     uint8_t pc_guid[16];
@@ -11,6 +12,7 @@ typedef struct CoopDialogueNotice {
     int32_t speech;
     uint32_t journal_page;
     char speaker[128], text[COOP_DIALOGUE_TEXT];
+    CoopTextRef text_ref;
 } CoopDialogueNotice;
 typedef struct CoopDialogueStart {
     CoopObjectId pc, npc;
@@ -38,6 +40,7 @@ typedef struct CoopDialogueRecovery {
     char text[COOP_DIALOGUE_OPTIONS][COOP_DIALOGUE_TEXT];
     int32_t target[COOP_DIALOGUE_OPTIONS], argument[COOP_DIALOGUE_OPTIONS], auxiliary[COOP_DIALOGUE_OPTIONS];
     char actions[COOP_DIALOGUE_OPTIONS][COOP_DIALOGUE_ACTION_TEXT];
+    CoopTextRef text_refs[COOP_DIALOGUE_OPTIONS + 2];
 } CoopDialogueRecovery;
 /* Continuations retain their native line/page semantics. Repeated openings
  * from another human observing the same NPC are part of the same encounter. */

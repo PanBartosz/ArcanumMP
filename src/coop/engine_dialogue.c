@@ -6,6 +6,7 @@
 #include "coop/engine_object.h"
 #include "coop/saves_ui.h"
 #include "coop/runtime.h"
+#include "coop/language_engine.h"
 #include "game/ai.h"
 #include "game/critter.h"
 #include "game/description.h"
@@ -39,6 +40,7 @@ static uint32_t published_revision;
 static CoopDialogueView native_page;
 static char last_speaker[COOP_JOURNAL_SPEAKER];
 static char selected[COOP_DIALOGUE_TEXT];
+static CoopTextRef selected_ref;
 static bool publish(CoopDialogueView* view)
 {
     if (!coop_dialogue_publish(network, view)) return false;
@@ -54,6 +56,9 @@ static bool same_page(const CoopDialogueView* a, const CoopDialogueView* b)
         || strcmp(a->reply, b->reply) || strcmp(a->selected, b->selected)) return false;
     for (unsigned i = 0; i < a->option_count; i++)
         if (strcmp(a->options[i], b->options[i])) return false;
+    for (unsigned i=0;i<COOP_DIALOGUE_OPTIONS+2;i++)
+        if(a->text_refs[i].key!=b->text_refs[i].key||a->text_refs[i].variant!=b->text_refs[i].variant
+            ||strcmp(a->text_refs[i].path,b->text_refs[i].path)) return false;
     return true;
 }
 bool coop_engine_dialogue_bind(CoopDialogue* dialogue, CoopSession* session)
@@ -64,6 +69,7 @@ bool coop_engine_dialogue_bind(CoopDialogue* dialogue, CoopSession* session)
     conversation = 0;
     conversation_open = failed = false;
     selected[0] = 0;
+    selected_ref=(CoopTextRef){0};
     start_count = 0;
     dispatching = releasing = false;
     notice_revision = 0;
@@ -103,6 +109,7 @@ static bool capture_recovery(CoopDialogueRecovery* saved)
     bool good = dialog_ui_coop_capture(saved);
     if (good && saved->active && native_page.active) {
         snprintf(saved->selected, sizeof(saved->selected), "%s", native_page.selected);
+        memcpy(saved->text_refs,native_page.text_refs,sizeof(saved->text_refs));
         CoopJournal* journal = coop_engine_journal();
         CoopDialogueView page;
         char speaker[COOP_JOURNAL_SPEAKER];
@@ -304,6 +311,7 @@ bool coop_engine_dialogue_poll(bool accepting)
             memcpy(view.pc_guid, notice->pc_guid, sizeof(view.pc_guid));
             snprintf(view.chooser_name, sizeof(view.chooser_name), "%s", players[owner].name);
             snprintf(view.reply, sizeof(view.reply), "%s", notice->text);
+            view.text_refs[0]=notice->text_ref;
             snprintf(view.selected, sizeof(view.selected), "%s", notice->speaker);
             if (publish(&view)) notice_revision = view.revision;
             else failed = true;
@@ -315,6 +323,8 @@ bool coop_engine_dialogue_poll(bool accepting)
     if (accepting && !dispatching && !conversation_open && coop_dialogue_settled(network)) {
         if (recovery.active) {
             snprintf(selected, sizeof(selected), "%s", recovery.selected);
+            coop_language_remember(selected,&recovery.text_refs[1]);
+            selected_ref=recovery.text_refs[1];
             if (!dialog_ui_coop_restore(&recovery)) { failed = true; return false; }
             recovery.active = false;
             fprintf(stderr, "ARCMP restored native dialogue mode=%u script=%d page=%d without replaying entry effects\n", recovery.mode, recovery.current.script, recovery.last_reply);
@@ -394,6 +404,7 @@ bool coop_engine_dialogue_float(int64_t npc, int64_t pc, const char* text, int s
     snprintf(view.chooser_name, sizeof(view.chooser_name), "%s", players[chooser].name);
     snprintf(view.selected, sizeof(view.selected), "%.127s", description_get(obj_field_int32_get(npc, OBJ_F_DESCRIPTION)));
     snprintf(view.reply, sizeof(view.reply), "%s", text);
+    view.text_refs[0]=coop_language_reference(text);
     /* Fresh messages must not overtake the retained FIFO on a restored epoch. */
     if (network && !recovery.notice_count) {
         if (!publish(&view)) failed = true;
@@ -404,6 +415,7 @@ bool coop_engine_dialogue_float(int64_t npc, int64_t pc, const char* text, int s
         }
         CoopDialogueNotice* notice = &recovery.notices[recovery.notice_count++];
         *notice = (CoopDialogueNotice) { .npc = view.npc, .speech = view.speech };
+        notice->text_ref=view.text_refs[0];
         memcpy(notice->pc_guid, view.pc_guid, sizeof(notice->pc_guid));
         snprintf(notice->speaker, sizeof(notice->speaker), "%.127s", view.selected);
         snprintf(notice->text, sizeof(notice->text), "%s", view.reply);
@@ -411,9 +423,9 @@ bool coop_engine_dialogue_float(int64_t npc, int64_t pc, const char* text, int s
     }
     return true;
 }
-void coop_engine_dialogue_selected(const char* text)
+void coop_engine_dialogue_selected(const char* text,const CoopTextRef* reference)
 {
-    if (network) snprintf(selected, sizeof(selected), "%s", text);
+    if (network) {snprintf(selected, sizeof(selected), "%s", text);selected_ref=reference?*reference:(CoopTextRef){0};}
 }
 void coop_engine_dialogue_publish(const DialogState* state, bool active)
 {
@@ -438,6 +450,10 @@ void coop_engine_dialogue_publish(const DialogState* state, bool active)
     selected[0] = 0;
     for (unsigned i = 0; i < view.option_count && i < COOP_DIALOGUE_OPTIONS; i++)
         snprintf(view.options[i], sizeof(view.options[i]), "%s", state->options[i]);
+    view.text_refs[0]=state->text_refs[0];
+    view.text_refs[1]=selected_ref;
+    selected_ref=(CoopTextRef){0};
+    for(unsigned i=0;i<view.option_count&&i<COOP_DIALOGUE_OPTIONS;i++)view.text_refs[i+2]=state->text_refs[i+1];
     if (!publish(&view)) {
         fprintf(stderr, "ARCMP native dialogue publication refused script=%d page=%d chooser=%u mode=%u options=%u speech=%d\n",
             state->script_num, state->field_17EC, chooser, view.mode, view.option_count, view.speech);
@@ -497,7 +513,8 @@ bool coop_engine_dialogue_present(void* context, const CoopDialogueView* view, b
             const CoopCampaignMember* member = coop_campaign_member(i);
             if (member && !memcmp(member->object_id.d.g.data, view->pc_guid, sizeof(view->pc_guid))) pc = coop_campaign_object(i);
         }
-        dialog_ui_coop_float(npc, pc, view->reply, view->speech);
+        CoopDialogueView local=*view;coop_language_view(&local);
+        dialog_ui_coop_float(npc, pc, local.reply, view->speech);
         return true;
     }
     return dialog_ui_coop_present(view, chooser);

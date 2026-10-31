@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/modern.h"
 #include "coop/hud.h"
 #include "coop/party_ui.h"
@@ -65,13 +66,13 @@ static void label(tig_window_handle_t window, const char* value, int x, int y, i
 {
     TigRect rect = { x, y, width, height };
     tig_font_push(coop_play_chrome_font(color));
-    tig_window_text_write(window, value, &rect);
+    tig_window_text_write(window, coop_tr_rendered(value), &rect);
     tig_font_pop();
 }
 static const char* party_shortcut(void)
 {
     static char text[64];
-    coop_play_shortcuts("Party [F12]",text,sizeof(text));
+    coop_play_shortcuts(coop_tr("Party [F12]"),text,sizeof(text));
     return text;
 }
 static void frame(tig_window_handle_t window, TigRect rect, bool active)
@@ -95,7 +96,7 @@ static void actor_name(int64_t actor, char* out, size_t size)
         char name[MAX_STRING];
         object_examine(actor, player_get_local_pc_obj(), name);
         snprintf(out, size, "%s", name);
-    } else snprintf(out, size, "Unknown");
+    } else snprintf(out, size, coop_tr("Unknown"));
 }
 static void actor_portrait(tig_window_handle_t window, int64_t actor, int x, int y, int size)
 {
@@ -123,7 +124,7 @@ bool coop_party_ui_target_actor(int64_t actor, bool attack_enemy)
         && object_relation_color(actor) == tig_color_make(245,55,45);
     if (ability || enemy) {
         if (combat_turn_based_is_active() && combat_turn_based_whos_turn_get() != player_get_local_pc_obj()) {
-            intgame_message_window_display_str(-1, "Wait for your turn before using that ability.");
+            intgame_message_window_display_str(-1, coop_tr("Wait for your turn before using that ability."));
             return false;
         }
         TargetDescriptor target;
@@ -142,7 +143,7 @@ bool coop_party_ui_target_actor(int64_t actor, bool attack_enemy)
         location_origin_set(obj_field_int64_get(actor, OBJ_F_LOCATION));
         char name[160], text[240];
         actor_name(actor, name, sizeof(name));
-        snprintf(text, sizeof(text), "%s: %d/%d HP, %d/%d fatigue%s", name, object_hp_current(actor), object_hp_max(actor),
+        snprintf(text, sizeof(text), coop_tr("%s: %d/%d HP, %d/%d fatigue%s"), name, object_hp_current(actor), object_hp_max(actor),
             critter_fatigue_current(actor), critter_fatigue_max(actor), coop_engine_options_immortal(actor) ? " (Immortal)" : "");
         intgame_message_window_display_str(-1, text);
     }
@@ -261,9 +262,9 @@ static void draw_turns(const CombatCampaignState* state)
     char title[256], name[128];
     unsigned cells=visible_cells(),pages=cells ? (state->order_count+cells-1)/cells : 0;
     actor_name(state->actor, name, sizeof(name));
-    if (state->active) snprintf(title, sizeof(title), "Round %u  |  %s%s  |  %d AP", state->round,
-        state->actor == player_get_local_pc_obj() ? "Your turn: " : "", name, state->points);
-    else snprintf(title, sizeof(title), "%s", state->turn_based ? "Turn-based ready" : "Real-time combat");
+    if (state->active) snprintf(title, sizeof(title), coop_tr("Round %u  |  %s%s  |  %d AP"), state->round,
+        state->actor == player_get_local_pc_obj() ? coop_tr("Your turn: ") : "", name, state->points);
+    else snprintf(title, sizeof(title), "%s", state->turn_based ? coop_tr("Turn-based ready") : coop_tr("Real-time combat"));
     int title_width=turn_rect.width-(state->active ? pages>1 ? 234 : 124 : 230);
     coop_hud_text_fit(title,sizeof(title),title_width,coop_play_chrome_font(MM_COLOR_GOLD));
     label(turns, title, 8, 4, title_width, 19, MM_COLOR_GOLD);
@@ -272,7 +273,7 @@ static void draw_turns(const CombatCampaignState* state)
         frame(turns, (TigRect) { x, 2, 104, 23 }, false);
         label(turns, party_shortcut(), x + 4, 5, 98, 19, MM_COLOR_GOLD);
         x += 108; frame(turns, (TigRect) { x, 2, 104, 23 }, false);
-        label(turns, state->turn_based ? "Real time" : "Turn based", x + 4, 5, 98, 19, MM_COLOR_GOLD);
+        label(turns, state->turn_based ? coop_tr("Real time") : coop_tr("Turn based"), x + 4, 5, 98, 19, MM_COLOR_GOLD);
         coop_hud_handles(HUD_TURNS,turns,&turn_rect,turn_rect.width-216,false);
         return;
     }
@@ -288,22 +289,22 @@ static void draw_turns(const CombatCampaignState* state)
         coop_hud_text_fit(name,sizeof(name),47,coop_play_chrome_font(MM_COLOR_WHITE));
         char order[20];
         if (index) snprintf(order, sizeof(order), "%u", index + 1);
-        else snprintf(order, sizeof(order), "NOW");
+        else snprintf(order, sizeof(order), coop_tr("NOW"));
         label(turns, order, x + 40, 26, 47, 18, index ? MM_COLOR_BROWN : MM_COLOR_GOLD);
         label(turns, name, x + 40, 42, 47, 17, MM_COLOR_WHITE);
     }
     if (pages > 1) {
-        char paging[64]; snprintf(paging, sizeof(paging), "%u/%u (wheel)", page + 1, pages);
+        char paging[64]; snprintf(paging, sizeof(paging), coop_tr("%u/%u (wheel)"), page + 1, pages);
         label(turns, paging, turn_rect.width - 222, 4, 108, 17, MM_COLOR_GRAY);
     }
     int x = turn_rect.width - 107;
     frame(turns, (TigRect) { x, 1, 105, 21 }, false); label(turns, party_shortcut(), x + 4, 3, 100, 18, MM_COLOR_GOLD);
     if (state->active) {
         frame(turns, (TigRect) { x, 24, 105, 21 }, false);
-        label(turns, "End turn", x + 4, 26, 100, 18, state->actor == player_get_local_pc_obj() ? MM_COLOR_GOLD : MM_COLOR_GRAY);
+        label(turns, coop_tr("End turn"), x + 4, 26, 100, 18, state->actor == player_get_local_pc_obj() ? MM_COLOR_GOLD : MM_COLOR_GRAY);
     }
     frame(turns, (TigRect) { x, 47, 105, 20 }, false);
-    label(turns, state->turn_based ? "Real time" : "Turn based", x + 4, 48, 100, 18, MM_COLOR_GOLD);
+    label(turns, state->turn_based ? coop_tr("Real time") : coop_tr("Turn based"), x + 4, 48, 100, 18, MM_COLOR_GOLD);
     coop_hud_handles(HUD_TURNS,turns,&turn_rect,turn_rect.width-112,false);
 }
 static void hint_at(int x, int y, char out[512])
@@ -318,12 +319,12 @@ static void hint_at(int x, int y, char out[512])
         char statuses[200] = ""; unsigned mask = coop_party_ui_statuses(actor);
         for (unsigned i=0; i<SDL_arraysize(status_names); i++) if (mask & (1u<<i)) {
             size_t used = strlen(statuses);
-            snprintf(statuses+used,sizeof(statuses)-used,"%s%s",used ? ", " : "Status: ",status_names[i]);
+            snprintf(statuses+used,sizeof(statuses)-used,"%s%s",used ? ", " : coop_tr("Status: "),coop_tr(status_names[i]));
         }
-        snprintf(out, 512, "%s\nHealth %d / %d\nFatigue %d / %d\n%s%s%s%s", name, object_hp_current(actor), object_hp_max(actor),
+        snprintf(out, 512, coop_tr("%s\nHealth %d / %d\nFatigue %d / %d\n%s%s%s%s"), name, object_hp_current(actor), object_hp_max(actor),
             critter_fatigue_current(actor), critter_fatigue_max(actor),
             statuses, *statuses ? "\n" : "",
-            "Click to focus. With an ability selected, click to target.",
+            coop_tr("Click to focus. With an ability selected, click to target."),
             coop_engine_options_immortal(actor) ? "\nImmortal: minimum 1 HP." : "");
         return;
     }
@@ -331,23 +332,23 @@ static void hint_at(int x, int y, char out[512])
         int local_x = x - turn_rect.x, local_y = y - turn_rect.y;
         if (!combat_turn_based_is_active()) {
             snprintf(out, 512, "%s", local_x >= turn_rect.width - 108
-                ? "Host control [Space]: switch between real-time and turn-based combat. Works even when the host is dead."
-                : local_x >= turn_rect.width - 216 ? "Party [F12]: chat, pause, rest, saves and the host's per-character immortality switches."
-                : "Red portrait bar: health. Blue bar: fatigue. A gold name marks your own character. Select a spell, skill or item, then click a portrait to target an ally.");
+                ? coop_tr("Host control [Space]: switch between real-time and turn-based combat. Works even when the host is dead.")
+                : local_x >= turn_rect.width - 216 ? coop_tr("Party [F12]: chat, pause, rest, saves and the host's per-character immortality switches.")
+                : coop_tr("Red portrait bar: health. Blue bar: fatigue. A gold name marks your own character. Select a spell, skill or item, then click a portrait to target an ally."));
             return;
         }
         if (local_x >= turn_rect.width - 108) snprintf(out, 512, "%s", local_y < 23
-            ? "Party [F12]: chat, pause, rest, saves and the host's per-character immortality switches."
-            : local_y < 46 ? "End your current turn. Unspent action points are lost; the next character acts."
-            : "Host control [Space]: switch between real-time and turn-based combat. Works even when the host is dead.");
+            ? coop_tr("Party [F12]: chat, pause, rest, saves and the host's per-character immortality switches.")
+            : local_y < 46 ? coop_tr("End your current turn. Unspent action points are lost; the next character acts.")
+            : coop_tr("Host control [Space]: switch between real-time and turn-based combat. Works even when the host is dead."));
         else {
             CombatCampaignState state;
             unsigned index = page * visible_cells() + (unsigned)local_x / CELL_WIDTH;
             if (local_y >= 24 && combat_campaign_state_get(&state) && index < state.order_count) {
                 int64_t actor = state.order[index]; char name[128]; actor_name(actor, name, sizeof(name));
-                snprintf(out, 512, "%s\n%s  |  Health %d / %d\nClick an enemy to attack, or select an ability to target. Right-click to focus.\nWheel: more combatants.",
-                    name,index ? "Upcoming turn" : "Current turn",object_hp_current(actor), object_hp_max(actor));
-            } else snprintf(out, 512, "Turn order runs left to right. NOW highlights the current actor; AP are their remaining action points. Click an entry to center the view. Scroll to see more combatants. Order may change as actors join or become incapacitated.");
+                snprintf(out, 512, coop_tr("%s\n%s  |  Health %d / %d\nClick an enemy to attack, or select an ability to target. Right-click to focus.\nWheel: more combatants."),
+                    name,index ? coop_tr("Upcoming turn") : coop_tr("Current turn"),object_hp_current(actor), object_hp_max(actor));
+            } else snprintf(out, 512, coop_tr("Turn order runs left to right. NOW highlights the current actor; AP are their remaining action points. Click an entry to center the view. Scroll to see more combatants. Order may change as actors join or become incapacitated."));
         }
         return;
     }

@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/modern.h"
 #include "coop/hud.h"
 #include "coop/authority.h"
@@ -148,7 +149,7 @@ void coop_play_tick(uint64_t now)
                 }
                 unsigned changed=status^old->status;
                 if (changed) {
-                    static const char* names[]={"Dead","Unconscious","Poisoned","Low fatigue","Stunned","Paralyzed","Blinded","Injured","Encumbered"};
+                    const char* names[]={"Dead","Unconscious","Poisoned","Low fatigue","Stunned","Paralyzed","Blinded","Injured","Encumbered"};
                     for (unsigned bit=0;bit<SDL_arraysize(names);bit++) if (changed&(1u<<bit)) {
                         snprintf(why,sizeof(why),"%s: %s %s",name,names[bit],status&(1u<<bit) ? "applied" : "ended");
                         coop_play_event(PLAY_EFFECT,actor,0,why,"Party status changed in the native simulation.");
@@ -167,10 +168,10 @@ void coop_play_tick(uint64_t now)
     CoopSession* session=coop_runtime_session();
     const CoopControlView* state=coop_runtime_controls() ? coop_controls_current(coop_runtime_controls()) : NULL;
     bool mine=!session || !state || (state->paused&(1u<<coop_session_local_slot(session)));
-    char text[256]; snprintf(text,sizeof(text),"%s%s%s",coop_play_pause_reason(),*coop_play_pause_reason() ? "\n" : "",
-        mine ? "Click to resume" : "Waiting for the pausing player");
-    int width=SDL_min(380,hrp_iso_window_width_get()-208),height=coop_hud_card_height("Paused",text,width);
-    TigRect r=card_bounds(HUD_PAUSE,(TigRect){(hrp_iso_window_width_get()-width)/2,122,width,height},280,"Paused",text,&banner_min_height);
+    char text[256]; snprintf(text,sizeof(text),"%s%s%s",coop_tr_rendered(coop_play_pause_reason()),*coop_play_pause_reason() ? "\n" : "",
+        mine ? coop_tr("Click to resume") : coop_tr("Waiting for the pausing player"));
+    int width=SDL_min(380,hrp_iso_window_width_get()-208),height=coop_hud_card_height(coop_tr("Paused"),text,width);
+    TigRect r=card_bounds(HUD_PAUSE,(TigRect){(hrp_iso_window_width_get()-width)/2,122,width,height},280,coop_tr("Paused"),text,&banner_min_height);
     if (banner!=TIG_WINDOW_HANDLE_INVALID && memcmp(&r,&banner_rect,sizeof(r))) { coop_hud_detach(HUD_PAUSE); tig_window_destroy(banner); banner=TIG_WINDOW_HANDLE_INVALID; }
     if (banner==TIG_WINDOW_HANDLE_INVALID) {
         TigWindowData data={.flags=TIG_WINDOW_MESSAGE_FILTER,.rect=r,.background_color=tig_color_make(16,15,12),.message_filter=banner_input};
@@ -178,7 +179,7 @@ void coop_play_tick(uint64_t now)
         banner_rect=r; *banner_text=0; coop_hud_attach(HUD_PAUSE,banner);
     }
     if (coop_hud_changed(HUD_PAUSE) || strcmp(text,banner_text)) {
-        coop_hud_card(banner,(TigRect){0,0,r.width,r.height},"Paused",text,true);
+        coop_hud_card(banner,(TigRect){0,0,r.width,r.height},coop_tr("Paused"),text,true);
         coop_hud_handles(HUD_PAUSE,banner,&r,r.width-20,false); snprintf(banner_text,sizeof(banner_text),"%s",text);
     }
 }
@@ -197,6 +198,27 @@ void coop_play_draw_begin(void)
     /* Restore only the previous overlays' rectangles. Full-world invalidation
      * here used to redraw every tile and NPC every frame in turn-based play. */
 }
+bool coop_play_loot_empty(int64_t obj)
+{
+    if (!obj || !obj_handle_is_valid(obj)) return false;
+    int type=obj_field_int32_get(obj,OBJ_F_TYPE);
+    if (type!=OBJ_TYPE_CONTAINER && (!obj_type_is_critter(type) || !critter_is_dead(obj))) return false;
+    if (type==OBJ_TYPE_CONTAINER && (obj_field_int32_get(obj,OBJ_F_CONTAINER_FLAGS)&OCOF_INVEN_SPAWN_ONCE)
+        && obj_field_int32_get(obj,OBJ_F_CONTAINER_INVENTORY_SOURCE)) return false;
+    int field=type==OBJ_TYPE_CONTAINER ? OBJ_F_CONTAINER_INVENTORY_LIST_IDX : OBJ_F_CRITTER_INVENTORY_LIST_IDX;
+    int count=obj_arrayfield_length_get(obj,field);
+    if(count!=obj_field_int32_get(obj,type==OBJ_TYPE_CONTAINER?OBJ_F_CONTAINER_INVENTORY_NUM:OBJ_F_CRITTER_INVENTORY_NUM))return false;
+    for (int i=0;i<count;i++) {
+        int64_t item=obj_arrayfield_handle_get(obj,field,i),parent=OBJ_HANDLE_NULL;
+        /* An unresolved reference is unknown, rather than evidence of emptiness. */
+        if (!item || !obj_handle_is_valid(item)) return false;
+        unsigned flags=obj_field_int32_get(item,OBJ_F_FLAGS);
+        unsigned item_flags=obj_field_int32_get(item,OBJ_F_ITEM_FLAGS);
+        if (!(flags&(OF_OFF|OF_DESTROYED|OF_EXTINCT)) && !(item_flags&(OIF_NO_DISPLAY|OIF_NO_DROP))
+            && item_parent(item,&parent) && parent==obj) return false;
+    }
+    return true;
+}
 void coop_play_label_object(int64_t obj,const TigRect* rect)
 {
     if (!obj || (!collect_labels && !collect_enemies)) return;
@@ -209,10 +231,7 @@ void coop_play_label_object(int64_t obj,const TigRect* rect)
     if (!collect_labels || label_count>=SDL_arraysize(labels) || (flags&OF_CLICK_THROUGH)) return;
     bool corpse=obj_type_is_critter(type) && critter_is_dead(obj);
     if (!corpse && !obj_type_is_item(type) && type!=OBJ_TYPE_PORTAL && type!=OBJ_TYPE_CONTAINER) return;
-    if (coop_play_pref(PLAY_PREF_EMPTY) && (corpse || type==OBJ_TYPE_CONTAINER)) {
-        int count=obj_field_int32_get(obj,type==OBJ_TYPE_CONTAINER ? OBJ_F_CONTAINER_INVENTORY_NUM : OBJ_F_CRITTER_INVENTORY_NUM);
-        if (!count) return;
-    }
+    if (coop_play_pref(PLAY_PREF_EMPTY) && coop_play_loot_empty(obj)) return;
     for (unsigned i=0;i<label_count;i++) if (labels[i].obj==obj) return;
     TigRect native_rect;
     if (!rect) { object_get_rect(obj,0,&native_rect); rect=&native_rect; }
@@ -293,7 +312,7 @@ static void preview(tig_window_handle_t window)
 {
     if (!coop_play_pref(PLAY_PREF_PREVIEW) || !combat_turn_based_is_active()) return;
     int64_t pc=player_get_local_pc_obj(); TigMouseState mouse;
-    const char* waiting="Waiting for your turn. Your portrait will be highlighted when you can act.";
+    const char* waiting=coop_tr("Waiting for your turn. Your portrait will be highlighted when you can act.");
     if (combat_turn_based_whos_turn_get()!=pc) { preview_show(waiting); return; }
     if (tig_mouse_get_state(&mouse)!=TIG_OK) return;
     tig_window_handle_t top;
@@ -313,22 +332,22 @@ static void preview(tig_window_handle_t window)
     if (from!=cached_from || loc!=cached_loc || target!=cached_target || mode!=cached_mode || spell!=cached_spell || ap!=cached_ap || now-calculated>=250) {
         cached_from=from; cached_loc=loc; cached_target=target; cached_mode=mode; cached_spell=spell; cached_ap=ap; calculated=now;
         path_count=0; radius=0;
-        if (combat_turn_based_whos_turn_get()!=pc) snprintf(text,sizeof(text),"Waiting for your turn. Your portrait will be highlighted when you can act.");
+        if (combat_turn_based_whos_turn_get()!=pc) snprintf(text,sizeof(text),coop_tr("Waiting for your turn. Your portrait will be highlighted when you can act."));
         else {
-            int cost=0; bool clear=true,check_sight=false,walking=false; const char* verb="Move";
+            int cost=0; bool clear=true,check_sight=false,walking=false; const char* verb=coop_tr("Move");
             int64_t destination=loc;
             if (play_enemy(target) && mode==INTGAME_MODE_MAIN) {
-                destination=obj_field_int64_get(target,OBJ_F_LOCATION); verb="Attack";
+                destination=obj_field_int64_get(target,OBJ_F_LOCATION); verb=coop_tr("Attack");
                 int64_t weapon=item_wield_get(pc,ITEM_INV_LOC_WEAPON); int range=weapon ? item_weapon_range(weapon,pc) : 1;
                 cost=combat_attack_cost(pc); check_sight=range>1;
                 if (range<=1 && location_dist(from,destination)>1) cost+=combat_move_cost(pc,destination,true);
                 clear=range<=1 || location_dist(from,destination)<=range;
-                if (!clear) snprintf(text,sizeof(text),"Out of weapon range (%d tiles). Move closer before attacking.",range);
+                if (!clear) snprintf(text,sizeof(text),coop_tr("Out of weapon range (%d tiles). Move closer before attacking."),range);
             } else if (mode==INTGAME_MODE_SPELL && spell>=0 && spell<MT_SPELL_COUNT) {
-                verb="Cast"; cost=4; check_sight=true;
+                verb=coop_tr("Cast"); cost=4; check_sight=true;
                 int range=magictech_get_range(spell),fatigue=magictech_get_cost(spell);
-                if (range>0 && location_dist(from,destination)>range) { clear=false; snprintf(text,sizeof(text),"Spell out of range (%d tiles). Cost: %d fatigue.",range,fatigue); }
-                else if (!magictech_can_charge_spell_fatigue(pc,spell)) { clear=false; snprintf(text,sizeof(text),"Insufficient fatigue for %s (%d required).",magictech_spell_name(spell),fatigue); }
+                if (range>0 && location_dist(from,destination)>range) { clear=false; snprintf(text,sizeof(text),coop_tr("Spell out of range (%d tiles). Cost: %d fatigue."),range,fatigue); }
+                else if (!magictech_can_charge_spell_fatigue(pc,spell)) { clear=false; snprintf(text,sizeof(text),coop_tr("Insufficient fatigue for %s (%d required)."),magictech_spell_name(spell),fatigue); }
                 radius=magictech_spells[spell].target_params[MAGICTECH_ACTION_BEGIN].radius;
                 if (radius<0 || radius>30) radius=0;
                 area_center=destination;
@@ -340,7 +359,7 @@ static void preview(tig_window_handle_t window)
                     for (int i=0;i<steps-1;i++) {
                         bool is_window=false;
                         if (object_traversal_is_blocked(pc,current,dirs[i],OBJ_TRAVERSAL_PROJECTILE|OBJ_TRAVERSAL_IGNORE_CRITTERS,&is_window)) {
-                            clear=false; snprintf(text,sizeof(text),"Line of sight is blocked. Reposition before using this action."); break;
+                            clear=false; snprintf(text,sizeof(text),coop_tr("Line of sight is blocked. Reposition before using this action.")); break;
                         }
                         if (!location_in_dir(current,dirs[i],&current)) break;
                     }
@@ -349,20 +368,20 @@ static void preview(tig_window_handle_t window)
             if (clear && walking && from!=destination) {
                 int8_t dirs[128]; PathCreateInfo info={.obj=pc,.from=from,.to=destination,.max_rotations=128,.rotations=dirs};
                 int steps=path_make(&info); int64_t current=from;
-                if (steps<=0) { clear=false; snprintf(text,sizeof(text),"No reachable path to this tile."); }
+                if (steps<=0) { clear=false; snprintf(text,sizeof(text),coop_tr("No reachable path to this tile.")); }
                 else for (int i=0;i<steps && i<128;i++) {
                     if (!location_in_dir(current,dirs[i],&current)) break;
                     path[path_count++]=current;
                 }
             }
             if (clear) {
-                if (cost<0 || cost>1000) snprintf(text,sizeof(text),"No reachable path to this tile.");
-                else snprintf(text,sizeof(text),"%s: %d AP | %d AP remaining%s",verb,cost,SDL_max(0,ap-cost),cost>ap ? " | Excess AP uses fatigue" : "");
+                if (cost<0 || cost>1000) snprintf(text,sizeof(text),coop_tr("No reachable path to this tile."));
+                else snprintf(text,sizeof(text),coop_tr("%s: %d AP | %d AP remaining%s"),verb,cost,SDL_max(0,ap-cost),cost>ap ? coop_tr(" | Excess AP uses fatigue") : "");
                 if (radius && magictech_is_aggressive(spell)) {
                     ObjectList party; object_list_party(pc,&party); bool friendly=false;
                     for (ObjectNode* n=party.head;n;n=n->next) if (location_dist(obj_field_int64_get(n->obj,OBJ_F_LOCATION),area_center)<=radius) friendly=true;
                     object_list_destroy(&party);
-                    if (friendly) { size_t length=strlen(text); snprintf(text+length,sizeof(text)-length," | Ally in spell area"); }
+                    if (friendly) { size_t length=strlen(text); snprintf(text+length,sizeof(text)-length,coop_tr(" | Ally in spell area")); }
                 }
             }
         }
@@ -392,8 +411,8 @@ void coop_play_draw(tig_window_handle_t window)
         int64_t obj=labels[i].obj; if (!obj_handle_is_valid(obj)) continue;
         int type=obj_field_int32_get(obj,OBJ_F_TYPE);
         char name[128],text[180]; coop_play_name(obj,name,sizeof(name));
-        const char* category=type==OBJ_TYPE_PORTAL ? "Door" : type==OBJ_TYPE_CONTAINER ? "Container" : obj_type_is_critter(type) ? "Body" : "Loot";
-        snprintf(text,sizeof(text),"[%s] %s",category,name);
+        const char* category=type==OBJ_TYPE_PORTAL ? coop_tr("Door") : type==OBJ_TYPE_CONTAINER ? coop_tr("Container") : obj_type_is_critter(type) ? coop_tr("Body") : coop_tr("Loot");
+        snprintf(text,sizeof(text),"[%s] %s%s",category,name,coop_play_loot_empty(obj) ? coop_tr(" (Empty)") : "");
         int x=labels[i].rect.x+labels[i].rect.width/2,y=labels[i].rect.y+labels[i].rect.height;
         coop_view_screen_point(&x,&y);
         tig_font_push(coop_play_font(MM_COLOR_GOLD)); TigFont measure={.str=text}; tig_font_measure(&measure); tig_font_pop();
@@ -427,11 +446,23 @@ void coop_play_draw(tig_window_handle_t window)
             draw_text(window,text,(TigRect){cx,cy,190,coop_play_line_height()},MM_COLOR_GREEN);
         }
     }
-    if (coop_play_pref(PLAY_PREF_SYMBOLS)) {
-        int64_t hover=object_hover_obj_get();
+    int64_t hover=object_hover_obj_get();
+    if (hover && obj_handle_is_valid(hover) && coop_play_loot_empty(hover)) {
+        TigMouseState mouse;
+        if (tig_mouse_get_state(&mouse)==TIG_OK) {
+            const char* text=coop_tr("Empty");
+            tig_font_push(coop_play_font(MM_COLOR_GRAY)); TigFont measure={.str=text}; tig_font_measure(&measure); tig_font_pop();
+            int width=measure.width+12,height=coop_play_line_height()+4;
+            TigRect r={SDL_clamp(mouse.x+18,2,hrp_iso_window_width_get()-width-2),
+                SDL_clamp(mouse.y-24,2,hrp_iso_window_height_get()-height-2),width,height};
+            tig_window_fill(window,&r,tig_color_make(17,16,12)); tig_window_box(window,&r,tig_color_make(110,100,77));
+            if (erase_count<SDL_arraysize(erase)) erase[erase_count++]=r;
+            r.x+=6;r.y+=2;r.width-=12;draw_text(window,text,r,MM_COLOR_GRAY);
+        }
+    } else if (coop_play_pref(PLAY_PREF_SYMBOLS)) {
         if (hover && obj_handle_is_valid(hover) && obj_type_is_critter(obj_field_int32_get(hover,OBJ_F_TYPE))) {
             const char* relation=critter_party_same(pc,hover) ? "[+] Ally" : play_enemy(hover) ? "[!] Enemy" : "[=] Neutral";
-            TigMouseState mouse; if (tig_mouse_get_state(&mouse)==TIG_OK) draw_text(window,relation,(TigRect){mouse.x+18,mouse.y-24,160,coop_play_line_height()},MM_COLOR_GOLD);
+            TigMouseState mouse; if (tig_mouse_get_state(&mouse)==TIG_OK) draw_text(window,coop_tr(relation),(TigRect){mouse.x+18,mouse.y-24,160,coop_play_line_height()},MM_COLOR_GOLD);
         }
     }
     preview(window);

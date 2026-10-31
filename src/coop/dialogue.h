@@ -2,6 +2,7 @@
 #define ARCMP_DIALOGUE_H
 #include "coop/object_state.h"
 #include "coop/session.h"
+#include "coop/localization.h"
 #define COOP_DIALOGUE_TEXT 1000
 #define COOP_DIALOGUE_OPTIONS 5
 #define COOP_DIALOGUE_LIMIT 8192
@@ -21,6 +22,7 @@ typedef struct CoopDialogueView {
     char reply[COOP_DIALOGUE_TEXT];
     char selected[COOP_DIALOGUE_TEXT];
     char options[COOP_DIALOGUE_OPTIONS][COOP_DIALOGUE_TEXT];
+    CoopTextRef text_refs[COOP_DIALOGUE_OPTIONS+2];
 } CoopDialogueView;
 bool coop_dialogue_view_valid(const CoopDialogueView* view);
 uint8_t* coop_dialogue_view_encode(const CoopDialogueView* view, size_t* size);

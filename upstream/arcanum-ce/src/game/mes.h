@@ -15,6 +15,7 @@ typedef struct MesFileEntry {
 
 bool mes_load(const char* path, mes_file_handle_t* mes_file_handle_ptr);
 void mes_get_msg(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_entry);
+void mes_get_msg_raw(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_entry);
 bool mes_find_first(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_entry);
 bool mes_find_next(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_entry);
 int mes_entries_count(mes_file_handle_t mes_file_handle);

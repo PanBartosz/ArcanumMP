@@ -4,6 +4,7 @@
 #include "game/context.h"
 #include "game/obj.h"
 #include "game/object.h"
+#include "coop/localization.h"
 
 typedef struct DialogState {
     /* 0000 */ int dlg;
@@ -25,6 +26,7 @@ typedef struct DialogState {
     /* 182C */ char* actions[5];
     /* 1840 */ int field_1840;
     /* 1844 */ unsigned int seed;
+    CoopTextRef text_refs[6]; /* Reply followed by the five native options. */
 } DialogState;
 
 bool dialog_init(GameInitInfo* init_info);

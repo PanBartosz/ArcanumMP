@@ -45,6 +45,8 @@ bool coop_play_save(void);
 bool coop_play_load(void);
 void coop_play_draw_begin(void);
 void coop_play_label_object(int64_t obj, const TigRect* rect);
+/* Read-only query of replicated inventory; never runs loot or item scripts. */
+bool coop_play_loot_empty(int64_t obj);
 void coop_play_draw(tig_window_handle_t window);
 bool coop_play_input(TigMessage* message);
 unsigned coop_play_binding_count(void);

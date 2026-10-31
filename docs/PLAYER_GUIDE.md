@@ -35,6 +35,11 @@ also finds the data beside the executable. An existing game-data working
 directory takes precedence, so separate development runtimes continue to work.
 The game reports missing data before starting if neither folder contains it.
 
+Choose your personal language in **B → Settings** or **Options → Audio**, then
+restart. Mixed English/Polish parties use the same gameplay data. Polish assets
+are a separate presentation pack; see [language setup](LOCALIZATION.md).
+Hover over looted bodies or containers to see **Empty / Pusto**.
+
 ## Start a party
 
 1. Choose **Multiplayer**. The first content check runs in the background;

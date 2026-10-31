@@ -22,6 +22,12 @@ Preserved generated HUD images, prepared bitmaps and exact prompts are recorded
 in [assets/ui/README.md](assets/ui/README.md). They are embedded in the executable;
 players do not need separate UI image files.
 
+The project-owned Polish UI catalog is under `assets/localization/`. Eselter's
+Polish translation 1.7 and the original Polish game text, font, art and recordings
+are separate third-party data. Import support does not relicense or bundle those
+assets. [LOCALIZATION.md](docs/LOCALIZATION.md) records the author download,
+verified hashes and presentation-only import procedure.
+
 The website uses Cormorant Garamond by the Cormorant Project Authors under
 SIL Open Font License 1.1; the font and notice are under `site/assets/fonts/`.
 The current public films use excerpts of "Arcadia" and "Five Armies" by Kevin

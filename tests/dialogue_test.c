@@ -23,6 +23,8 @@ static CoopDialogueView fixture(void)
     v.npc.bytes[1] = 1;
     v.pc_guid[0] = 2;
     strcpy(v.chooser_name, "Traveller");
+    v.text_refs[0]=(CoopTextRef){.path="dlg/01324virgil.dlg",.key=1,.variant=1};
+    v.text_refs[2]=(CoopTextRef){.path="mes/gd_pc2m.mes",.key=100};
     memset(v.reply, 'R', sizeof(v.reply) - 1);
     memset(v.selected, 'S', sizeof(v.selected) - 1);
     for (unsigned i = 0; i < v.option_count; i++) memset(v.options[i], 'A' + i, sizeof(v.options[i]) - 1);
@@ -76,8 +78,18 @@ int main(void)
     size_t n;
     uint8_t* bytes = coop_dialogue_view_encode(&v, &n);
     CHECK(bytes && n > 7000 && coop_dialogue_view_decode(bytes, n, &decoded));
-    CHECK(!memcmp(bytes, "ACD1\0\0\0\7\0\0\0\1\0\0\0\1", 16));
+    CHECK(!memcmp(bytes, "ACD2\0\0\0\7\0\0\0\1\0\0\0\1", 16));
     CHECK(!strcmp(v.reply, decoded.reply) && !strcmp(v.options[4], decoded.options[4]));
+    CHECK(!strcmp(decoded.text_refs[0].path,v.text_refs[0].path)&&decoded.text_refs[0].key==1&&decoded.text_refs[0].variant==1);
+    /* Saved pre-localization transcripts remain readable without metadata. */
+    const size_t metadata=(COOP_DIALOGUE_OPTIONS+2)*(COOP_TEXT_PATH+5);
+    uint8_t* legacy=malloc(n-metadata);
+    CHECK(legacy);
+    memcpy(legacy,bytes,97);memcpy(legacy,"ACD1",4);
+    memcpy(legacy+97,bytes+97+metadata,n-97-metadata);
+    CHECK(coop_dialogue_view_decode(legacy,n-metadata,&decoded));
+    CHECK(!decoded.text_refs[0].path[0]&&!strcmp(v.reply,decoded.reply));
+    free(legacy);
     memset(&decoded, 0x42, sizeof(decoded));
     CoopDialogueView retained = decoded;
     CHECK(!coop_dialogue_view_decode(bytes, n - 1, &decoded) && !memcmp(&decoded, &retained, sizeof(decoded)));
@@ -162,6 +174,7 @@ int main(void)
     bytes = coop_dialogue_recovery_encode(&recovery, &n);
     CHECK(bytes && coop_dialogue_recovery_decode(&restored, bytes, n));
     CHECK(restored.notice_count == 3 && !strcmp(restored.notices[0].text, hint.reply));
+    CHECK(!strcmp(restored.notices[0].text_ref.path,hint.text_refs[0].path)&&restored.notices[0].text_ref.key==1);
     free(bytes);
     coop_dialogue_destroy(pending);
     coop_journal_destroy(journal);

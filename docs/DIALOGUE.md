@@ -4,6 +4,9 @@ Retail dialogue is evaluated only on the host. The
 initiating PC's owner chooses replies; every participant receives the same NPC
 text, offered replies, selected reply and conversation outcome. Ordinary NPC
 approach/talk clicks and scripted conversations use the same native adapter.
+Version 0.2.0 resolves the shared text references into each player's chosen
+language at presentation time; the native conditions and outcomes stay shared.
+See [personal language setup](LOCALIZATION.md).
 
 ## Native quest conditions and transactions
 
@@ -176,11 +179,11 @@ The host's own choice goes through the same request validation and deferred
 callback. One pending request per connection prevents duplicate execution while
 waiting for presentation or output queue space.
 
-`ACD1` is an explicit portable view, at most 8,192 bytes:
+`ACD2` is an explicit portable view, at most 8,192 bytes:
 
 | Offset | Bytes | Meaning |
 | --- | --- | --- |
-| 0 | 4 | `ACD1` |
+| 0 | 4 | `ACD2` |
 | 4 | 4 | Conversation ID, nonzero |
 | 8 | 4 | Page revision, nonzero |
 | 12 | 4 | Active, 0 or 1 |
@@ -191,7 +194,14 @@ waiting for presentation or output queue space.
 | 57 | 4 | Speech ID, i32 at least -1 |
 | 61 | 4 | Option count, 0–5; zero for closed pages |
 | 65 | 32 | NUL-terminated chooser name, remaining bytes zero |
-| 97 | Variable | NPC reply, selected PC reply, then each offered option |
+| 97 | 707 | Seven text references: reply, selected reply and five options |
+| 804 | Variable | NPC reply, selected PC reply, then each offered option |
+
+Each 101-byte reference contains a zero-padded 96-byte resource path, a big-endian
+i32 text key and a u8 variant (0: MES, 1: DLG text, 2: female DLG text).
+Only canonical relative `mes/*.mes` and `dlg/*.dlg` paths are accepted. An empty
+reference has all-zero fields. Older `ACD1` pages omit this block and begin
+strings at offset 97; saved journals can contain both layouts.
 
 Each variable string has a u16 byte length and that many non-NUL bytes, at most
 999 bytes. Tabs/newlines and retail extended text bytes are accepted; other C0
@@ -241,15 +251,14 @@ loaded dialogue resources on absent-PC/attachee paths.
 `ACJ1` is the transcript sidecar (`Save/Current/arcmp-conversations.bin`): magic,
 page count and record-byte count (three u32), records, then CRC-32. Each record
 has a u32 total record size, a nonempty NUL-terminated speaker of at most 127
-bytes, and one canonical `ACD1` page. Integers are big-endian. Decode validates
+bytes, and one canonical `ACD1` or `ACD2` page. Integers are big-endian. Decode validates
 all records before replacing the journal. Legacy saves without a sidecar start
 with an empty transcript. Normal native save archives carry it to every owner.
 
-The full dialogue/campaign contract remains open. Shared pause, services,
-cutscenes and reconnect have separate adapters and controlled fixtures; see
+Shared pause, services, cutscenes and reconnect have separate adapters and controlled fixtures; see
 `SERVICES.md`, `MEDIA.md` and `RECONNECT.md` for their exact limits. Additional
 NPC-initiated branches are additional coverage opportunities. The active campaign
-and platform requirements are maintained in [STATUS.md](STATUS.md#still-required);
+and platform requirements are maintained in [STATUS.md](STATUS.md);
 an exhaustive retail conversation graph is not a separate release requirement.
 
 ## Character sheets and maps

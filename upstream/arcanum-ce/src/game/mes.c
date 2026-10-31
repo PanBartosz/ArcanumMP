@@ -1,4 +1,5 @@
 #include "game/mes.h"
+#include "coop/localization.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -143,7 +144,7 @@ bool mes_load(const char* path, mes_file_handle_t* mes_file_handle_ptr)
  *
  * 0x4D43A0
  */
-void mes_get_msg(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_entry)
+void mes_get_msg_raw(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_entry)
 {
     MesFileEntry* found;
 
@@ -165,6 +166,13 @@ void mes_get_msg(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_entry
     }
 
     *mes_file_entry = *found;
+    coop_language_source(found->str,mes_files[mes_file_handle].path,found->num,0);
+}
+
+void mes_get_msg(mes_file_handle_t handle,MesFileEntry* entry)
+{
+    mes_get_msg_raw(handle,entry);
+    entry->str=(char*)coop_language_message(mes_files[handle].path,entry->num,entry->str);
 }
 
 /**
@@ -179,6 +187,7 @@ bool mes_find_first(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_en
     }
 
     *mes_file_entry = mes_files[mes_file_handle].entries[0];
+    mes_file_entry->str=(char*)coop_language_message(mes_files[mes_file_handle].path,mes_file_entry->num,mes_file_entry->str);
 
     return true;
 }
@@ -214,6 +223,7 @@ bool mes_find_next(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_ent
     }
 
     *mes_file_entry = mes_files[mes_file_handle].entries[index];
+    mes_file_entry->str=(char*)coop_language_message(mes_files[mes_file_handle].path,mes_file_entry->num,mes_file_entry->str);
 
     return true;
 }
@@ -240,6 +250,7 @@ bool mes_get_entry(mes_file_handle_t mes_file_handle, int index, MesFileEntry* m
     }
 
     *mes_file_entry = mes_files[mes_file_handle].entries[index];
+    mes_file_entry->str=(char*)coop_language_message(mes_files[mes_file_handle].path,mes_file_entry->num,mes_file_entry->str);
 
     return true;
 }
@@ -300,6 +311,7 @@ bool mes_search(mes_file_handle_t mes_file_handle, MesFileEntry* mes_file_entry)
     }
 
     *mes_file_entry = *found;
+    mes_file_entry->str=(char*)coop_language_message(mes_files[mes_file_handle].path,mes_file_entry->num,mes_file_entry->str);
 
     return true;
 }

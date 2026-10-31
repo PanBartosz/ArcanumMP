@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "ui/intgame.h"
 #include "coop/modern.h"
 #include "coop/display.h"
@@ -4197,15 +4198,15 @@ void intgame_message_window_display_msg(UiMessage* ui_message)
         dword_64C6D4(ui_message);
     }
 }
-void intgame_message_window_display_feedback(char* text)
+void intgame_message_window_display_feedback(const char* text)
 {
-    UiMessage message = { .type = UI_MSG_TYPE_FEEDBACK, .str = text };
+    UiMessage message = { .type = UI_MSG_TYPE_FEEDBACK, .str = (char*)text };
     intgame_message_store(&message, true);
     if (dword_64C6D4) dword_64C6D4(&message);
 }
 
 // 0x550770
-void intgame_message_window_display_str(int a1, char* str)
+void intgame_message_window_display_str(int a1, const char* str)
 {
     UiMessage ui_message;
 
@@ -4213,7 +4214,7 @@ void intgame_message_window_display_str(int a1, char* str)
 
     if (dword_64C6D4 != NULL) {
         ui_message.type = UI_MSG_TYPE_FEEDBACK;
-        ui_message.str = str;
+        ui_message.str = (char*)str;
         dword_64C6D4(&ui_message);
     } else if (intgame_iso_interface_created) {
         intgame_message_window_write_text_centered(str, &(intgame_rotwin_text_frame[intgame_iso_window_type].rect));
@@ -4312,6 +4313,7 @@ void intgame_message_window_write_text_centered(char* str, TigRect* rect)
 // 0x550A10
 bool intgame_message_window_write_text(tig_window_handle_t window_handle, char* str, TigRect* rect, tig_font_handle_t font, unsigned int flags)
 {
+    str=(char*)coop_tr_rendered(str);
     TigFont font_desc;
     TigRect text_rect;
     int width;
@@ -9012,52 +9014,52 @@ const char* intgame_control_hint(tig_button_handle_t button)
     static char text[512];
     if (button == TIG_BUTTON_HANDLE_INVALID || !intgame_iso_interface_created) return NULL;
     if (button == intgame_secondary_buttons[INTGAME_SECONDARY_BUTTON_SPELLS].button_handle)
-        return "Spells [M]: choose a magical college, then a known spell. Click a character or a party portrait to target it. Spells consume fatigue; maintained spells continue to drain it.";
+        return coop_tr("Spells [M]: choose a magical college, then a known spell. Click a character or a party portrait to target it. Spells consume fatigue; maintained spells continue to drain it.");
     if (button == intgame_secondary_buttons[INTGAME_SECONDARY_BUTTON_SKILLS].button_handle)
-        return "Skills [K]: choose Prowling, Pick Pocket, Disarm Traps or Repair, then select a valid target. Combat skills such as Melee apply automatically when you attack.";
+        return coop_tr("Skills [K]: choose Prowling, Pick Pocket, Disarm Traps or Repair, then select a valid target. Combat skills such as Melee apply automatically when you attack.");
     if (button == intgame_secondary_buttons[INTGAME_SECONDARY_BUTTON_COMBAT].button_handle)
-        return "Draw / sheathe weapon [R]: enter or leave your character's combat stance. Click a hostile creature to attack. The host changes real-time / turn-based timing with Space or the upper combat panel.";
+        return coop_tr("Draw / sheathe weapon [R]: enter or leave your character's combat stance. Click a hostile creature to attack. The host changes real-time / turn-based timing with Space or the upper combat panel.");
     if (button == intgame_secondary_buttons[INTGAME_SECONDARY_BUTTON_SCHEMATICS].button_handle)
-        return "Schematics [T]: combine the required ingredients to craft technological items. You need the appropriate schematic and expertise.";
+        return coop_tr("Schematics [T]: combine the required ingredients to craft technological items. You need the appropriate schematic and expertise.");
     if (button == intgame_primary_buttons[INTGAME_PRIMARY_BUTTON_LOGBOOK].button_handle)
-        return "Logbook: review quests, rumours and important people or locations. Campaign quest progress is shared by the multiplayer party.";
+        return coop_tr("Logbook: review quests, rumours and important people or locations. Campaign quest progress is shared by the multiplayer party.");
     if (button == intgame_primary_buttons[INTGAME_PRIMARY_BUTTON_CHAR].button_handle)
-        return "Character [C]: inspect your attributes, skills, spells and training. Spend earned character points here. Each player controls their own character's advancement.";
+        return coop_tr("Character [C]: inspect your attributes, skills, spells and training. Spend earned character points here. Each player controls their own character's advancement.");
     if (button == intgame_primary_buttons[INTGAME_PRIMARY_BUTTON_INVENTORY].button_handle)
-        return "Inventory [I]: equip weapons and armour, inspect supplies, or use an item. Drag suitable items into equipment slots or the hotkey bar. Right-click an item for its description.";
+        return coop_tr("Inventory [I]: equip weapons and armour, inspect supplies, or use an item. Drag suitable items into equipment slots or the hotkey bar. Right-click an item for its description.");
     if (button == intgame_primary_buttons[INTGAME_PRIMARY_BUTTON_MAP].button_handle)
-        return "Maps [W]: view locations and plan travel. Hold the middle mouse button and drag to pan the town or world map. The party agrees on overland journeys; gather everyone before changing maps.";
+        return coop_tr("Maps [W]: view locations and plan travel. Hold the middle mouse button and drag to pan the town or world map. The party agrees on overland journeys; gather everyone before changing maps.");
     if (button == intgame_primary_buttons[INTGAME_PRIMARY_BUTTON_FATE].button_handle)
-        return "Fate points [F]: spend a rare fate point on a powerful benefit, such as healing or improving an important roll. Each character has their own points.";
+        return coop_tr("Fate points [F]: spend a rare fate point on a powerful benefit, such as healing or improving an important roll. Each character has their own points.");
     if (button == intgame_sleep_button_info.button_handle)
-        return "Rest [S]: choose how long the party should rest to recover health and fatigue. Multiplayer rest requires agreement and may be interrupted by danger.";
+        return coop_tr("Rest [S]: choose how long the party should rest to recover health and fatigue. Multiplayer rest requires agreement and may be interrupted by danger.");
     if (button == intgame_clock_button_info.button_handle)
-        return "Clock / menu: shows the time of day. Click for the game menu. Use [F12] for multiplayer chat, saves, pause, rest and debugging options.";
+        return coop_tr("Clock / menu: shows the time of day. Click for the game menu. Use [F12] for multiplayer chat, saves, pause, rest and debugging options.");
     if (button == intgame_mt_button_info.button_handle)
-        return "Item abilities: choose an available magical or technological ability of the equipped item, then select its target.";
+        return coop_tr("Item abilities: choose an available magical or technological ability of the equipped item, then select its target.");
     for (int i = 0; i < 5; i++)
         if (button == intgame_maintain_buttons[i].button_handle || button == intgame_maintain_fs_buttons[i].button_handle)
-            return "Maintained spell: hover for its description; click to end your own spell and stop its ongoing fatigue cost.";
+            return coop_tr("Maintained spell: hover for its description; click to end your own spell and stop its ongoing fatigue cost.");
     if (intgame_iso_window_type == ROTWIN_TYPE_SPELLS) {
         for (int i = 0; i < COLLEGE_COUNT; i++)
             if (button == intgame_college_buttons[i].button_handle) {
-                snprintf(text, sizeof(text), "%s: click to view this college's spells. Known spells can be selected and cast on a valid target.", spell_college_name(i));
+                snprintf(text, sizeof(text), coop_tr("%s: click to view this college's spells. Known spells can be selected and cast on a valid target."), spell_college_name(i));
                 return text;
             }
         for (int i = 0; i < 80; i++)
             if (button == intgame_spell_buttons[i].button_handle) {
-                snprintf(text, sizeof(text), "%s: click to select, then click a valid target in the world or a party portrait. The message window shows the spell's description. Right-click to cancel targeting.", spell_name(i));
+                snprintf(text, sizeof(text), coop_tr("%s: click to select, then click a valid target in the world or a party portrait. The message window shows the spell's description. Right-click to cancel targeting."), spell_name(i));
                 return text;
             }
     }
     if (intgame_iso_window_type == ROTWIN_TYPE_SKILLS)
         for (int i = 0; i < 4; i++)
             if (button == stru_5C6C68[i].button_handle) {
-                snprintf(text, sizeof(text), "%s: click to select this skill, then choose an appropriate target. Prowling toggles concealment. Repair targets an item in your inventory.", sub_57A700(i));
+                snprintf(text, sizeof(text), coop_tr("%s: click to select this skill, then choose an appropriate target. Prowling toggles concealment. Repair targets an item in your inventory."), sub_57A700(i));
                 return text;
             }
     if (button == stru_5C65F8[0].button_handle || button == stru_5C65F8[1].button_handle)
-        return "Message history: scroll through recent descriptions and feedback from the game.";
+        return coop_tr("Message history: scroll through recent descriptions and feedback from the game.");
     const char* follower_hint = follower_ui_control_hint(button);
     return follower_hint ? follower_hint : hotkey_ui_control_hint(button);
 }

@@ -9,6 +9,7 @@ the current build; [CAMPAIGN_TODO.md](CAMPAIGN_TODO.md) is the only active backl
 | --- | --- |
 | [Installation](INSTALL.md) | Drop-in files, updating, content checks and launch |
 | [Player guide](PLAYER_GUIDE.md) | Starting a party, controls, saving and recovery |
+| [Personal languages](LOCALIZATION.md) | Eselter 1.7, Polish UI, mixed-language parties and presentation-pack import |
 | [LAN](LAN.md) and [coordination](COORDINATION.md) | Discovery, chat, votes, pause, rest and ownership |
 | [HUD and portraits](PROTOCOL58_FEATURES.md) | Moving/resizing panels, transparency, log toggle and targeting |
 | [UI polish](UI_POLISH.md) | Compact cards, revised defaults, responsive action rows and before/after pictures |
@@ -52,7 +53,3 @@ Many technical guides retain their feature's introduction protocol and scoped
 verification notes. Those numbers are historical, not the version to install;
 current compatibility is recorded in STATUS.md. Coverage suggestions in old
 notes are not automatically release requirements.
-
-Historical notes preserve milestone reports, completed work,
-campaign script findings and the retired delivery counter. They are reference
-material rather than additional task lists.

@@ -19,6 +19,7 @@ static CoopDialogueView fixture(void)
     strcpy(v.chooser_name, "Traveller");
     strcpy(v.reply, "A native quest clue.\nRemember this after travelling.");
     strcpy(v.options[0], "Tell me more.");
+    v.text_refs[0]=(CoopTextRef){.path="dlg/01324virgil.dlg",.key=1,.variant=1};
     return v;
 }
 int main(void)
@@ -29,6 +30,23 @@ int main(void)
     char speaker[COOP_JOURNAL_SPEAKER];
     CHECK(!coop_journal_append(j, &v, "") && !coop_journal_append(j, &v, "bad\nname"));
     CHECK(coop_journal_append(j, &v, "Gilbert Bates"));
+    /* Old journals retain their bytes and do not grow on load. */
+    size_t initial_size;
+    uint8_t* initial=coop_journal_encode(j,&initial_size);
+    CHECK(initial);
+    size_t metadata=(COOP_DIALOGUE_OPTIONS+2)*(COOP_TEXT_PATH+5);
+    size_t page_at=12+4+strlen("Gilbert Bates")+1;
+    size_t old_size=initial_size-metadata;
+    uint8_t* old=malloc(old_size);CHECK(old);
+    memcpy(old,initial,page_at+97);memcpy(old+page_at,"ACD1",4);
+    memcpy(old+page_at+97,initial+page_at+97+metadata,initial_size-page_at-97-metadata);
+    coop_object_write32(old+8,coop_object_read32(initial+8)-(uint32_t)metadata);
+    coop_object_write32(old+12,coop_object_read32(initial+12)-(uint32_t)metadata);
+    coop_object_write32(old+old_size-4,coop_snapshot_crc(old,old_size-4));
+    CHECK(coop_journal_decode(decoded,old,old_size));
+    size_t retained_size;uint8_t* retained=coop_journal_encode(decoded,&retained_size);
+    CHECK(retained&&retained_size==old_size&&!memcmp(retained,old,old_size));
+    free(initial);free(old);free(retained);
     v.revision++;
     v.active = false;
     v.option_count = 0;
@@ -41,6 +59,7 @@ int main(void)
     uint8_t* bytes = coop_journal_encode(j, &size);
     CHECK(bytes && coop_journal_decode(decoded, bytes, size) && coop_journal_count(decoded) == 3);
     CHECK(coop_journal_page(decoded, 1, &out, speaker) && out.mode == COOP_DIALOGUE_FLOAT && !strcmp(speaker, "Gilbert Bates"));
+    CHECK(out.text_refs[0].key==1&&!strcmp(out.text_refs[0].path,v.text_refs[0].path));
     CHECK(!coop_journal_page(decoded, 3, &out, speaker));
     CHECK(!coop_journal_decode(decoded, bytes, size - 1) && coop_journal_count(decoded) == 3);
     uint32_t random = 41;

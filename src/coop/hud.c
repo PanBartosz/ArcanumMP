@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/hud.h"
 #include "game/hrp.h"
 #include <stdio.h>
@@ -60,7 +61,7 @@ void coop_hud_card(tig_window_handle_t window, TigRect rect, const char* title, 
     coop_hud_frame(window,rect,active);
     int heading=coop_hud_text_height(title,rect.width-24);
     TigRect text={rect.x+12,rect.y+10,rect.width-24,SDL_min(heading,rect.height-20)};
-    tig_font_push(coop_play_font(MM_COLOR_GOLD)); tig_window_text_write(window,title,&text); tig_font_pop();
+    tig_font_push(coop_play_font(MM_COLOR_GOLD)); tig_window_text_write(window,coop_tr(title),&text); tig_font_pop();
     TigLine rule={rect.x+12,rect.y+heading+14,rect.x+rect.width-13,rect.y+heading+14};
     tig_window_line(window,&rule,tig_color_make(91,73,46));
     text.y=rect.y+heading+21; text.height=rect.y+rect.height-text.y-11;
@@ -106,7 +107,7 @@ static bool save(void)
     good = fclose(f) == 0 && good;
     return good && SDL_RenamePath("arcmp-ui.cfg.tmp", "arcmp-ui.cfg");
 }
-const char* coop_hud_name(unsigned i) { return i < HUD_COUNT ? names[i] : "Unknown panel"; }
+const char* coop_hud_name(unsigned i) { return i < HUD_COUNT ? coop_tr(names[i]) : coop_tr("Unknown panel"); }
 static TigRect clamp_rect(TigRect r, int min_width, int min_height)
 {
     int sw = hrp_iso_window_width_get(), sh = hrp_iso_window_height_get();
@@ -237,6 +238,6 @@ void coop_hud_handles(unsigned i, tig_window_handle_t window, const TigRect* rec
         if (title_width<110) return;
         tig_font_push(mainmenu_ui_font(MM_FONT_FLARE12,MM_COLOR_GOLD));
         title.x += 24; title.width -= 28;
-        tig_window_text_write(window,"Drag to move",&title); tig_font_pop();
+        tig_window_text_write(window,coop_tr("Drag to move"),&title); tig_font_pop();
     } else if (always_editable) coop_hud_art(window,HUD_ART_MOVE,(TigRect){8,9,14,14});
 }

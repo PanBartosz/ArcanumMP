@@ -1,4 +1,5 @@
 #include "ui/cyclic_ui.h"
+#include "coop/localization.h"
 
 #include "game/mes.h"
 #include "game/snd.h"
@@ -673,7 +674,7 @@ bool cyclic_ui_draw_title(CyclicUiControl* ctrl)
             tig_font_push(cyclic_ui_morph15_gray_font);
         }
 
-        if (tig_window_text_write(ctrl->info.window_handle, ctrl->info.title, &text_rect) != TIG_OK) {
+        if (tig_window_text_write(ctrl->info.window_handle, coop_tr(ctrl->info.title), &text_rect) != TIG_OK) {
             tig_debug_println("Error, cyclic_ui_draw_title:  Text write failed");
             tig_font_pop();
             return false;

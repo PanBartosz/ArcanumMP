@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/dialogue_ui.h"
 #include "coop/engine_documents.h"
 #include "coop/runtime.h"
@@ -18,7 +19,7 @@ static void text(const char* value, int x, int y, int width, MainMenuColor color
 {
     TigRect rect = { x, y, width, 22 };
     tig_font_push(mainmenu_ui_font(MM_FONT_FLARE12, color));
-    tig_window_text_write(window, value, &rect);
+    tig_window_text_write(window, coop_tr_rendered(value), &rect);
     tig_font_pop();
 }
 void coop_documents_ui_close(void)
@@ -35,16 +36,16 @@ void coop_documents_ui_refresh(void)
     tig_window_fill(window, &rect, tig_color_make(36, 26, 18));
     tig_window_box(window, &rect, tig_color_make(186, 141, 67));
     char label[256];
-    snprintf(label, sizeof(label), "Party Documents | %u collected", documents->count);
+    snprintf(label, sizeof(label), coop_tr("Party Documents | %u collected"), documents->count);
     text(label, 16, 10, 440, MM_COLOR_GOLD);
     text("< Previous", 500, 10, 110, first ? MM_COLOR_GOLD : MM_COLOR_GRAY);
-    text("Next >", 635, 10, 95, first + ROWS < documents->count ? MM_COLOR_GOLD : MM_COLOR_GRAY);
-    text("Discovered documents are available to the whole party.", 16, 35, 720, MM_COLOR_WHITE);
-    if (!documents->count) text("Read a book, note or newspaper to add it here.", 24, ROW_Y, 710, MM_COLOR_WHITE);
+    text(coop_tr("Next >"), 635, 10, 95, first + ROWS < documents->count ? MM_COLOR_GOLD : MM_COLOR_GRAY);
+    text(coop_tr("Discovered documents are available to the whole party."), 16, 35, 720, MM_COLOR_WHITE);
+    if (!documents->count) text(coop_tr("Read a book, note or newspaper to add it here."), 24, ROW_Y, 710, MM_COLOR_WHITE);
     for (unsigned row = 0; row < ROWS && first + row < documents->count; row++) {
         CoopDocument d = documents->records[first + row];
         char title[220];
-        if (!written_ui_coop_title(d.type, (int)d.number, title, sizeof(title))) snprintf(title, sizeof(title), "Document %u", d.number);
+        if (!written_ui_coop_title(d.type, (int)d.number, title, sizeof(title))) snprintf(title, sizeof(title), coop_tr("Document %u"), d.number);
         snprintf(label, sizeof(label), "%u. %s", row + 1, title);
         tig_font_push(mainmenu_ui_font(MM_FONT_FLARE12, MM_COLOR_GOLD));
         for (size_t n = strlen(label); n > 0; n--) {

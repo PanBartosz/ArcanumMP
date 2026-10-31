@@ -20,6 +20,9 @@ extern "C" {
 #define TIG_FILE_ATTRIBUTE_0x80 0x80
 
 typedef struct TigFile TigFile;
+/* Optional presentation-only redirection supplied by the embedding game. */
+typedef bool (*TigFileReadOverride)(const char* path,char* out,size_t capacity);
+void tig_file_read_override_set(TigFileReadOverride callback);
 
 typedef struct TigFileInfo {
     char path[TIG_MAX_PATH];

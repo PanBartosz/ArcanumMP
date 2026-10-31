@@ -1,7 +1,9 @@
 #include "coop/dialogue.h"
 #include <stdlib.h>
 #include <string.h>
-enum { HEADER = 97 };
+enum { LEGACY_HEADER = 97,
+    REF_BYTES = COOP_TEXT_PATH + 5,
+    HEADER = LEGACY_HEADER + (COOP_DIALOGUE_OPTIONS + 2) * REF_BYTES };
 static bool text_valid(const char* text, size_t capacity)
 {
     for (size_t i = 0; i < capacity; i++) {
@@ -20,20 +22,24 @@ bool coop_dialogue_view_valid(const CoopDialogueView* v)
         || !text_valid(v->chooser_name, sizeof(v->chooser_name)) || !v->chooser_name[0]
         || !text_valid(v->reply, sizeof(v->reply)) || !text_valid(v->selected, sizeof(v->selected))) return false;
     bool pc = false;
-    for (unsigned i = 0; i < 16; i++) pc |= v->pc_guid[i] != 0;
+    for (unsigned i = 0; i < 16; i++)
+        pc |= v->pc_guid[i] != 0;
     if (!pc) return false;
     for (unsigned i = 0; i < v->option_count; i++)
         if (!text_valid(v->options[i], sizeof(v->options[i])) || !v->options[i][0]) return false;
+    for (unsigned i = 0; i < COOP_DIALOGUE_OPTIONS + 2; i++)
+        if (!coop_language_ref_valid(&v->text_refs[i])) return false;
     return true;
 }
 uint8_t* coop_dialogue_view_encode(const CoopDialogueView* v, size_t* size)
 {
     if (!size || !coop_dialogue_view_valid(v)) return NULL;
     size_t length = HEADER + 4 + strlen(v->reply) + strlen(v->selected);
-    for (unsigned i = 0; i < v->option_count; i++) length += 2 + strlen(v->options[i]);
+    for (unsigned i = 0; i < v->option_count; i++)
+        length += 2 + strlen(v->options[i]);
     uint8_t* p = calloc(1, length);
     if (!p) return NULL;
-    memcpy(p, "ACD1", 4);
+    memcpy(p, "ACD2", 4);
     coop_object_write32(p + 4, v->conversation);
     coop_object_write32(p + 8, v->revision);
     coop_object_write32(p + 12, v->active);
@@ -44,9 +50,17 @@ uint8_t* coop_dialogue_view_encode(const CoopDialogueView* v, size_t* size)
     coop_object_write32(p + 57, (uint32_t)v->speech);
     coop_object_write32(p + 61, v->option_count);
     memcpy(p + 65, v->chooser_name, strlen(v->chooser_name));
+    for (unsigned i = 0; i < COOP_DIALOGUE_OPTIONS + 2; i++) {
+        const CoopTextRef* ref = &v->text_refs[i];
+        uint8_t* dest = p + LEGACY_HEADER + i * REF_BYTES;
+        memcpy(dest, ref->path, strlen(ref->path));
+        coop_object_write32(dest + COOP_TEXT_PATH, (uint32_t)ref->key);
+        dest[COOP_TEXT_PATH + 4] = ref->variant;
+    }
     size_t at = HEADER;
     for (unsigned i = 0; i < v->option_count + 2; i++) {
-        const char* text = i == 0 ? v->reply : i == 1 ? v->selected : v->options[i - 2];
+        const char* text = i == 0 ? v->reply : i == 1 ? v->selected
+                                                      : v->options[i - 2];
         size_t n = strlen(text);
         p[at++] = (uint8_t)(n >> 8);
         p[at++] = (uint8_t)n;
@@ -59,7 +73,7 @@ uint8_t* coop_dialogue_view_encode(const CoopDialogueView* v, size_t* size)
 bool coop_dialogue_view_decode(const void* data, size_t size, CoopDialogueView* out)
 {
     const uint8_t* p = data;
-    if (!p || !out || size < HEADER + 4 || size > COOP_DIALOGUE_LIMIT || memcmp(p, "ACD1", 4)
+    if (!p || !out || size < LEGACY_HEADER + 4 || size > COOP_DIALOGUE_LIMIT || (memcmp(p, "ACD1", 4) && memcmp(p, "ACD2", 4))
         || coop_object_read32(p + 12) > 1 || coop_object_read32(p + 20) >= COOP_MAX_PLAYERS) return false;
     CoopDialogueView v = { 0 };
     v.conversation = coop_object_read32(p + 4);
@@ -74,14 +88,31 @@ bool coop_dialogue_view_decode(const void* data, size_t size, CoopDialogueView* 
     if (v.option_count > COOP_DIALOGUE_OPTIONS || !memchr(p + 65, 0, COOP_NAME_SIZE)) return false;
     memcpy(v.chooser_name, p + 65, COOP_NAME_SIZE);
     /* Require canonical zero padding after the name's terminator. */
-    for (size_t i = strlen(v.chooser_name); i < COOP_NAME_SIZE; i++) if (p[65 + i]) return false;
-    size_t at = HEADER;
+    for (size_t i = strlen(v.chooser_name); i < COOP_NAME_SIZE; i++)
+        if (p[65 + i]) return false;
+    bool legacy = !memcmp(p, "ACD1", 4);
+    if (!legacy) {
+        if (size < HEADER + 4) return false;
+        for (unsigned i = 0; i < COOP_DIALOGUE_OPTIONS + 2; i++) {
+            CoopTextRef* ref = &v.text_refs[i];
+            const uint8_t* source = p + LEGACY_HEADER + i * REF_BYTES;
+            if (!memchr(source, 0, COOP_TEXT_PATH)) return false;
+            memcpy(ref->path, source, COOP_TEXT_PATH);
+            for (size_t j = strlen(ref->path); j < COOP_TEXT_PATH; j++)
+                if (source[j]) return false;
+            ref->key = (int32_t)coop_object_read32(source + COOP_TEXT_PATH);
+            ref->variant = source[COOP_TEXT_PATH + 4];
+        }
+    }
+    size_t at = legacy ? LEGACY_HEADER : HEADER;
     for (unsigned i = 0; i < v.option_count + 2; i++) {
         if (size - at < 2) return false;
         size_t n = ((size_t)p[at] << 8) | p[at + 1];
         at += 2;
         if (n >= COOP_DIALOGUE_TEXT || n > size - at || memchr(p + at, 0, n)) return false;
-        memcpy(i == 0 ? v.reply : i == 1 ? v.selected : v.options[i - 2], p + at, n);
+        memcpy(i == 0 ? v.reply : i == 1 ? v.selected
+                                         : v.options[i - 2],
+            p + at, n);
         at += n;
     }
     if (at != size || !coop_dialogue_view_valid(&v)) return false;

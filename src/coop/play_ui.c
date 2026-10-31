@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/modern.h"
 #include "coop/hud.h"
 #include "coop/play_data.h"
@@ -161,43 +162,46 @@ bool coop_play_ui_open(unsigned requested)
 }
 static void settings_rows(void)
 {
-    static const char* names[]={"Text size","High contrast","Toggle Alt labels","Hide empty containers","Relationship symbols","Combat previews","Extra action bar","Tooltip delay"};
+    const char* names[]={coop_tr("Text size"),coop_tr("High contrast"),coop_tr("Toggle Alt labels"),coop_tr("Hide empty containers"),coop_tr("Relationship symbols"),coop_tr("Combat previews"),coop_tr("Extra action bar"),coop_tr("Tooltip delay")};
     count=0;
     for (unsigned i=0;i<SDL_arraysize(names);i++) {
         PlayRow row={.id=(int)i,.available=true}; int value=coop_play_pref(i);
         if (i==PLAY_PREF_TEXT) snprintf(row.name,sizeof(row.name),"%s: %d%%",names[i],value);
         else if (i==PLAY_PREF_TIP_DELAY) snprintf(row.name,sizeof(row.name),"%s: %d ms",names[i],value);
-        else snprintf(row.name,sizeof(row.name),"%s: %s",names[i],value ? "On" : "Off");
-        static const char* descriptions[]={"Dialogue, tooltip and play-tool text scale independently of the whole UI. Takes effect immediately.",
-            "Brighter text against dark panels. Color remains supplemented by labels and symbols.",
-            "Tap your highlight key to show or hide labels. When disabled, hold the key to highlight.",
-            "Hide labels for empty containers and looted bodies. Hidden traps and invisible objects stay hidden.",
-            "Hover a character to read [+] Ally, [=] Neutral or [!] Enemy alongside its circle color.",
-            "Preview movement and attack AP, range and line of sight before committing. Spell targeting also shows area boundaries.",
-            "Two extra rows of six personal action slots. Assign spells, skills or items from the Actions or Items tabs.",
-            "Delay before hover help appears. Choose immediate, 300, 550 or 1000 milliseconds."};
-        snprintf(row.detail,sizeof(row.detail),"%s\n\nClick or press Enter to change.",descriptions[i]); rows[count++]=row;
+        else snprintf(row.name,sizeof(row.name),"%s: %s",names[i],value ? coop_tr("On") : coop_tr("Off"));
+        const char* descriptions[]={coop_tr("Dialogue, tooltip and play-tool text scale independently of the whole UI. Takes effect immediately."),
+            coop_tr("Brighter text against dark panels. Color remains supplemented by labels and symbols."),
+            coop_tr("Tap your highlight key to show or hide labels. When disabled, hold the key to highlight."),
+            coop_tr("Hide labels for empty containers and looted bodies. Hidden traps and invisible objects stay hidden."),
+            coop_tr("Hover a character to read [+] Ally, [=] Neutral or [!] Enemy alongside its circle color."),
+            coop_tr("Preview movement and attack AP, range and line of sight before committing. Spell targeting also shows area boundaries."),
+            coop_tr("Two extra rows of six personal action slots. Assign spells, skills or items from the Actions or Items tabs."),
+            coop_tr("Delay before hover help appears. Choose immediate, 300, 550 or 1000 milliseconds.")};
+        snprintf(row.detail,sizeof(row.detail),coop_tr("%s\n\nClick or press Enter to change."),descriptions[i]); rows[count++]=row;
     }
-    static const char* reasons[]={"Enemy spotted","Critical health","Party member down","Weapon broken"};
+    const char* reasons[]={coop_tr("Enemy spotted"),coop_tr("Critical health"),coop_tr("Party member down"),coop_tr("Weapon broken")};
     for (unsigned i=0;i<4;i++) {
         PlayRow row={.id=100+(int)i,.available=true};
-        snprintf(row.name,sizeof(row.name),"Auto-pause: %s [%s]",reasons[i],coop_play_pause_policy()&(1u<<i) ? "On" : "Off");
-        snprintf(row.detail,sizeof(row.detail),"Pause automatically: %s.\n\nMultiplayer: the host selects the session policy and all clients see it. Ask the host before enabling automatic pauses. Each player can release their own pause using Pause or the visible banner.\n\nIn single-player this is a personal setting.",reasons[i]); rows[count++]=row;
+        snprintf(row.name,sizeof(row.name),coop_tr("Auto-pause: %s [%s]"),reasons[i],coop_play_pause_policy()&(1u<<i) ? coop_tr("On") : coop_tr("Off"));
+        snprintf(row.detail,sizeof(row.detail),coop_tr("Pause automatically: %s.\n\nMultiplayer: the host selects the session policy and all clients see it. Ask the host before enabling automatic pauses. Each player can release their own pause using Pause or the visible banner.\n\nIn single-player this is a personal setting."),reasons[i]); rows[count++]=row;
     }
     PlayRow layout={.id=400,.available=true};
-    snprintf(layout.name,sizeof(layout.name),"Edit HUD layout: %s",coop_hud_editing() ? "On" : "Off");
-    snprintf(layout.detail,sizeof(layout.detail),"Show move and resize handles on custom HUD panels. Close this panel, drag a title strip to move, or drag a bottom-right grip to resize. Click UI beside the combat-log icon to finish. Positions and sizes are saved across launches."); rows[count++]=layout;
-    layout.id=401; snprintf(layout.name,sizeof(layout.name),"Reset HUD positions and sizes");
-    snprintf(layout.detail,sizeof(layout.detail),"Restore default panel positions and sizes. Transparency and your other settings are preserved."); rows[count++]=layout;
+    snprintf(layout.name,sizeof(layout.name),coop_tr("Edit HUD layout: %s"),coop_hud_editing() ? coop_tr("On") : coop_tr("Off"));
+    snprintf(layout.detail,sizeof(layout.detail),coop_tr("Show move and resize handles on custom HUD panels. Close this panel, drag a title strip to move, or drag a bottom-right grip to resize. Click UI beside the combat-log icon to finish. Positions and sizes are saved across launches.")); rows[count++]=layout;
+    layout.id=401; snprintf(layout.name,sizeof(layout.name),coop_tr("Reset HUD positions and sizes"));
+    snprintf(layout.detail,sizeof(layout.detail),coop_tr("Restore default panel positions and sizes. Transparency and your other settings are preserved.")); rows[count++]=layout;
+    layout.id=402;
+    snprintf(layout.name,sizeof(layout.name),coop_tr("Language: %s (restart required)"),coop_tr(coop_language_name(coop_language_pending())));
+    snprintf(layout.detail,sizeof(layout.detail),"%s",coop_tr("Language is personal. Each player can use a different translation in the same campaign. Restart the game after changing it."));rows[count++]=layout;
     for (unsigned i=0;i<HUD_COUNT;i++) {
         PlayRow row={.id=300+(int)i,.available=true};
-        snprintf(row.name,sizeof(row.name),"%s: %d%% transparent",coop_hud_name(i),100-coop_hud_opacity(i));
-        snprintf(row.detail,sizeof(row.detail),"Individual transparency for %s. Click to cycle 0%%, 25%%, 50%% or 75%% transparency. Saved across game launches. Combat logs also have a percentage button in their title bar.",coop_hud_name(i)); rows[count++]=row;
+        snprintf(row.name,sizeof(row.name),coop_tr("%s: %d%% transparent"),coop_hud_name(i),100-coop_hud_opacity(i));
+        snprintf(row.detail,sizeof(row.detail),coop_tr("Individual transparency for %s. Click to cycle 0%%, 25%%, 50%% or 75%% transparency. Saved across game launches. Combat logs also have a percentage button in their title bar."),coop_hud_name(i)); rows[count++]=row;
     }
     for (unsigned i=0;i<coop_play_binding_count();i++) {
         PlayRow row={.id=200+(int)i,.available=true};
         snprintf(row.name,sizeof(row.name),"%s: %s",coop_play_binding_name(i),SDL_GetScancodeName(coop_play_binding_key(i)));
-        snprintf(row.detail,sizeof(row.detail),"%s\nCurrent key: %s\n\nClick or press Enter, then press a replacement key. Escape cancels. Conflicting assignments swap so every command remains reachable. Text entry keeps ordinary typing.",coop_play_binding_name(i),SDL_GetScancodeName(coop_play_binding_key(i))); rows[count++]=row;
+        snprintf(row.detail,sizeof(row.detail),coop_tr("%s\nCurrent key: %s\n\nClick or press Enter, then press a replacement key. Escape cancels. Conflicting assignments swap so every command remains reachable. Text entry keeps ordinary typing."),coop_play_binding_name(i),SDL_GetScancodeName(coop_play_binding_key(i))); rows[count++]=row;
     }
 }
 static void log_rows(void)
@@ -208,9 +212,9 @@ static void log_rows(void)
         const PlayEvent* e=coop_play_event_at(n-1); if (!e) continue;
         if ((filter==1 && mine && !(e->members&mine)) || (filter==2 && e->kind!=PLAY_COMBAT && e->kind!=PLAY_DEATH)
             || (filter==3 && e->kind!=PLAY_EFFECT)) continue;
-        if (*query && !SDL_strcasestr(e->summary,query) && !SDL_strcasestr(e->details,query)) continue;
-        PlayRow row={.id=(int)e->sequence,.available=true}; snprintf(row.name,sizeof(row.name),"%s",e->summary);
-        snprintf(row.detail,sizeof(row.detail),"%s\n\n%s\n\nEvent %u | Map %u",e->summary,e->details,e->sequence,e->map); rows[count++]=row;
+        if (*query && !SDL_strcasestr(coop_tr_rendered(e->summary),query) && !SDL_strcasestr(coop_tr_rendered(e->details),query)) continue;
+        PlayRow row={.id=(int)e->sequence,.available=true}; snprintf(row.name,sizeof(row.name),"%s",coop_tr_rendered(e->summary));
+        snprintf(row.detail,sizeof(row.detail),coop_tr("%s\n\n%s\n\nEvent %u | Map %u"),coop_tr_rendered(e->summary),coop_tr_rendered(e->details),e->sequence,e->map); rows[count++]=row;
     }
     if (anchor) for (unsigned i=0;i<count;i++) if (rows[i].id==anchor) { selected=i; break; }
     if (log_follow) first=selected=0;
@@ -230,23 +234,23 @@ static void refresh(void)
     if (first>selected) first=selected;
     if (selected>=first+visible()) first=selected-visible()+1;
     box(window,(TigRect){0,0,bounds.width,bounds.height},false); button_count=0;
-    static const char* titles[]={"Combat log","Inventory","Abilities","Quest notes","Workshop","Settings"};
+    const char* titles[]={coop_tr("Combat log"),coop_tr("Inventory"),coop_tr("Abilities"),coop_tr("Quest notes"),coop_tr("Workshop"),coop_tr("Settings")};
     int title_width=bounds.width-(compact ? 144 : 180);
     text(titles[tab],30,8,title_width-34,MM_COLOR_GOLD);
     button(10,"",bounds.width-(compact ? 138 : 174),4,26);
     if (!compact) button(11,"",bounds.width-138,4,26);
     char opacity[32]; snprintf(opacity,sizeof(opacity),"%d%%",coop_hud_opacity(window_element));
     button(13,opacity,bounds.width-100,4,64); button(12,"X",bounds.width-32,4,26);
-    static const char* tabs[]={"Log","Items","Actions","Quests","Craft","Settings"};
+    const char* tabs[]={coop_tr("Log"),coop_tr("Items"),coop_tr("Actions"),coop_tr("Quests"),coop_tr("Craft"),coop_tr("Settings")};
     if (!compact) {
         for (unsigned i=0;i<PLAY_TABS;i++) { int width=(bounds.width-24)/PLAY_TABS; int x=12+(int)i*width;
             coop_hud_surface(window,HUD_ART_BUTTON,(TigRect){x,39,width-3,28},i==tab); text(tabs[i],x+8,42,width-12,i==tab ? MM_COLOR_GOLD : MM_COLOR_WHITE); }
-        char find[180]; snprintf(find,sizeof(find),"%s%s",search_focus ? "> " : "Search: ",query);
+        char find[180]; snprintf(find,sizeof(find),"%s%s",search_focus ? "> " : coop_tr("Search: "),query);
         if (tab!=PLAY_TAB_SETTINGS) { box(window,(TigRect){12,76,bounds.width-268,29},search_focus); text(find,18,79,bounds.width-280,MM_COLOR_WHITE); }
-        if (tab==PLAY_TAB_LOG) { static const char* f[]={"All events","My character","Combat","Effects"}; button(1,f[filter],bounds.width-248,76,232); }
-        if (tab==PLAY_TAB_INVENTORY) { static const char* f[]={"All items","Equipment","Consumables","Miscellaneous","Marked junk"}; button(1,f[filter],bounds.width-248,76,232); }
-        if (tab==PLAY_TAB_QUESTS) button(1,recent ? "Recent changes" : "All known quests",bounds.width-248,76,232);
-        if (tab==PLAY_TAB_CRAFT) button(1,filter_craft ? "Craftable now" : "All known recipes",bounds.width-248,76,232);
+        if (tab==PLAY_TAB_LOG) { const char* f[]={coop_tr("All events"),coop_tr("My character"),coop_tr("Combat"),coop_tr("Effects")}; button(1,f[filter],bounds.width-248,76,232); }
+        if (tab==PLAY_TAB_INVENTORY) { const char* f[]={coop_tr("All items"),coop_tr("Equipment"),coop_tr("Consumables"),coop_tr("Miscellaneous"),coop_tr("Marked junk")}; button(1,f[filter],bounds.width-248,76,232); }
+        if (tab==PLAY_TAB_QUESTS) button(1,recent ? coop_tr("Recent changes") : coop_tr("All known quests"),bounds.width-248,76,232);
+        if (tab==PLAY_TAB_CRAFT) button(1,filter_craft ? coop_tr("Craftable now") : coop_tr("All known recipes"),bounds.width-248,76,232);
     }
     int y=list_top();
     unsigned shown=visible();
@@ -266,27 +270,27 @@ static void refresh(void)
             text(value,21,r.y+3,list_width-15,rows[index].available ? MM_COLOR_WHITE : MM_COLOR_GRAY);
         }
     }
-    if (!count) text(tab==PLAY_TAB_LOG ? "No matching events yet." : "No matching entries.",18,y,list_width,MM_COLOR_GRAY);
+    if (!count) text(tab==PLAY_TAB_LOG ? coop_tr("No matching events yet.") : coop_tr("No matching entries."),18,y,list_width,MM_COLOR_GRAY);
     if (!compact && count) {
         TigRect inset={split()+3,list_top()-2,bounds.width-split()-15,list_bottom()-list_top()-8};
         tig_window_fill(window,&inset,tig_color_make(24,22,18));
         tig_window_box(window,&inset,tig_color_make(76,61,39));
         TigRect detail={split()+14,list_top()+8,bounds.width-split()-37,list_bottom()-list_top()-30};
-        detail_text(capturing>=0 ? "Press a new key. Escape cancels." : rows[selected].detail,detail);
+        detail_text(capturing>=0 ? coop_tr("Press a new key. Escape cancels.") : rows[selected].detail,detail);
     }
     int action_y=bounds.height-65;
     if (!compact) {
-        if (tab==PLAY_TAB_INVENTORY) { button(2,"Mark / unmark",12,action_y,165); button(3,"Sell junk",183,action_y,125); button(4,"Use / equip",314,action_y,148); char slot[48]; snprintf(slot,sizeof(slot),"Slot %u >",assign_slot+1); button(5,slot,468,action_y,110); button(6,"Assign",584,action_y,120); }
-        if (tab==PLAY_TAB_ACTIONS) { button(2,"Use action",12,action_y,155); char s[80]; snprintf(s,sizeof(s),"Slot %u >",assign_slot+1); button(3,s,173,action_y,130); button(4,"Assign to slot",309,action_y,165); }
-        if (tab==PLAY_TAB_QUESTS) { button(2,"Pin / unpin",12,action_y,150); button(3,"Next-step note",168,action_y,170); button(4,"Mark reviewed",344,action_y,165); button(5,"Map",515,action_y,90); button(6,"Journal",611,action_y,130); }
-        if (tab==PLAY_TAB_CRAFT) button(2,"Craft selected",12,action_y,190);
-        if (tab==PLAY_TAB_SETTINGS) { button(2,"Change selected",12,action_y,210); button(3,"Reset key bindings",228,action_y,235); }
-        if (tab==PLAY_TAB_LOG) { button(2,"Latest",12,action_y,130); button(3,"Export log",148,action_y,160); }
+        if (tab==PLAY_TAB_INVENTORY) { button(2,coop_tr("Mark / unmark"),12,action_y,165); button(3,coop_tr("Sell junk"),183,action_y,125); button(4,coop_tr("Use / equip"),314,action_y,148); char slot[48]; snprintf(slot,sizeof(slot),coop_tr("Slot %u >"),assign_slot+1); button(5,slot,468,action_y,110); button(6,coop_tr("Assign"),584,action_y,120); }
+        if (tab==PLAY_TAB_ACTIONS) { button(2,coop_tr("Use action"),12,action_y,155); char s[80]; snprintf(s,sizeof(s),coop_tr("Slot %u >"),assign_slot+1); button(3,s,173,action_y,130); button(4,coop_tr("Assign to slot"),309,action_y,165); }
+        if (tab==PLAY_TAB_QUESTS) { button(2,coop_tr("Pin / unpin"),12,action_y,150); button(3,coop_tr("Next-step note"),168,action_y,170); button(4,coop_tr("Mark reviewed"),344,action_y,165); button(5,coop_tr("Map"),515,action_y,90); button(6,coop_tr("Journal"),611,action_y,130); }
+        if (tab==PLAY_TAB_CRAFT) button(2,coop_tr("Craft selected"),12,action_y,190);
+        if (tab==PLAY_TAB_SETTINGS) { button(2,coop_tr("Change selected"),12,action_y,210); button(3,coop_tr("Reset key bindings"),228,action_y,235); }
+        if (tab==PLAY_TAB_LOG) { button(2,coop_tr("Latest"),12,action_y,130); button(3,coop_tr("Export log"),148,action_y,160); }
     }
-    if (note_focus) { char n[290]; snprintf(n,sizeof(n),"Next step: %s_",note_edit); text(n,12,bounds.height-33,bounds.width-24,MM_COLOR_GOLD); }
+    if (note_focus) { char n[290]; snprintf(n,sizeof(n),coop_tr("Next step: %s_"),note_edit); text(n,12,bounds.height-33,bounds.width-24,MM_COLOR_GOLD); }
     else {
         const char* status=*feedback ? feedback : tab==PLAY_TAB_INVENTORY && *coop_play_bulk_status() ? coop_play_bulk_status()
-            : compact ? "Wheel: history  |  Click: full entry" : "Wheel / arrows: browse  |  [F11] / [B] / Esc: close";
+            : compact ? coop_tr("Wheel: history  |  Click: full entry") : coop_tr("Wheel / arrows: browse  |  [F11] / [B] / Esc: close");
         char bound[512]; coop_play_shortcuts(status,bound,sizeof(bound));
         text(bound,12,bounds.height-30,bounds.width-38,MM_COLOR_GRAY);
     }
@@ -297,10 +301,16 @@ static void refresh(void)
 static void change_setting(void)
 {
     if (!count) return; int id=rows[selected].id;
-    if (id==400) { coop_hud_edit_toggle(); snprintf(feedback,sizeof(feedback),"%s",coop_hud_editing() ? "Layout editing on. Close tools, then drag panel handles; click UI beside the log icon to finish." : "Layout editing off."); return; }
+    if(id==402) {
+        unsigned next=(coop_language_pending()+1)%coop_language_count();
+        if(!coop_language_available(next)){snprintf(feedback,sizeof(feedback),"%s",coop_tr("Install the selected language pack before choosing it."));return;}
+        bool good=coop_language_select(next);
+        snprintf(feedback,sizeof(feedback),"%s",coop_tr(good?"Setting saved.":"Could not save language choice. Check that the game folder is writable."));return;
+    }
+    if (id==400) { coop_hud_edit_toggle(); snprintf(feedback,sizeof(feedback),"%s",coop_hud_editing() ? coop_tr("Layout editing on. Close tools, then drag panel handles; click UI beside the log icon to finish.") : coop_tr("Layout editing off.")); return; }
     if (id==401) {
         coop_hud_reset_layout(); coop_hud_detach(window_element); tig_window_destroy(window); window=TIG_WINDOW_HANDLE_INVALID;
-        create_window(); snprintf(feedback,sizeof(feedback),"HUD positions and sizes reset."); return;
+        create_window(); snprintf(feedback,sizeof(feedback),coop_tr("HUD positions and sizes reset.")); return;
     }
     if (id>=300) { unsigned element=(unsigned)(id-300); int opacity=coop_hud_opacity(element); coop_hud_opacity_set(element,opacity==25 ? 100 : opacity-25); return; }
     if (id>=200) { capturing=id-200; search_focus=note_focus=false; return; }
@@ -314,16 +324,16 @@ static void change_setting(void)
         else value=!value;
         good=coop_play_pref_set((unsigned)id,value);
     }
-    snprintf(feedback,sizeof(feedback),"%s",good ? "Setting saved." : "Could not change this setting. Multiplayer pause policy is controlled by the host.");
+    snprintf(feedback,sizeof(feedback),"%s",good ? coop_tr("Setting saved.") : coop_tr("Could not change this setting. Multiplayer pause policy is controlled by the host."));
 }
 static void export_log(void)
 {
-    FILE* f=fopen("arcmp-combat-log.txt","wt"); if (!f) { snprintf(feedback,sizeof(feedback),"Could not write combat log."); return; }
+    FILE* f=fopen("arcmp-combat-log.txt","wt"); if (!f) { snprintf(feedback,sizeof(feedback),coop_tr("Could not write combat log.")); return; }
     bool good=true;
     for (uint32_t n=coop_play_event_first();n<coop_play_event_end();n++) {
-        const PlayEvent* e=coop_play_event_at(n); if (e) good &= fprintf(f,"%u | %s\n%s\n\n",e->sequence,e->summary,e->details)>0;
+        const PlayEvent* e=coop_play_event_at(n); if (e) good &= fprintf(f,"%u | %s\n%s\n\n",e->sequence,coop_tr_rendered(e->summary),coop_tr_rendered(e->details))>0;
     }
-    good=fclose(f)==0 && good; snprintf(feedback,sizeof(feedback),"%s",good ? "Saved arcmp-combat-log.txt beside the executable." : "Could not finish writing combat log.");
+    good=fclose(f)==0 && good; snprintf(feedback,sizeof(feedback),"%s",good ? coop_tr("Saved arcmp-combat-log.txt beside the executable.") : coop_tr("Could not finish writing combat log."));
 }
 static void activate(unsigned id)
 {
@@ -350,26 +360,26 @@ static void activate(unsigned id)
         if (id==3) coop_play_bulk_start();
         if (id==4 && count) { PlayRow row=rows[selected]; coop_play_ui_close(); coop_play_action_activate(&row); return; }
         if (id==5) assign_slot=(assign_slot+1)%PLAY_EXTRA_SLOTS;
-        if (id==6 && count && coop_play_action_assign(assign_slot,&rows[selected])) { coop_play_pref_set(PLAY_PREF_BAR,1); snprintf(feedback,sizeof(feedback),"Item assigned to the extra action bar."); }
+        if (id==6 && count && coop_play_action_assign(assign_slot,&rows[selected])) { coop_play_pref_set(PLAY_PREF_BAR,1); snprintf(feedback,sizeof(feedback),coop_tr("Item assigned to the extra action bar.")); }
     } else if (tab==PLAY_TAB_ACTIONS) {
         if (id==2 && count) { PlayRow row=rows[selected]; coop_play_ui_close(); coop_play_action_activate(&row); return; }
         if (id==3) assign_slot=(assign_slot+1)%PLAY_EXTRA_SLOTS;
         if (id==4 && count) {
             bool good=coop_play_action_assign(assign_slot,&rows[selected]);
             if (good) coop_play_pref_set(PLAY_PREF_BAR,1);
-            snprintf(feedback,sizeof(feedback),"%s",good ? "Action assigned to the extra bar." : "Could not save this action.");
+            snprintf(feedback,sizeof(feedback),"%s",good ? coop_tr("Action assigned to the extra bar.") : coop_tr("Could not save this action."));
         }
     } else if (tab==PLAY_TAB_QUESTS) {
-        if (id==2 && count) { bool good=coop_play_pin(rows[selected].id,true); snprintf(feedback,sizeof(feedback),"%s",good ? "Objective pinned." : "Objective unpinned, or five objectives are already pinned."); }
+        if (id==2 && count) { bool good=coop_play_pin(rows[selected].id,true); snprintf(feedback,sizeof(feedback),"%s",good ? coop_tr("Objective pinned.") : coop_tr("Objective unpinned, or five objectives are already pinned.")); }
         if (id==3) { note_focus=true; search_focus=false; text_input(true); }
         if (id==4) coop_play_quests_seen();
         if (id==5) { coop_play_ui_close(); wmap_ui_open(); return; }
         if (id==6) { coop_play_ui_close(); logbook_ui_open_quests(player_get_local_pc_obj()); return; }
     } else if (tab==PLAY_TAB_CRAFT && id==2 && count) {
-        if (!rows[selected].available) snprintf(feedback,sizeof(feedback),"Missing ingredients or expertise; see the selected recipe.");
+        if (!rows[selected].available) snprintf(feedback,sizeof(feedback),coop_tr("Missing ingredients or expertise; see the selected recipe."));
         else {
             bool good=coop_runtime_gameplay() ? coop_runtime_craft((unsigned)rows[selected].id,player_get_local_pc_obj()) : schematic_ui_process(rows[selected].id,player_get_local_pc_obj(),player_get_local_pc_obj());
-            snprintf(feedback,sizeof(feedback),"%s",good ? "Craft request submitted using the original recipe." : "Crafting could not start.");
+            snprintf(feedback,sizeof(feedback),"%s",good ? coop_tr("Craft request submitted using the original recipe.") : coop_tr("Crafting could not start."));
         }
     }
     refresh();
@@ -387,7 +397,7 @@ static bool input(TigMessage* msg)
         }
         if (capturing>=0) {
             if (key!=SDL_SCANCODE_ESCAPE) {
-                bool good=coop_play_binding_set((unsigned)capturing,key); snprintf(feedback,sizeof(feedback),"%s",good ? "Binding saved." : "This key could not be assigned.");
+                bool good=coop_play_binding_set((unsigned)capturing,key); snprintf(feedback,sizeof(feedback),"%s",good ? coop_tr("Binding saved.") : coop_tr("This key could not be assigned."));
             }
             capturing=-1; refresh(); return true;
         }
@@ -471,26 +481,26 @@ bool coop_play_control_hint(int x,int y,char* text,size_t size)
     if (window!=TIG_WINDOW_HANDLE_INVALID && inside(bounds,x,y)) {
         int local_x=x-bounds.x,local_y=y-bounds.y;
         for (unsigned i=0;i<button_count;i++) if (buttons[i].id>=10 && inside(buttons[i].rect,local_x,local_y)) {
-            const char* hint=buttons[i].id==10 ? "Combat log view\nSwitch between the compact log and expanded tools."
-                : buttons[i].id==11 ? "Panel width\nChoose the wide or narrow preset. Drag the corner for a custom size."
-                : buttons[i].id==12 ? "Close panel\n[F11], [B] or Escape also closes it."
-                : "Transparency\nCycle this panel's opacity. 100% is solid; each panel remembers its own setting.";
+            const char* hint=buttons[i].id==10 ? coop_tr("Combat log view\nSwitch between the compact log and expanded tools.")
+                : buttons[i].id==11 ? coop_tr("Panel width\nChoose the wide or narrow preset. Drag the corner for a custom size.")
+                : buttons[i].id==12 ? coop_tr("Close panel\n[F11], [B] or Escape also closes it.")
+                : coop_tr("Transparency\nCycle this panel's opacity. 100% is solid; each panel remembers its own setting.");
             snprintf(text,size,"%s",hint); return true;
         }
     }
     if (log_button!=TIG_WINDOW_HANDLE_INVALID && inside(log_button_rect,x,y)) {
-        snprintf(text,size,"Combat log: click the journal to show/hide it (F11). Click UI to %s moving/resizing HUD panels. Drag title strips to move; bottom-right grips resize. Each panel has saved transparency in Settings.",coop_hud_editing() ? "finish" : "start"); return true;
+        snprintf(text,size,coop_tr("Combat log: click the journal to show/hide it (F11). Click UI to %s moving/resizing HUD panels. Drag title strips to move; bottom-right grips resize. Each panel has saved transparency in Settings."),coop_hud_editing() ? "finish" : "start"); return true;
     }
     if (coop_play_ui_blocking()) return false;
     if (bar!=TIG_WINDOW_HANDLE_INVALID && inside(bar_rect,x,y)) {
         unsigned slot=(unsigned)SDL_min((y-bar_rect.y)/(bar_rect.height/2),1)*6+(unsigned)SDL_min((x-bar_rect.x)/(bar_rect.width/6),5);
         PlayRow row;
-        if (coop_play_action_slot(slot,&row)) snprintf(text,size,"%s\n%.200s\nClick to use. Change assignments in B, Actions or Items.",row.name,row.detail);
-        else snprintf(text,size,"Empty action slot\nClick to open Actions, then choose an action, select a slot and Assign.");
+        if (coop_play_action_slot(slot,&row)) snprintf(text,size,coop_tr("%s\n%.200s\nClick to use. Change assignments in B, Actions or Items."),row.name,row.detail);
+        else snprintf(text,size,coop_tr("Empty action slot\nClick to open Actions, then choose an action, select a slot and Assign."));
         return true;
     }
     if (tracker!=TIG_WINDOW_HANDLE_INVALID && inside(tracker_rect,x,y)) {
-        snprintf(text,size,"Objectives\nClick to read full descriptions, change pins or review recent quest updates."); return true;
+        snprintf(text,size,coop_tr("Objectives\nClick to read full descriptions, change pins or review recent quest updates.")); return true;
     }
     return false;
 }
@@ -543,7 +553,7 @@ void coop_play_ui_tick(uint64_t now)
             coop_hud_icon(log_button,(TigRect){2,(r.height-size)/2,size,size},open);
             TigRect control={r.width-23,(r.height-18)/2,22,20};
             tig_font_push(coop_play_chrome_font(MM_COLOR_GOLD));
-            tig_window_text_write(log_button,coop_hud_editing() ? "OK" : "UI",&control); tig_font_pop();
+            tig_window_text_write(log_button,coop_hud_editing() ? coop_tr("OK") : coop_tr("UI"),&control); tig_font_pop();
             coop_hud_handles(HUD_LOG_BUTTON,log_button,&r,r.width-25,false);
             was_open=open; was_editing=coop_hud_editing();
         }
@@ -599,7 +609,7 @@ void coop_play_ui_tick(uint64_t now)
         int line=coop_play_line_height(),maximum=hrp_iso_window_height_get()-margin-122-(coop_play_pref(PLAY_PREF_BAR) ? 2*(line+8)+4 : 0);
         int lines=(int)pins*(line*2+6)+(*coop_play_note() ? line*2+6 : 0)+line+24>maximum ? 1 : 2;
         int height=(int)pins*(line*lines+6)+(*coop_play_note() ? line*lines+6 : 0)+line+24;
-        if (!pins && *coop_play_note()) height=coop_hud_card_height("Objectives",coop_play_note(),270);
+        if (!pins && *coop_play_note()) height=coop_hud_card_height(coop_tr("Objectives"),coop_play_note(),270);
         TigRect r=coop_hud_rect(HUD_QUESTS,(TigRect){hrp_iso_window_width_get()-278,122,270,SDL_min(maximum,height)},170,60);
         unsigned sections=pins+(*coop_play_note()!=0);
         if (sections) lines=SDL_clamp(((r.height-line-24)/(int)sections-6)/line,1,4);
@@ -608,8 +618,8 @@ void coop_play_ui_tick(uint64_t now)
         bool created=tracker==TIG_WINDOW_HANDLE_INVALID;
         if (created) { TigWindowData d={.flags=TIG_WINDOW_MESSAGE_FILTER,.rect=r,.message_filter=tracker_input}; if (tig_window_create(&d,&tracker)==TIG_OK) { tracker_rect=r; coop_hud_attach(HUD_QUESTS,tracker); } }
         if (tracker!=TIG_WINDOW_HANDLE_INVALID && (created || coop_hud_changed(HUD_QUESTS) || now-aux_refreshed>=300)) {
-            box(tracker,(TigRect){0,0,r.width,r.height},false); write_at(tracker,"Objectives",(TigRect){12,10,r.width-24,line+2},MM_COLOR_GOLD);
-            int heading=coop_hud_text_height("Objectives",r.width-24),y=heading+21;
+            box(tracker,(TigRect){0,0,r.width,r.height},false); write_at(tracker,coop_tr("Objectives"),(TigRect){12,10,r.width-24,line+2},MM_COLOR_GOLD);
+            int heading=coop_hud_text_height(coop_tr("Objectives"),r.width-24),y=heading+21;
             TigLine rule={12,heading+14,r.width-13,heading+14}; tig_window_line(tracker,&rule,tig_color_make(91,73,46));
             for (unsigned i=0;i<5;i++) { unsigned id=coop_play_pin_at(i); if (!id || y>=r.height-8) continue; char value[600]={0}; quest_copy_description(player_get_local_pc_obj(),(int)id,value,sizeof(value)); write_at(tracker,value,(TigRect){12,y,r.width-24,SDL_min(line*lines,r.height-y-8)},MM_COLOR_WHITE); y+=line*lines+6; }
             if (*coop_play_note() && y<r.height-8) write_at(tracker,coop_play_note(),(TigRect){12,y,r.width-24,SDL_min(line*lines,r.height-y-8)},MM_COLOR_WHITE);
@@ -636,5 +646,5 @@ void coop_play_settings_link(bool show)
     if (tig_window_create(&d,&settings_link)!=TIG_OK) { settings_link=TIG_WINDOW_HANDLE_INVALID; return; }
     settings_link_rect=r;
     box(settings_link,(TigRect){0,0,r.width,r.height},true);
-    write_at(settings_link,"Playability settings: text, controls, combat and labels",(TigRect){8,5,r.width-16,28},MM_COLOR_GOLD);
+    write_at(settings_link,coop_tr("Playability settings: text, controls, combat and labels"),(TigRect){8,5,r.width-16,28},MM_COLOR_GOLD);
 }

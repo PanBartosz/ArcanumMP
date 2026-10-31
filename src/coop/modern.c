@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/modern.h"
 #include "coop/hud.h"
 #include "coop/authority.h"
@@ -138,7 +139,7 @@ bool coop_play_pref_set(unsigned i, int value)
     return true;
 }
 unsigned coop_play_binding_count(void) { return SDL_arraysize(bindings); }
-const char* coop_play_binding_name(unsigned i) { return i<SDL_arraysize(bindings) ? bindings[i].name : ""; }
+const char* coop_play_binding_name(unsigned i) { return i<SDL_arraysize(bindings) ? coop_tr(bindings[i].name) : ""; }
 SDL_Scancode coop_play_binding_key(unsigned i) { prefs_load(); return i<SDL_arraysize(bindings) ? bindings[i].assigned : SDL_SCANCODE_UNKNOWN; }
 SDL_Scancode coop_play_binding_original(unsigned i) { return i<SDL_arraysize(bindings) ? bindings[i].original : SDL_SCANCODE_UNKNOWN; }
 bool coop_play_binding_set(unsigned i, SDL_Scancode key)
@@ -211,6 +212,14 @@ void coop_play_name(int64_t obj, char* out, size_t size)
     char value[MAX_STRING]; object_examine(obj,player_get_local_pc_obj(),value);
     snprintf(out,size,"%s",*value ? value : "Unknown");
 }
+/* Event payloads retain original resource names, independently of the host's
+ * presentation language. */
+static void canonical_name(int64_t obj,char* out,size_t size)
+{
+    coop_language_canonical_begin();
+    coop_play_name(obj,out,size);
+    coop_language_canonical_end();
+}
 unsigned coop_play_members(int64_t obj)
 {
     if (!obj || !obj_handle_is_valid(obj)) return 0;
@@ -246,7 +255,7 @@ void coop_play_event(unsigned kind, int64_t actor, int64_t target, const char* s
 void coop_play_float(int64_t obj, const char* text)
 {
     if (!obj || !text || !*text || !coop_authority_can_simulate()) return;
-    char name[96], message[192]; coop_play_name(obj,name,sizeof(name));
+    char name[96], message[192]; canonical_name(obj,name,sizeof(name));
     snprintf(message,sizeof(message),"%s: %.90s",name,text);
     coop_play_event(PLAY_EFFECT,obj,0,message,"Native combat or status feedback.");
 }
@@ -265,7 +274,7 @@ void coop_play_status_change(int64_t obj,int field,unsigned before,unsigned afte
         "Mirrored","Shrunk","Passwall","Water walking","Magnetic inversion","Charmed","Entangled","Spoken with dead","Tempus Fugit","Mind control","Drunk","Enshrouded","Familiar","Hardened Hands"};
     static const unsigned critter_bits[]={OCF_STUNNED,OCF_PARALYZED,OCF_BLINDED,OCF_CRIPPLED_ARMS_ONE,OCF_CRIPPLED_ARMS_BOTH,OCF_CRIPPLED_LEGS_BOTH,OCF_SLEEPING};
     static const char* critter_names[]={"Stunned","Paralyzed","Blinded","One arm crippled","Both arms crippled","Legs crippled","Sleeping"};
-    char name[80]; coop_play_name(obj,name,sizeof(name));
+    char name[80]; canonical_name(obj,name,sizeof(name));
     unsigned count=field==OBJ_F_SPELL_FLAGS ? 32 : SDL_arraysize(critter_bits);
     for (unsigned i=0;i<count;i++) {
         unsigned bit=field==OBJ_F_SPELL_FLAGS ? 1u<<i : critter_bits[i];
@@ -277,13 +286,13 @@ void coop_play_status_change(int64_t obj,int field,unsigned before,unsigned afte
 }
 void coop_play_attack_miss(int64_t actor,int64_t target,bool critical)
 {
-    char a[72],b[72],line[192]; coop_play_name(actor,a,sizeof(a)); coop_play_name(target,b,sizeof(b));
+    char a[72],b[72],line[192]; canonical_name(actor,a,sizeof(a)); canonical_name(target,b,sizeof(b));
     snprintf(line,sizeof(line),"%s %s %s",a,critical ? "critically misses" : "misses",b);
     coop_play_event(PLAY_COMBAT,actor,target,line,critical ? "The native attack roll produced a critical failure. Consequences appear in subsequent entries." : "The native attack missed or was dodged. No damage was applied by this attack.");
 }
 void coop_play_damage(int64_t actor,int64_t target,int hp,int fatigue,unsigned flags,unsigned effects)
 {
-    char a[64],b[64],line[192],detail[384]; coop_play_name(actor,a,sizeof(a)); coop_play_name(target,b,sizeof(b));
+    char a[64],b[64],line[192],detail[384]; canonical_name(actor,a,sizeof(a)); canonical_name(target,b,sizeof(b));
     snprintf(line,sizeof(line),"%s %s %s: %d HP, %d fatigue",a,flags&CF_CRITICAL ? "critically hits" : "hits",b,hp,fatigue);
     snprintf(detail,sizeof(detail),"Actual health and fatigue lost after native resistance, armor, immunity and script processing. Damage effects:%s%s%s%s%s%s%s",
         effects&CDF_STUN ? " stunned" : "",effects&CDF_KNOCKDOWN ? " knocked down" : "",effects&CDF_KNOCKOUT ? " unconscious" : "",
@@ -294,8 +303,8 @@ void coop_play_damage(int64_t actor,int64_t target,int hp,int fatigue,unsigned f
 void coop_play_roll(int64_t actor,int64_t target,int skill,int effectiveness,int difficulty,int roll,int critical_roll,unsigned flags)
 {
     if (skill!=SKILL_BOW && skill!=SKILL_MELEE && skill!=SKILL_THROWING && skill!=SKILL_FIREARMS && skill!=SKILL_DODGE) return;
-    char name[80],line[192],details[384]; coop_play_name(actor,name,sizeof(name));
-    const char* skill_name=skill<BASIC_SKILL_COUNT ? basic_skill_name(skill) : tech_skill_name(skill-BASIC_SKILL_COUNT);
+    char name[80],line[192],details[384]; canonical_name(actor,name,sizeof(name));
+    const char* skill_name=coop_language_original(skill<BASIC_SKILL_COUNT ? basic_skill_name(skill) : tech_skill_name(skill-BASIC_SKILL_COUNT));
     snprintf(line,sizeof(line),"%s: %s %s%s",name,skill_name,flags&SKILL_INVOCATION_SUCCESS ? "succeeds" : "fails",flags&SKILL_INVOCATION_CRITICAL ? " (critical)" : "");
     snprintf(details,sizeof(details),"Native roll %d + difficulty %d versus effectiveness %d. Base success chance: %d%%. Critical roll: %d.%s\nPenalties:%s%s%s%s%s%s%s%s\nFinal outcome includes native Dodge, Fate and critical rules.",
         roll,difficulty,effectiveness,SDL_clamp(effectiveness-difficulty,0,100),critical_roll,flags&SKILL_INVOCATION_FORCED ? " Forced success." : "",
@@ -350,7 +359,7 @@ static bool ping_add(unsigned member,int64_t location)
     int64_t mx,my; location_limits_get(&mx,&my);
     if (location_get_x(location)<0 || location_get_y(location)<0 || location_get_x(location)>=mx || location_get_y(location)>=my) return false;
     ping_at[member]=now;
-    char name[80],line[192]; coop_play_name(coop_campaign_object(member),name,sizeof(name));
+    char name[80],line[192]; canonical_name(coop_campaign_object(member),name,sizeof(name));
     snprintf(line,sizeof(line),"%s pinged a location",name);
     PlayEvent e={.sequence=next,.map=(uint32_t)map_current_map(),.time=(uint32_t)now,.kind=PLAY_PING,.members=(uint8_t)(1u<<member),
         .x=(uint32_t)location_get_x(location),.y=(uint32_t)location_get_y(location)};
@@ -405,7 +414,7 @@ static bool map_ping_add(unsigned member,unsigned context,unsigned x,unsigned y)
     uint64_t now=SDL_GetTicks(); if (ping_at[member] && now-ping_at[member]<750) return false;
     ping_at[member]=now;
     PlayEvent e={.sequence=next,.map=context,.time=(uint32_t)now,.x=x,.y=y,.kind=PLAY_MAP_PING,.members=(uint8_t)(1u<<member)};
-    char name[96]; coop_play_name(coop_campaign_object(member),name,sizeof(name));
+    char name[96]; canonical_name(coop_campaign_object(member),name,sizeof(name));
     snprintf(e.summary,sizeof(e.summary),"%s pinged the %s map",name,context ? "local" : "world");
     snprintf(e.details,sizeof(e.details),"Map context %u, coordinates %u, %u. This marker expires after ten seconds.",context,x,y);
     append(e); return true;

@@ -11,6 +11,7 @@
 #include "coop/engine_character.h"
 #include "coop/engine_combat.h"
 #include "coop/engine_dialogue.h"
+#include "coop/language_engine.h"
 #include "coop/engine_object.h"
 #include "coop/engine_sector.h"
 #include "coop/engine_rest.h"
@@ -2087,7 +2088,7 @@ static bool dialogue_probe(CoopSession* session)
                 Script script = { 0 };
                 obj_arrayfield_script_get(candidate, OBJ_F_SCRIPTS_IDX, SAP_DIALOG, &script);
                 const char* name = description_get(obj_field_int32_get(candidate, OBJ_F_DESCRIPTION));
-                if (name && strstr(name, "Virgil")) {
+                if (script.num == 1324) {
                     fprintf(stderr, "ARCMP retail dialogue fixture name=%s script=%d\n", name, script.num);
                     npc = candidate;
                 }
@@ -2108,6 +2109,10 @@ static bool dialogue_probe(CoopSession* session)
             free(bytes);
             fprintf(stderr, "ARCMP shared dialogue page=%u conversation=%u chooser=%u mode=%u options=%u reply=%.120s\n",
                 view->revision, view->conversation, view->chooser, view->mode, view->option_count, view->reply);
+            CoopDialogueView local = *view;
+            coop_language_view(&local);
+            fprintf(stderr, "ARCMP personal dialogue language=%s source=%s:%d reply=%.160s\n",
+                coop_language_active(),view->text_refs[0].path,view->text_refs[0].key,local.reply);
             recorded = view->revision;
             page_at = SDL_GetTicks();
         }

@@ -1,3 +1,5 @@
+#include "coop/localization.h"
+#include "coop/language_engine.h"
 #include "ui/dialog_ui.h"
 #include "coop/authority.h"
 #include "coop/campaign.h"
@@ -329,7 +331,7 @@ bool dialog_ui_process_option(DialogUiEntry* entry, int option)
     bool is_pc;
 
     is_pc = !coop_engine_dialogue_bound() && player_is_local_pc_obj(entry->state.pc_obj);
-    coop_engine_dialogue_selected(entry->state.options[option]);
+    coop_engine_dialogue_selected(entry->state.options[option],&entry->state.text_refs[option+1]);
     dialog_ui_pc_say(entry->state.pc_obj,
         entry->state.npc_obj,
         TB_TYPE_GREEN,
@@ -489,7 +491,8 @@ void dialog_ui_display(DialogUiEntry* entry)
         intgame_dialog_clear();
 
         for (index = 0; index < entry->state.num_options; index++) {
-            intgame_dialog_set_option(index, entry->state.options[index]);
+            char localized[COOP_DIALOGUE_TEXT];
+            intgame_dialog_set_option(index,coop_language_dialogue(entry->state.options[index],entry->state.pc_obj,entry->state.npc_obj,localized,sizeof(localized)));
         }
     }
 }
@@ -497,6 +500,8 @@ void dialog_ui_display(DialogUiEntry* entry)
 // 0x568540
 void dialog_ui_npc_say(int64_t npc_obj, int64_t pc_obj, int type, int expires_in, const char* str, int speech_id)
 {
+    char localized[COOP_DIALOGUE_TEXT];
+    str=coop_language_dialogue(str,pc_obj,npc_obj,localized,sizeof(localized));
     if (pc_obj != OBJ_HANDLE_NULL
         && !critter_is_dead(npc_obj)
         && !sub_423300(npc_obj, NULL)) {
@@ -514,6 +519,8 @@ void dialog_ui_npc_say(int64_t npc_obj, int64_t pc_obj, int type, int expires_in
 // 0x5686C0
 void dialog_ui_pc_say(int64_t pc_obj, int64_t npc_obj, int type, int expires_in, const char* str)
 {
+    char localized[COOP_DIALOGUE_TEXT];
+    str=coop_language_dialogue(str,pc_obj,npc_obj,localized,sizeof(localized));
     if (npc_obj != OBJ_HANDLE_NULL
         && !critter_is_dead(pc_obj)
         && !sub_423300(pc_obj, NULL)) {
@@ -617,7 +624,7 @@ bool dialog_ui_coop_companion_inventory(int64_t pc, int64_t npc)
     entry->state.npc_obj = npc;
     entry->state.field_17E8 = 3;
     entry->state.speech_id = -1;
-    snprintf(entry->state.reply, sizeof(entry->state.reply), "Managing companion inventory.");
+    snprintf(entry->state.reply, sizeof(entry->state.reply), coop_tr("Managing companion inventory."));
     sub_4C1020(npc, pc);
     entry->field_1850 = true;
     dialog_ui_display(entry);
@@ -734,8 +741,10 @@ bool dialog_ui_coop_capture(CoopDialogueRecovery* recovery)
     recovery->seed = state->seed;
     recovery->options = (unsigned)state->num_options;
     memcpy(recovery->reply, state->reply, sizeof(recovery->reply));
+    recovery->text_refs[0] = state->text_refs[0];
     for (unsigned i = 0; i < recovery->options; i++) {
         memcpy(recovery->text[i], state->options[i], sizeof(recovery->text[i]));
+        recovery->text_refs[i + 2] = state->text_refs[i + 1];
         recovery->target[i] = state->field_17F0[i];
         recovery->argument[i] = state->field_1804[i];
         recovery->auxiliary[i] = state->field_1818[i];
@@ -775,8 +784,12 @@ bool dialog_ui_coop_restore(const CoopDialogueRecovery* recovery)
     state->seed = recovery->seed;
     state->num_options = (int)recovery->options;
     memcpy(state->reply, recovery->reply, sizeof(state->reply));
+    coop_language_remember(state->reply,&recovery->text_refs[0]);
+    state->text_refs[0]=recovery->text_refs[0];
     for (unsigned i = 0; i < recovery->options; i++) {
         memcpy(state->options[i], recovery->text[i], sizeof(state->options[i]));
+        coop_language_remember(state->options[i],&recovery->text_refs[i+2]);
+        state->text_refs[i+1]=recovery->text_refs[i+2];
         state->field_17F0[i] = recovery->target[i];
         state->field_1804[i] = recovery->argument[i];
         state->field_1818[i] = recovery->auxiliary[i];

@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "ui/inven_ui.h"
 #include "coop/runtime.h"
 #include "coop/campaign.h"
@@ -2157,7 +2158,7 @@ static void coop_item_cancel_drag(void)
 static bool coop_item_request(CoopItemOperation operation, int64_t item, uint8_t recipient, int location)
 {
     if (!coop_runtime_item(operation, item, recipient, location)) {
-        UiMessage message = { .type = UI_MSG_TYPE_FEEDBACK, .str = "Waiting for the host to finish the item action." };
+        UiMessage message = { .type = UI_MSG_TYPE_FEEDBACK, .str = coop_tr("Waiting for the host to finish the item action.") };
         intgame_message_window_display_msg(&message);
         return false;
     }
@@ -2181,7 +2182,7 @@ bool inven_ui_coop_quantity_submit(int amount)
             CoopItemOperation operation = coop_quantity_action == 3 ? COOP_LOOT_TAKE_AMOUNT
                 : coop_quantity_action == 4 ? COOP_LOOT_PUT_AMOUNT : COOP_ITEM_DROP_AMOUNT;
             coop_item_request(operation, item, 0, amount);
-        } else intgame_message_window_display_feedback("The inventory access changed. Select the stack again.");
+        } else intgame_message_window_display_feedback(coop_tr("The inventory access changed. Select the stack again."));
     }
     return true;
 }
@@ -2417,13 +2418,13 @@ void inven_ui_coop_service_feedback(unsigned status, int price, bool bought)
     if (!inven_ui_created || (inven_ui_mode != INVEN_UI_MODE_BARTER && inven_ui_mode != INVEN_UI_MODE_NPC_IDENTIFY && inven_ui_mode != INVEN_UI_MODE_NPC_REPAIR)) return;
     dword_681440 = -1;
     if (!status && bought) {
-        snprintf(byte_68241C, sizeof(byte_68241C), "%s", inven_ui_mode == INVEN_UI_MODE_BARTER ? "Trade completed."
-            : inven_ui_mode == INVEN_UI_MODE_NPC_IDENTIFY ? "Item identified." : "Repair service completed.");
+        snprintf(byte_68241C, sizeof(byte_68241C), "%s", inven_ui_mode == INVEN_UI_MODE_BARTER ? coop_tr("Trade completed.")
+            : inven_ui_mode == INVEN_UI_MODE_NPC_IDENTIFY ? coop_tr("Item identified.") : coop_tr("Repair service completed."));
         coop_trade_item.type = OID_TYPE_NULL; coop_trade_quantity = 1;
         qword_681458 = OBJ_HANDLE_NULL;
     }
     else if (!status && inven_ui_mode == INVEN_UI_MODE_BARTER && dword_6810FC) {
-        snprintf(byte_68241C, sizeof(byte_68241C), "Transfer %u item(s). Click again to confirm.", coop_trade_quantity);
+        snprintf(byte_68241C, sizeof(byte_68241C), coop_tr("Transfer %u item(s). Click again to confirm."), coop_trade_quantity);
         dword_681440 = 0;
     } else if (!status && price > 0) {
         if (inven_ui_mode == INVEN_UI_MODE_BARTER) {
@@ -2436,8 +2437,8 @@ void inven_ui_coop_service_feedback(unsigned status, int price, bool bought)
     else if (status == COOP_SERVICE_BROKEN) dialog_copy_npc_wont_repair_broken_msg(qword_682C78, inven_ui_pc_obj, byte_68241C);
     else if (status == COOP_SERVICE_UNDAMAGED) dialog_copy_npc_wont_repair_undamaged_msg(qword_682C78, inven_ui_pc_obj, byte_68241C);
     else if (status == COOP_SERVICE_MONEY) dialog_copy_npc_not_enough_money_msg(qword_682C78, inven_ui_pc_obj, byte_68241C);
-    else snprintf(byte_68241C, sizeof(byte_68241C), "%s", status == COOP_SERVICE_UNAVAILABLE ? "Waiting for a price. Click again when it appears."
-        : status == COOP_SERVICE_CHANGED ? "The item or price changed. Click again for a new price." : "That service is unavailable for this item.");
+    else snprintf(byte_68241C, sizeof(byte_68241C), "%s", status == COOP_SERVICE_UNAVAILABLE ? coop_tr("Waiting for a price. Click again when it appears.")
+        : status == COOP_SERVICE_CHANGED ? coop_tr("The item or price changed. Click again for a new price.") : coop_tr("That service is unavailable for this item."));
     redraw_inven(false);
 }
 void inven_ui_coop_refresh(void)

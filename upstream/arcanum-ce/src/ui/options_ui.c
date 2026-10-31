@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/modern.h"
 #include "ui/options_ui.h"
 #include "coop/campaign.h"
@@ -44,6 +45,9 @@ static void options_ui_scale_get(int* value, bool* enabled);
 static void options_ui_scale_set(int value);
 static void options_ui_interactions_get(int* value, bool* enabled);
 static void options_ui_interactions_set(int value);
+static void options_ui_language_get(int* value,bool* enabled);
+static void options_ui_language_set(int value);
+static const char* language_names[32];
 static const char* display_off_on[] = {"Off", "On"};
 static const char* display_scales[] = {"75%", "100%", "125%", "150%", "175%", "200%"};
 static const char* interaction_speeds[] = {"Walk", "Run"};
@@ -138,7 +142,7 @@ static OptionsUiControlInfo options_ui_tab_controls_meta[OPTIONS_UI_TAB_COUNT][M
         { true, CYCLIC_UI_CONTROL_NUMERIC_BAR, 0, "Effects", "", options_ui_effects_volume_get, options_ui_effects_volume_set },
         { true, CYCLIC_UI_CONTROL_NUMERIC_BAR, 0, "Voice", "", options_ui_voice_volume_get, options_ui_voice_volume_set },
         { true, CYCLIC_UI_CONTROL_NUMERIC_BAR, 0, "Music", "", options_ui_music_volume_get, options_ui_music_volume_set },
-        { false, 0, 0, "", "", NULL, NULL },
+        { true, CYCLIC_UI_CONTROL_TEXT_ARRAY, 0, "Language (restart)", "", options_ui_language_get, options_ui_language_set },
         { false, 0, 0, "", "", NULL, NULL },
         { false, 0, 0, "", "", NULL, NULL },
         { false, 0, 0, "", "", NULL, NULL },
@@ -259,6 +263,13 @@ void options_ui_start(OptionsUiTab tab, tig_window_handle_t window_handle, bool 
             control_info.text_array = index == 5 ? display_off_on : index == 6 ? display_scales : interaction_speeds;
             control_info.text_array_size = index == 6 ? 6 : 2;
         }
+        if(tab==OPTIONS_UI_TAB_AUDIO&&index==3) {
+            unsigned count=SDL_min(coop_language_count(),SDL_arraysize(language_names));
+            for(unsigned i=0;i<count;i++)language_names[i]=coop_tr(coop_language_name(i));
+            control_info.title=coop_tr("Language (restart)");
+            control_info.text_array=language_names;control_info.text_array_size=count;
+        }
+        control_info.title=coop_tr(control_info.title);
 
         // Finish control set up.
         control_info.mes_file_path = meta->mes;
@@ -402,7 +413,7 @@ void options_ui_difficutly_set(int value)
 {
     if (value < 0 || value > 2) return;
     if (coop_campaign_active()) {
-        if (!coop_runtime_difficulty((unsigned)value)) intgame_message_window_display_feedback("Only the host can change difficulty while the party is ready.");
+        if (!coop_runtime_difficulty((unsigned)value)) intgame_message_window_display_feedback(coop_tr("Only the host can change difficulty while the party is ready."));
         return;
     }
     settings_set_value(&settings, DIFFICULTY_KEY, value);
@@ -412,7 +423,7 @@ static bool options_ui_personal(unsigned option, int value)
 {
     if (!coop_campaign_active()) return true;
     if (coop_runtime_player_option(option, value != 0)) return true;
-    intgame_message_window_display_feedback("Finish the current party action before changing character options.");
+    intgame_message_window_display_feedback(coop_tr("Finish the current party action before changing character options."));
     return false;
 }
 
@@ -462,7 +473,7 @@ void options_ui_combat_mode_set(int value)
 {
     if (coop_campaign_active()) {
         if (value < 0 || value > 2 || !coop_runtime_combat(COOP_COMBAT_POLICY, (uint8_t)value, OBJ_HANDLE_NULL))
-            intgame_message_window_display_feedback("Only the host can change combat mode while the party is ready.");
+            intgame_message_window_display_feedback(coop_tr("Only the host can change combat mode while the party is ready."));
         return;
     }
     switch (value) {
@@ -753,7 +764,7 @@ static void options_ui_interactions_get(int* value, bool* enabled)
 static void display_setting(bool wide, int scale, bool run)
 {
     if (!coop_display_settings_set(wide, scale, run))
-        intgame_message_window_display_feedback("Could not save display preferences. Check that the game folder is writable.");
+        intgame_message_window_display_feedback(coop_tr("Could not save display preferences. Check that the game folder is writable."));
 }
 static void options_ui_widescreen_set(int value)
 { display_setting(value != 0, coop_display_ui_scale(), coop_display_interactions_run()); }
@@ -764,3 +775,9 @@ static void options_ui_interactions_set(int value)
     if (!options_ui_personal(COOP_OPTION_RUN_INTERACTIONS, value != 0)) return;
     display_setting(coop_display_widescreen(), coop_display_ui_scale(), value != 0);
 }
+static void options_ui_language_get(int* value,bool* enabled)
+{ *value=(int)coop_language_pending();*enabled=true; }
+static void options_ui_language_set(int value)
+{ if(value<0)return;
+    if(!coop_language_available((unsigned)value))intgame_message_window_display_feedback(coop_tr("Install the selected language pack before choosing it."));
+    else if(!coop_language_select((unsigned)value))intgame_message_window_display_feedback(coop_tr("Could not save language settings.")); }

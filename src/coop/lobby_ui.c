@@ -1,3 +1,4 @@
+#include "coop/localization.h"
 #include "coop/lobby_ui.h"
 #include "coop/campaign.h"
 #include "coop/content.h"
@@ -173,7 +174,7 @@ static void text(const char* value, int x, int y, int width, MainMenuColor color
 {
     TigRect r = { x, y, width, 22 };
     tig_font_push(mainmenu_ui_font(MM_FONT_FLARE12, color));
-    tig_window_text_write(window, value, &r);
+    tig_window_text_write(window, coop_tr_rendered(value), &r);
     tig_font_pop();
 }
 
@@ -244,19 +245,19 @@ static bool content_read(uint8_t id[32])
 static bool connect_party(bool host)
 {
     if (coop_campaign_active()) {
-        snprintf(feedback, sizeof(feedback), "Leave the current campaign before starting another party.");
+        snprintf(feedback, sizeof(feedback), coop_tr("Leave the current campaign before starting another party."));
         return false;
     }
     char* end;
     unsigned long port = strtoul(port_text, &end, 10);
     if (*end || port == 0 || port > 65535) {
-        snprintf(feedback, sizeof(feedback), "Choose a port from 1 to 65535.");
+        snprintf(feedback, sizeof(feedback), coop_tr("Choose a port from 1 to 65535."));
         return false;
     }
     CoopConfig config = { 0 };
     memcpy(config.name, player_name, sizeof(config.name));
     if (!coop_identity_load_or_create("arcmp-player.id", config.identity)) {
-        snprintf(feedback, sizeof(feedback), "Could not read your player profile. Preserve arcmp-player.id to keep campaign ownership.");
+        snprintf(feedback, sizeof(feedback), coop_tr("Could not read your player profile. Preserve arcmp-player.id to keep campaign ownership."));
         return false;
     }
     if (!content_read(config.content_id)) {
@@ -269,7 +270,7 @@ static bool connect_party(bool host)
     chat_live = true; chat_layout_revision = UINT64_MAX;
     session = coop_session_create(&config);
     if (!session) {
-        snprintf(feedback, sizeof(feedback), "Enter a player name using printable characters.");
+        snprintf(feedback, sizeof(feedback), coop_tr("Enter a player name using printable characters."));
         return false;
     }
     feedback[0] = 0;
@@ -284,7 +285,7 @@ static bool connect_party(bool host)
     }
     if (connected && !coop_runtime_attach(session, config.identity)) {
         coop_session_leave(session);
-        snprintf(feedback, sizeof(feedback), "Could not prepare the campaign connection.");
+        snprintf(feedback, sizeof(feedback), coop_tr("Could not prepare the campaign connection."));
         return false;
     }
     if (connected) {
@@ -317,7 +318,7 @@ static void choose_character(void)
         character_pending = !coop_session_is_host(session);
         feedback[0] = 0;
     } else {
-        snprintf(feedback, sizeof(feedback), "Could not select the campaign character prototype.");
+        snprintf(feedback, sizeof(feedback), coop_tr("Could not select the campaign character prototype."));
     }
     if (name) FREE(name);
     selected_character = (selected_character + 1) % 8;
@@ -339,8 +340,8 @@ static bool store_character(const CoopCharacter* c, bool archive)
     unsigned slot = 0;
     bool archived = !archive || (saved && coop_draft_remember(draft_path, draft_content, draft_owner, c, &slot));
     if (archive && archived) library_slot = slot;
-    snprintf(feedback, sizeof(feedback), "%s", !saved ? "Character selected, but its saved file could not be written." : !archived ? "Character selected. Library full or unavailable; choose a slot to replace."
-                                                                                                                                   : "Character saved. Mark Ready when you are happy with your choices.");
+    snprintf(feedback, sizeof(feedback), "%s", !saved ? coop_tr("Character selected, but its saved file could not be written.") : !archived ? coop_tr("Character selected. Library full or unavailable; choose a slot to replace.")
+                                                                                                                                   : coop_tr("Character saved. Mark Ready when you are happy with your choices."));
     return true;
 }
 static CoopDraftStatus library_read(unsigned slot, CoopCharacter* c)
@@ -387,12 +388,12 @@ static void library_action(unsigned button)
         if (status == COOP_DRAFT_OK && store_character(&c, false))
             library_open = false;
         else
-            snprintf(feedback, sizeof(feedback), "This slot cannot be selected. Check its saved character and game data.");
+            snprintf(feedback, sizeof(feedback), coop_tr("This slot cannot be selected. Check its saved character and game data."));
     } else if (button == 10) {
         char path[512];
         bool good = local->custom && library_slot && coop_draft_slot_path(path, sizeof(path), draft_path, library_slot)
             && coop_draft_save(path, draft_content, draft_owner, &local->build);
-        snprintf(feedback, sizeof(feedback), "%s", good ? "Current character saved in the selected slot." : "Select a named slot and a custom character to save.");
+        snprintf(feedback, sizeof(feedback), "%s", good ? coop_tr("Current character saved in the selected slot.") : coop_tr("Select a named slot and a custom character to save."));
     } else if (button == 11) {
         CoopDraftStatus imported = coop_draft_import(transfer_path, draft_content, &c);
         unsigned slot = 0;
@@ -402,13 +403,13 @@ static void library_action(unsigned button)
             library_slot = slot;
             library_page = slot / 4;
         }
-        snprintf(feedback, sizeof(feedback), "%s", good ? "Character imported into your library. Select it to use it." : "Import failed. Check the file, game data, native choices and free library slots.");
+        snprintf(feedback, sizeof(feedback), "%s", good ? coop_tr("Character imported into your library. Select it to use it.") : coop_tr("Import failed. Check the file, game data, native choices and free library slots."));
     } else if (button == 12) {
         bool good = status == COOP_DRAFT_OK && coop_draft_export(transfer_path, draft_content, &c);
-        snprintf(feedback, sizeof(feedback), "%s", good ? "Character exported without your player identity." : "Export failed. Select a valid character and writable file path.");
+        snprintf(feedback, sizeof(feedback), "%s", good ? coop_tr("Character exported without your player identity.") : coop_tr("Export failed. Select a valid character and writable file path."));
     } else if (button == 13) {
         bool good = library_slot && coop_draft_delete(draft_path, library_slot);
-        snprintf(feedback, sizeof(feedback), "%s", good ? "Slot removed. Its file is retained with a .deleted suffix." : "That slot cannot be removed.");
+        snprintf(feedback, sizeof(feedback), "%s", good ? coop_tr("Slot removed. Its file is retained with a .deleted suffix.") : coop_tr("That slot cannot be removed."));
     } else if (button == 14 || button == 15) {
         if (button == 15 && status != COOP_DRAFT_OK) return;
         if (button == 15 && !store_character(&c, false)) return;
@@ -437,7 +438,7 @@ static void equipment_action(unsigned button)
         if (store_character(&equipment_character, true))
             coop_lobby_release_previews();
         else
-            snprintf(feedback, sizeof(feedback), "Equipment selection could not be accepted.");
+            snprintf(feedback, sizeof(feedback), coop_tr("Equipment selection could not be accepted."));
         return;
     }
     CoopCharacter old = equipment_character;
@@ -446,13 +447,13 @@ static void equipment_action(unsigned button)
         memset(equipment_character.purchases, 0, sizeof(equipment_character.purchases));
     } else if (button == 11) {
         if (!equipment_count || equipment_selection >= equipment_count || equipment_character.trades == COOP_STARTING_TRADES) {
-            snprintf(feedback, sizeof(feedback), "Choose an available item. At most sixteen trades can be saved; Undo or Reset to change them.");
+            snprintf(feedback, sizeof(feedback), coop_tr("Choose an available item. At most sixteen trades can be saved; Undo or Reset to change them."));
             return;
         }
         CoopStartingItem* item = &equipment_items[equipment_selection];
         unsigned count = equipment_quantity < item->quantity ? equipment_quantity : item->quantity;
         if (!count || count > INT16_MAX || !item->price) {
-            snprintf(feedback, sizeof(feedback), "That item is not available for this trade.");
+            snprintf(feedback, sizeof(feedback), coop_tr("That item is not available for this trade."));
             return;
         }
         equipment_character.purchases[equipment_character.trades++] = (CoopStartingTrade) { item->prototype, (int16_t)(equipment_selling ? -(int)count : (int)count) };
@@ -472,22 +473,22 @@ static void equipment_action(unsigned button)
         return;
     if (!equipment_rebuild()) {
         equipment_character = old;
-        snprintf(feedback, sizeof(feedback), "The trade is unavailable: check gold, stock, quantity, weight and inventory room.");
+        snprintf(feedback, sizeof(feedback), coop_tr("The trade is unavailable: check gold, stock, quantity, weight and inventory room."));
     } else
-        snprintf(feedback, sizeof(feedback), "%u trade(s) selected. Accept keeps this equipment; Back discards changes.", equipment_character.trades);
+        snprintf(feedback, sizeof(feedback), coop_tr("%u trade(s) selected. Accept keeps this equipment; Back discards changes."), equipment_character.trades);
 }
 static void load_character(void)
 {
     if (!session || character_pending || coop_session_phase(session) != COOP_LOBBY || coop_runtime_phase() != COOP_RUNTIME_LOBBY) return;
     CoopCharacter character;
     CoopDraftStatus status = coop_draft_load(draft_path, draft_content, draft_owner, &character);
-    const char* errors[] = { "", "There is no saved character for this player yet.", "Could not read your saved character.",
-        "The saved character is damaged or unsupported.", "The saved character uses different game data.", "The saved character belongs to another player profile." };
+    const char* errors[] = { "", coop_tr("There is no saved character for this player yet."), coop_tr("Could not read your saved character."),
+        coop_tr("The saved character is damaged or unsupported."), coop_tr("The saved character uses different game data."), coop_tr("The saved character belongs to another player profile.") };
     if (status != COOP_DRAFT_OK) { snprintf(feedback, sizeof(feedback), "%s", errors[status]); return; }
-    if (!coop_engine_character_validate(&character)) { snprintf(feedback, sizeof(feedback), "The saved character has invalid choices and has not been loaded."); return; }
-    if (!coop_session_custom_character(session, &character)) { snprintf(feedback, sizeof(feedback), "Could not select the saved character."); return; }
+    if (!coop_engine_character_validate(&character)) { snprintf(feedback, sizeof(feedback), coop_tr("The saved character has invalid choices and has not been loaded.")); return; }
+    if (!coop_session_custom_character(session, &character)) { snprintf(feedback, sizeof(feedback), coop_tr("Could not select the saved character.")); return; }
     await_character(&character);
-    snprintf(feedback, sizeof(feedback), "Saved character selected. Edit it or mark Ready.");
+    snprintf(feedback, sizeof(feedback), coop_tr("Saved character selected. Edit it or mark Ready."));
     fprintf(stderr, "ARCMP character loaded name=%s\n", character.name); fflush(stderr);
 }
 
@@ -508,7 +509,7 @@ static bool accept_character(int64_t pc)
         }
     }
     if (!store_character(&build, true)) {
-        intgame_message_window_display_str(-1, "Could not submit this character. Check its choices and the party connection.");
+        intgame_message_window_display_str(-1, coop_tr("Could not submit this character. Check its choices and the party connection."));
         return false;
     }
     return true;
@@ -597,11 +598,11 @@ static void draw(void)
     TigRect full = { 0, 0, bounds.width, bounds.height };
     tig_window_fill(window, &full, tig_color_make(36, 26, 18));
     tig_window_box(window, &full, tig_color_make(186, 141, 67));
-    text("CAMPAIGN MULTIPLAYER", 24, 16, 700, MM_COLOR_GOLD);
-    text(party_overlay ? "Docs: F7 | Journal: F8 | Save: F9 | Load: F10 | Pause | Party: F12" : "Four travellers. One shared story.", 24, 42, 700, MM_COLOR_GRAY);
-    text("Player name", 24, 64, 210, MM_COLOR_GOLD);
-    text("Host IPv4 address", 250, 64, 300, MM_COLOR_GOLD);
-    text("Port", 566, 64, 166, MM_COLOR_GOLD);
+    text(coop_tr("CAMPAIGN MULTIPLAYER"), 24, 16, 700, MM_COLOR_GOLD);
+    text(party_overlay ? coop_tr("Docs: F7 | Journal: F8 | Save: F9 | Load: F10 | Pause | Party: F12") : coop_tr("Four travellers. One shared story."), 24, 42, 700, MM_COLOR_GRAY);
+    text(coop_tr("Player name"), 24, 64, 210, MM_COLOR_GOLD);
+    text(coop_tr("Host IPv4 address"), 250, 64, 300, MM_COLOR_GOLD);
+    text(coop_tr("Port"), 566, 64, 166, MM_COLOR_GOLD);
     const char* values[] = { player_name, address, port_text, library_open ? transfer_path : chat_text };
     for (unsigned i = 0; i < 4; i++) {
         frame(&fields[i], focus == i);
@@ -621,40 +622,40 @@ static void draw(void)
     uint8_t local_slot = online ? coop_session_local_slot(session) : COOP_NO_SLOT;
     bool own_pause = control && local_slot < COOP_MAX_PLAYERS && (control->paused & (1u << local_slot));
     bool voting = online && coop_runtime_phase() != COOP_RUNTIME_FAILED && control && control->phase == COOP_CONTROL_VOTING && !coop_controls_pending(controls);
-    const char* labels[] = { "Host", reconnecting ? "Retry now" : "Join", "Leave party", party_overlay ? "Return" : "Back", "Pick preset >", local && local->ready ? "Not ready" : "Ready", "Send", "Start campaign", local && local->custom ? "Edit character" : "Create character", "New character", "Load saved",
-        own_pause ? "Resume mine" : "Pause", choosing ? "Resume save" : "Save party", choosing ? "Recover party" : "Load party", voting ? "Agree" : "Resume all",
-        control && control->phase == COOP_CONTROL_RESTING ? "Stop resting" : control && control->phase == COOP_CONTROL_JOURNEY ? "Stop journey"
-                                                                                                                               : "Decline",
-        browsing ? "Close LAN" : "Find LAN", "Characters", "Equipment", remove_confirm_until > SDL_GetTicks() ? "Confirm remove" : "Remove player" };
-    if (failed) labels[3] = "Back to title";
-    if (pending_connect >= 0) labels[2] = "Cancel";
+    const char* labels[] = { coop_tr("Host"), reconnecting ? coop_tr("Retry now") : coop_tr("Join"), coop_tr("Leave party"), party_overlay ? coop_tr("Return") : coop_tr("Back"), coop_tr("Pick preset >"), local && local->ready ? coop_tr("Not ready") : coop_tr("Ready"), coop_tr("Send"), coop_tr("Start campaign"), local && local->custom ? coop_tr("Edit character") : coop_tr("Create character"), coop_tr("New character"), coop_tr("Load saved"),
+        own_pause ? coop_tr("Resume mine") : coop_tr("Pause"), choosing ? coop_tr("Resume save") : coop_tr("Save party"), choosing ? coop_tr("Recover party") : coop_tr("Load party"), voting ? coop_tr("Agree") : coop_tr("Resume all"),
+        control && control->phase == COOP_CONTROL_RESTING ? coop_tr("Stop resting") : control && control->phase == COOP_CONTROL_JOURNEY ? coop_tr("Stop journey")
+                                                                                                                               : coop_tr("Decline"),
+        browsing ? coop_tr("Close LAN") : coop_tr("Find LAN"), coop_tr("Characters"), coop_tr("Equipment"), remove_confirm_until > SDL_GetTicks() ? coop_tr("Confirm remove") : coop_tr("Remove player") };
+    if (failed) labels[3] = coop_tr("Back to title");
+    if (pending_connect >= 0) labels[2] = coop_tr("Cancel");
     if (browsing) {
-        labels[4]="Previous"; labels[8]="Next"; labels[9]="Join selected"; labels[10]="Refresh"; labels[5]="Close list";
+        labels[4]=coop_tr("Previous"); labels[8]=coop_tr("Next"); labels[9]=coop_tr("Join selected"); labels[10]=coop_tr("Refresh"); labels[5]=coop_tr("Close list");
     }
     char quantity_label[32];
-    snprintf(quantity_label, sizeof(quantity_label), "Quantity: %u", equipment_quantity);
+    snprintf(quantity_label, sizeof(quantity_label), coop_tr("Quantity: %u"), equipment_quantity);
     if (library_open) {
-        labels[4] = "Previous";
-        labels[8] = "Next";
-        labels[9] = "Select";
-        labels[10] = "Save here";
-        labels[5] = "Close list";
-        labels[11] = "Import file";
-        labels[12] = "Export file";
-        labels[13] = "Remove slot";
-        labels[14] = "New character";
-        labels[15] = "Edit selected";
+        labels[4] = coop_tr("Previous");
+        labels[8] = coop_tr("Next");
+        labels[9] = coop_tr("Select");
+        labels[10] = coop_tr("Save here");
+        labels[5] = coop_tr("Close list");
+        labels[11] = coop_tr("Import file");
+        labels[12] = coop_tr("Export file");
+        labels[13] = coop_tr("Remove slot");
+        labels[14] = coop_tr("New character");
+        labels[15] = coop_tr("Edit selected");
     }
     if (equipment_open) {
-        labels[4] = "Previous";
-        labels[8] = "Next";
-        labels[9] = "Accept";
-        labels[10] = "Reset";
-        labels[5] = "Back";
-        labels[11] = equipment_selling ? "Sell item" : "Buy item";
-        labels[12] = "Undo last";
+        labels[4] = coop_tr("Previous");
+        labels[8] = coop_tr("Next");
+        labels[9] = coop_tr("Accept");
+        labels[10] = coop_tr("Reset");
+        labels[5] = coop_tr("Back");
+        labels[11] = equipment_selling ? coop_tr("Sell item") : coop_tr("Buy item");
+        labels[12] = coop_tr("Undo last");
         labels[13] = quantity_label;
-        labels[14] = equipment_selling ? "Shop stock" : "Your gear";
+        labels[14] = equipment_selling ? coop_tr("Shop stock") : coop_tr("Your gear");
         labels[15] = "-";
     }
     uint32_t enabled_mask = enabled_buttons();
@@ -667,48 +668,48 @@ static void draw(void)
     const char* state = coop_runtime_status();
     char operation[180] = { 0 };
     if (control && control->phase == COOP_CONTROL_VOTING) {
-        const char* name = control->proposer < COOP_MAX_PLAYERS && players ? players[control->proposer].name : "A traveller";
-        static const char* durations[] = { "one hour", "two hours", "four hours", "eight hours", "one day", "until morning", "until evening", "until healed" };
-        snprintf(operation, sizeof(operation), "%s requests %s%s. Everyone must agree (%u seconds).", name,
-            control->action == COOP_CONTROL_REST ? "rest " : control->action == COOP_CONTROL_TRAVEL ? "a world journey" : "loading the checkpoint", control->action == COOP_CONTROL_REST ? durations[control->value] : "", (control->remaining_ms + 999) / 1000);
+        const char* name = control->proposer < COOP_MAX_PLAYERS && players ? players[control->proposer].name : coop_tr("A traveller");
+        const char* durations[] = { coop_tr("one hour"), coop_tr("two hours"), coop_tr("four hours"), coop_tr("eight hours"), coop_tr("one day"), coop_tr("until morning"), coop_tr("until evening"), coop_tr("until healed") };
+        snprintf(operation, sizeof(operation), coop_tr("%s requests %s%s. Everyone must agree (%u seconds)."), name,
+            control->action == COOP_CONTROL_REST ? "rest " : control->action == COOP_CONTROL_TRAVEL ? coop_tr("a world journey") : coop_tr("loading the checkpoint"), control->action == COOP_CONTROL_REST ? durations[control->value] : "", (control->remaining_ms + 999) / 1000);
         if (control->action == COOP_CONTROL_TRAVEL && control->route_count > 1)
-            snprintf(operation, sizeof(operation), "%s requests a journey via %u waypoints. Everyone must agree (%us).",
+            snprintf(operation, sizeof(operation), coop_tr("%s requests a journey via %u waypoints. Everyone must agree (%us)."),
                 name, control->route_count, (control->remaining_ms + 999) / 1000);
         if (control->action == COOP_CONTROL_LOAD) {
             char target[24];
-            if (!control->value) strcpy(target, "Quick save");
-            else if (control->value == COOP_SAVE_RECOVERY) strcpy(target, "Recovery");
-            else if (control->value >= COOP_SAVE_AUTOSAVE_FIRST) snprintf(target, sizeof(target), "Autosave %u", control->value - COOP_SAVE_AUTOSAVE_FIRST + 1);
+            if (!control->value) strcpy(target, coop_tr("Quick save"));
+            else if (control->value == COOP_SAVE_RECOVERY) strcpy(target, coop_tr("Recovery"));
+            else if (control->value >= COOP_SAVE_AUTOSAVE_FIRST) snprintf(target, sizeof(target), coop_tr("Autosave %u"), control->value - COOP_SAVE_AUTOSAVE_FIRST + 1);
             else snprintf(target, sizeof(target), "slot %02u", control->value);
-            snprintf(operation, sizeof(operation), "Load %s: %s (%us)", target,
-                control->description[0] ? control->description : "Party checkpoint", (control->remaining_ms + 999) / 1000);
+            snprintf(operation, sizeof(operation), coop_tr("Load %s: %s (%us)"), target,
+                control->description[0] ? control->description : coop_tr("Party checkpoint"), (control->remaining_ms + 999) / 1000);
         }
-    } else if (control && control->phase == COOP_CONTROL_RESTING) snprintf(operation, sizeof(operation), "Resting together: %u hour(s) passed. Anyone may stop.", control->completed);
-    else if (control && control->phase == COOP_CONTROL_JOURNEY) snprintf(operation, sizeof(operation), "Travelling together: %u hour(s) passed. Anyone may stop.", control->completed);
-    else if (control && control->paused && !loading) snprintf(operation, sizeof(operation), "The party is paused. Each paused traveller can resume; the host can Resume all.");
-    const char* status = coop_runtime_phase() == COOP_RUNTIME_FAILED || reconnecting ? state : operation[0] ? operation : feedback[0] && !loading ? feedback : state[0] ? state : character_pending ? "Confirming your character..." : session ? coop_session_status(session)
-                                                          : "Host a party or join a friend's LAN address.";
+    } else if (control && control->phase == COOP_CONTROL_RESTING) snprintf(operation, sizeof(operation), coop_tr("Resting together: %u hour(s) passed. Anyone may stop."), control->completed);
+    else if (control && control->phase == COOP_CONTROL_JOURNEY) snprintf(operation, sizeof(operation), coop_tr("Travelling together: %u hour(s) passed. Anyone may stop."), control->completed);
+    else if (control && control->paused && !loading) snprintf(operation, sizeof(operation), coop_tr("The party is paused. Each paused traveller can resume; the host can Resume all."));
+    const char* status = coop_runtime_phase() == COOP_RUNTIME_FAILED || reconnecting ? state : operation[0] ? operation : feedback[0] && !loading ? feedback : state[0] ? state : character_pending ? coop_tr("Confirming your character...") : session ? coop_session_status(session)
+                                                          : coop_tr("Host a party or join a friend's LAN address.");
     char preview[160];
     if (equipment_open && !feedback[0]) {
-        snprintf(preview, sizeof(preview), "%s - %d gold remaining. %u/16 trades. Buy or sell, then Accept gear.", equipment_character.name, coop_starting_gold(equipment_shop), equipment_character.trades);
+        snprintf(preview, sizeof(preview), coop_tr("%s - %d gold remaining. %u/16 trades. Buy or sell, then Accept gear."), equipment_character.name, coop_starting_gold(equipment_shop), equipment_character.trades);
         status = preview;
     }
-    if (library_open && !feedback[0]) status = "Select a saved character or enter a file path to import/export.";
-    if (browsing) status=feedback[0] ? feedback : coop_discovery_count(discovery) ? "Select a LAN party, then Join selected." : "Searching the LAN... You can also enter an address to join.";
+    if (library_open && !feedback[0]) status = coop_tr("Select a saved character or enter a file path to import/export.");
+    if (browsing) status=feedback[0] ? feedback : coop_discovery_count(discovery) ? coop_tr("Select a LAN party, then Join selected.") : coop_tr("Searching the LAN... You can also enter an address to join.");
     char content_status[160];
     if ((!session || coop_session_phase(session) == COOP_OFFLINE)
         && coop_content_status(content_status, sizeof(content_status))) status = content_status;
     text(status,24,174,708,MM_COLOR_WHITE);
-    text(library_open ? "CHARACTER LIBRARY" : equipment_open ? (equipment_selling ? "YOUR EQUIPMENT" : "STARTING SHOP")
-            : browsing                                       ? "LAN PARTIES"
-                                                             : "PARTY",
+    text(library_open ? coop_tr("CHARACTER LIBRARY") : equipment_open ? (equipment_selling ? coop_tr("YOUR EQUIPMENT") : coop_tr("STARTING SHOP"))
+            : browsing                                       ? coop_tr("LAN PARTIES")
+                                                             : coop_tr("PARTY"),
         24, 211, 250, MM_COLOR_GOLD);
-    text(library_open ? "BUILD" : equipment_open ? "PRICE EACH"
-            : browsing                           ? "ADDRESS"
-                                                 : "CHARACTER",
+    text(library_open ? coop_tr("BUILD") : equipment_open ? coop_tr("PRICE EACH")
+            : browsing                           ? coop_tr("ADDRESS")
+                                                 : coop_tr("CHARACTER"),
         280, 211, 300, MM_COLOR_GOLD);
-    text(equipment_open ? "QUANTITY" : "STATUS", 620, 211, 100, MM_COLOR_GOLD);
-    if (party_overlay) text("DEBUG (host)", 498, 211, 115, MM_COLOR_GOLD);
+    text(equipment_open ? coop_tr("QUANTITY") : coop_tr("STATUS"), 620, 211, 100, MM_COLOR_GOLD);
+    if (party_overlay) text(coop_tr("DEBUG (host)"), 498, 211, 115, MM_COLOR_GOLD);
     for (unsigned i = 0; i < COOP_MAX_PLAYERS; i++) {
         char name[80];
         if (library_open) {
@@ -720,15 +721,15 @@ static void draw(void)
                 TigRect row = { 20, 237 + (int)i * 25, 716, 24 };
                 tig_window_fill(window, &row, tig_color_make(65, 46, 24));
             }
-            snprintf(name, sizeof(name), "%s%u. %s", slot ? "Slot " : "Last ", slot, found == COOP_DRAFT_OK ? saved.name : "Empty / unavailable");
+            snprintf(name, sizeof(name), "%s%u. %s", slot ? coop_tr("Slot ") : coop_tr("Last "), slot, found == COOP_DRAFT_OK ? saved.name : coop_tr("Empty / unavailable"));
             text(name, 24, 240 + (int)i * 25, 250, found == COOP_DRAFT_OK ? MM_COLOR_WHITE : MM_COLOR_GRAY);
             char detail[100];
             if (found == COOP_DRAFT_OK)
-                snprintf(detail, sizeof(detail), "Race %u | background %u | %u trades", saved.race, saved.background, saved.trades);
+                snprintf(detail, sizeof(detail), coop_tr("Race %u | background %u | %u trades"), saved.race, saved.background, saved.trades);
             else
-                snprintf(detail, sizeof(detail), "%s", found == COOP_DRAFT_MISSING ? "Save your current custom character here" : "Check file, profile and game data");
+                snprintf(detail, sizeof(detail), "%s", found == COOP_DRAFT_MISSING ? coop_tr("Save your current custom character here") : coop_tr("Check file, profile and game data"));
             text(detail, 280, 240 + (int)i * 25, 320, MM_COLOR_WHITE);
-            text(slot == library_slot ? "Selected" : found == COOP_DRAFT_OK ? "Saved"
+            text(slot == library_slot ? coop_tr("Selected") : found == COOP_DRAFT_OK ? coop_tr("Saved")
                                                                             : "-",
                 620, 240 + (int)i * 25, 110, MM_COLOR_GOLD);
             continue;
@@ -743,7 +744,7 @@ static void draw(void)
             }
             text(item->name, 24, 240 + (int)i * 25, 250, MM_COLOR_WHITE);
             char price[64], count[32];
-            snprintf(price, sizeof(price), item->price > 0 ? "%d gold" : "Not tradable", item->price);
+            snprintf(price, sizeof(price), item->price > 0 ? "%d gold" : coop_tr("Not tradable"), item->price);
             snprintf(count, sizeof(count), "%u", item->quantity);
             text(price, 280, 240 + (int)i * 25, 320, item->price > 0 ? MM_COLOR_GOLD : MM_COLOR_GRAY);
             text(count, 620, 240 + (int)i * 25, 100, MM_COLOR_WHITE);
@@ -754,11 +755,11 @@ static void draw(void)
             if (!found) continue;
             if (found->instance==browser_instance && found->port==browser_port) { TigRect row={20,237+(int)i*25,716,24}; tig_window_fill(window,&row,tig_color_make(65,46,24)); }
             char endpoint[64],state[40]; snprintf(endpoint,sizeof(endpoint),"%s:%u",found->address,found->port);
-            snprintf(state,sizeof(state),"%u/4 %s",found->players,found->locked ? "Running" : found->players==4 ? "Full" : "Lobby");
+            snprintf(state,sizeof(state),"%u/4 %s",found->players,found->locked ? coop_tr("Running") : found->players==4 ? coop_tr("Full") : coop_tr("Lobby"));
             bool compatible=found->protocol==COOP_PROTOCOL_VERSION && !memcmp(found->content,browser_content,32);
             text(found->name,24,240+(int)i*25,250,compatible ? MM_COLOR_WHITE : MM_COLOR_GRAY);
             text(endpoint,280,240+(int)i*25,320,MM_COLOR_WHITE);
-            text(compatible ? state : found->protocol!=COOP_PROTOCOL_VERSION ? "Version differs" : "Data differs",620,240+(int)i*25,110,compatible ? MM_COLOR_GREEN : MM_COLOR_GRAY);
+            text(compatible ? state : found->protocol!=COOP_PROTOCOL_VERSION ? coop_tr("Version differs") : coop_tr("Data differs"),620,240+(int)i*25,110,compatible ? MM_COLOR_GREEN : MM_COLOR_GRAY);
             continue;
         }
         const CoopPlayer* p = players ? &players[i] : NULL;
@@ -767,7 +768,7 @@ static void draw(void)
             tig_window_fill(window, &row, tig_color_make(65, 46, 24));
         }
         bool reserved = session && (coop_session_reserved(session) & (1u << i));
-        snprintf(name, sizeof(name), "%u. %s%s", i + 1, p && (p->connected || reserved) && p->name[0] ? p->name : "Open slot", i == 0 && p && p->connected ? " (Host)" : "");
+        snprintf(name, sizeof(name), "%u. %s%s", i + 1, p && (p->connected || reserved) && p->name[0] ? p->name : coop_tr("Open slot"), i == 0 && p && p->connected ? " (Host)" : "");
         text(name, 24, 240 + (int)i * 25, 250, p && p->connected ? MM_COLOR_WHITE : MM_COLOR_GRAY);
         const char* character = p && p->prototype ? p->character : "-";
         int member = coop_gameplay_member_for_connection(coop_runtime_gameplay(), i);
@@ -783,33 +784,33 @@ static void draw(void)
             bool immortal = coop_engine_options_immortal(coop_campaign_object((unsigned)member));
             TigRect toggle = { 498, 239 + (int)i * 25, 113, 22 };
             frame(&toggle, immortal);
-            text(immortal ? "Immortal: ON" : "Immortal: OFF", 503, 241 + (int)i * 25, 105,
+            text(immortal ? coop_tr("Immortal: ON") : coop_tr("Immortal: OFF"), 503, 241 + (int)i * 25, 105,
                 coop_session_is_host(visible_session()) ? MM_COLOR_GOLD : MM_COLOR_GRAY);
         }
         if (live_character) FREE(live_character);
-        const char* status = p && p->connected ? p->ready ? "Ready" : "Choosing" : reserved ? online ? "Rejoining" : "Waiting" : "-";
+        const char* status = p && p->connected ? p->ready ? coop_tr("Ready") : coop_tr("Choosing") : reserved ? online ? coop_tr("Rejoining") : coop_tr("Waiting") : "-";
         char health[64]; bool incapacitated = false;
-        if (p && p->connected && control && control->phase == COOP_CONTROL_VOTING) status = control->agreed & (1u << i) ? "Agreed" : "Vote needed";
-        else if (p && p->connected && control && (control->paused & (1u << i))) status = "Paused";
+        if (p && p->connected && control && control->phase == COOP_CONTROL_VOTING) status = control->agreed & (1u << i) ? coop_tr("Agreed") : coop_tr("Vote needed");
+        else if (p && p->connected && control && (control->paused & (1u << i))) status = coop_tr("Paused");
         else if (p && p->connected && saved) {
             int64_t actor = coop_campaign_object((unsigned)member);
             if (actor) {
                 snprintf(health, sizeof(health), "%d/%d HP %d FP", object_hp_current(actor), object_hp_max(actor), critter_fatigue_current(actor));
-                status = critter_is_dead(actor) ? "Dead" : critter_is_unconscious(actor) ? "Unconscious" : health;
+                status = critter_is_dead(actor) ? coop_tr("Dead") : critter_is_unconscious(actor) ? coop_tr("Unconscious") : health;
                 incapacitated = critter_is_dead(actor) || critter_is_unconscious(actor);
             }
         }
         text(status, 620, 240 + (int)i * 25, 110, incapacitated ? MM_COLOR_RED : p && p->ready ? MM_COLOR_GREEN : MM_COLOR_GRAY);
     }
     char caption[100];
-    snprintf(caption, sizeof(caption), "%d gold remaining | %s | %u/16 trades", coop_starting_gold(equipment_shop), equipment_selling ? "Sell equipment" : "Buy equipment", equipment_character.trades);
-    text(library_open ? "IMPORT / EXPORT FILE" : equipment_open ? caption
-                                                                : chat_live ? "PARTY CHAT (PgUp/PgDn)" : "CHAT HISTORY (End: latest)",
+    snprintf(caption, sizeof(caption), coop_tr("%d gold remaining | %s | %u/16 trades"), coop_starting_gold(equipment_shop), equipment_selling ? coop_tr("Sell equipment") : coop_tr("Buy equipment"), equipment_character.trades);
+    text(library_open ? coop_tr("IMPORT / EXPORT FILE") : equipment_open ? caption
+                                                                : chat_live ? coop_tr("PARTY CHAT (PgUp/PgDn)") : coop_tr("CHAT HISTORY (End: latest)"),
         24, 385, 400, MM_COLOR_GOLD);
     if (library_open) {
-        text("Eight named slots plus your last accepted build. Imports keep your own player profile.", 24, 414, 708, MM_COLOR_WHITE);
-        text("Select: use a saved build. Save here: replace this slot with your current character.", 24, 437, 708, MM_COLOR_WHITE);
-        text("Import/export path below. Removed slots keep a .deleted backup file.", 24, 460, 708, MM_COLOR_WHITE);
+        text(coop_tr("Eight named slots plus your last accepted build. Imports keep your own player profile."), 24, 414, 708, MM_COLOR_WHITE);
+        text(coop_tr("Select: use a saved build. Save here: replace this slot with your current character."), 24, 437, 708, MM_COLOR_WHITE);
+        text(coop_tr("Import/export path below. Removed slots keep a .deleted backup file."), 24, 460, 708, MM_COLOR_WHITE);
         return;
     }
     unsigned start = chat_layout();
@@ -828,10 +829,10 @@ static void activate(unsigned button)
         if (!selected_player_valid() || character_pending) return;
         if (remove_confirm_until <= SDL_GetTicks()) {
             remove_confirm_until = SDL_GetTicks() + 10000;
-            snprintf(feedback, sizeof(feedback), "Remove %s from the lobby? Click Confirm remove within ten seconds.", coop_session_players(active)[selected_player].name);
+            snprintf(feedback, sizeof(feedback), coop_tr("Remove %s from the lobby? Click Confirm remove within ten seconds."), coop_session_players(active)[selected_player].name);
         } else {
             bool removed = coop_session_remove(active, selected_player, selected_owner);
-            snprintf(feedback, sizeof(feedback), "%s", removed ? "Player removed. The remaining party must mark Ready again." : "The selected player changed. Select the current player again.");
+            snprintf(feedback, sizeof(feedback), "%s", removed ? coop_tr("Player removed. The remaining party must mark Ready again.") : coop_tr("The selected player changed. Select the current player again."));
             selected_player = COOP_NO_SLOT; remove_confirm_until = 0;
         }
         return;
@@ -844,8 +845,8 @@ static void activate(unsigned button)
         if (button==9) {
             const CoopDiscoveryParty* found=selected_lan();
             if (!found) return;
-            if (found->protocol!=COOP_PROTOCOL_VERSION || memcmp(found->content,browser_content,32)) { snprintf(feedback,sizeof(feedback),"This party needs the same multiplayer version and game content."); return; }
-            if (found->players==4 && !found->locked) { snprintf(feedback,sizeof(feedback),"That party is full."); return; }
+            if (found->protocol!=COOP_PROTOCOL_VERSION || memcmp(found->content,browser_content,32)) { snprintf(feedback,sizeof(feedback),coop_tr("This party needs the same multiplayer version and game content.")); return; }
+            if (found->players==4 && !found->locked) { snprintf(feedback,sizeof(feedback),coop_tr("That party is full.")); return; }
             snprintf(address,sizeof(address),"%s",found->address); snprintf(port_text,sizeof(port_text),"%u",found->port);
             connect_party(false); return;
         }
@@ -909,7 +910,7 @@ static void activate(unsigned button)
         if (session && !character_pending && coop_session_phase(session) == COOP_LOBBY && coop_runtime_phase() == COOP_RUNTIME_LOBBY) {
             const CoopPlayer* p = &coop_session_players(session)[coop_session_local_slot(session)];
             if (!coop_session_ready(session, !p->ready))
-                snprintf(feedback, sizeof(feedback), "Choose a character before readying up.");
+                snprintf(feedback, sizeof(feedback), coop_tr("Choose a character before readying up."));
             else
                 feedback[0] = 0;
         }
@@ -931,14 +932,14 @@ static void activate(unsigned button)
         load_character();
         break;
     case 11:
-        if (!coop_runtime_pause_toggle()) snprintf(feedback, sizeof(feedback), "The party cannot change pause right now.");
+        if (!coop_runtime_pause_toggle()) snprintf(feedback, sizeof(feedback), coop_tr("The party cannot change pause right now."));
         break;
     case 12:
-        if (!coop_saves_ui_open(coop_runtime_phase() == COOP_RUNTIME_LOBBY ? COOP_SAVES_RESUME : COOP_SAVES_SAVE)) snprintf(feedback, sizeof(feedback), "The party cannot open its saved campaigns right now.");
+        if (!coop_saves_ui_open(coop_runtime_phase() == COOP_RUNTIME_LOBBY ? COOP_SAVES_RESUME : COOP_SAVES_SAVE)) snprintf(feedback, sizeof(feedback), coop_tr("The party cannot open its saved campaigns right now."));
         break;
     case 13:
         if (coop_runtime_phase() == COOP_RUNTIME_LOBBY) coop_runtime_recover_checkpoint();
-        else if (!coop_saves_ui_open(COOP_SAVES_LOAD)) snprintf(feedback, sizeof(feedback), "The party cannot load right now.");
+        else if (!coop_saves_ui_open(COOP_SAVES_LOAD)) snprintf(feedback, sizeof(feedback), coop_tr("The party cannot load right now."));
         break;
     case 14:
     case 15: {
@@ -980,14 +981,14 @@ static bool message_filter(TigMessage* message)
         if (party_overlay && x >= 498 && x < 611 && y >= 237 && y < 337) {
             unsigned slot = (unsigned)(y - 237) / 25;
             int member = coop_gameplay_member_for_connection(coop_runtime_gameplay(), slot);
-            if (!coop_session_is_host(visible_session())) snprintf(feedback, sizeof(feedback), "Only the host can change immortality.");
+            if (!coop_session_is_host(visible_session())) snprintf(feedback, sizeof(feedback), coop_tr("Only the host can change immortality."));
             else if (member >= 0) {
                 int64_t actor = coop_campaign_object((unsigned)member);
                 bool enabled = coop_engine_options_immortal(actor);
-                if (!enabled && actor && critter_is_dead(actor)) snprintf(feedback, sizeof(feedback), "Enable immortality before death. Use resurrection for a dead character.");
+                if (!enabled && actor && critter_is_dead(actor)) snprintf(feedback, sizeof(feedback), coop_tr("Enable immortality before death. Use resurrection for a dead character."));
                 else if (coop_runtime_combat(COOP_COMBAT_IMMORTAL, (uint8_t)(((unsigned)member << 1) | !enabled), 0))
-                    snprintf(feedback, sizeof(feedback), "Immortality change requested. ON keeps HP at 1 or higher; fatigue still applies.");
-                else snprintf(feedback, sizeof(feedback), "Wait until the game is running and the previous action finishes.");
+                    snprintf(feedback, sizeof(feedback), coop_tr("Immortality change requested. ON keeps HP at 1 or higher; fatigue still applies."));
+                else snprintf(feedback, sizeof(feedback), coop_tr("Wait until the game is running and the previous action finishes."));
             }
             draw(); return true;
         }
@@ -997,7 +998,7 @@ static bool message_filter(TigMessage* message)
                 selected_player = (uint8_t)slot;
                 memcpy(selected_owner, coop_session_players(visible_session())[slot].identity, COOP_IDENTITY_SIZE);
                 remove_confirm_until = 0;
-                snprintf(feedback, sizeof(feedback), "Selected %s. Remove player asks for confirmation.", coop_session_players(visible_session())[slot].name);
+                snprintf(feedback, sizeof(feedback), coop_tr("Selected %s. Remove player asks for confirmation."), coop_session_players(visible_session())[slot].name);
             }
         }
         if (browsing && x>=20 && x<736 && y>=237 && y<337) {
@@ -1035,7 +1036,7 @@ static bool message_filter(TigMessage* message)
                     if (!slot || !coop_session_players(visible_session())[slot].connected) continue;
                     selected_player = (uint8_t)slot; remove_confirm_until = 0;
                     memcpy(selected_owner, coop_session_players(visible_session())[slot].identity, COOP_IDENTITY_SIZE);
-                    snprintf(feedback, sizeof(feedback), "Selected %s. Remove player asks for confirmation.", coop_session_players(visible_session())[slot].name);
+                    snprintf(feedback, sizeof(feedback), coop_tr("Selected %s. Remove player asks for confirmation."), coop_session_players(visible_session())[slot].name);
                     break;
                 }
             }
@@ -1163,7 +1164,7 @@ void coop_lobby_tick(void)
         coop_discovery_poll(discovery,SDL_GetTicks(),getenv("ARCMP_DISCOVERY_TARGET"));
         if (browsing && browser_page*4>=coop_discovery_count(discovery)) browser_page=0;
         if (browsing && !browser_instance && coop_discovery_count(discovery)) { browser_instance=coop_discovery_party(discovery,0)->instance;browser_port=coop_discovery_party(discovery,0)->port; }
-    } else if (browsing) snprintf(feedback,sizeof(feedback),"LAN search is unavailable. You can still enter an address and Join.");
+    } else if (browsing) snprintf(feedback,sizeof(feedback),coop_tr("LAN search is unavailable. You can still enter an address and Join."));
     CoopControls* controls = coop_runtime_controls();
     const CoopControlView* control = coop_controls_current(controls);
     if (control) {
@@ -1175,14 +1176,14 @@ void coop_lobby_tick(void)
         }
         if (control->paused != previous_pauses) {
             previous_pauses = control->paused;
-            intgame_message_window_display_str(-1, control->paused ? "The party is paused. Paused travellers are listed in Party (F12)." : "The party has resumed.");
+            intgame_message_window_display_str(-1, control->paused ? coop_tr("The party is paused. Paused travellers are listed in Party (F12).") : coop_tr("The party has resumed."));
             if (control->paused && window == TIG_WINDOW_HANDLE_INVALID) { coop_lobby_open(); party_overlay = true; }
         }
-        static const char* errors[] = { "", "That party operation is unavailable.", "That character is not owned by this player.",
-            "The party is busy. Finish the current conversation or operation first.", "The party declined the operation.", "The party vote expired.",
-            "Enemies prevent that party operation.", "Gather the party before continuing.", "That party operation is unavailable at this location.",
-            "An active traveller must request that operation.", "The checkpoint could not be saved or loaded. The previous checkpoint is preserved.",
-            "Save a party checkpoint first.", "The checkpoint requires different game content.", "Every saved owner must join with their original player profile.", "The party operation was stopped.", "That saved campaign changed. Refresh the save list and choose it again." };
+        const char* errors[] = { "", coop_tr("That party operation is unavailable."), coop_tr("That character is not owned by this player."),
+            coop_tr("The party is busy. Finish the current conversation or operation first."), coop_tr("The party declined the operation."), coop_tr("The party vote expired."),
+            coop_tr("Enemies prevent that party operation."), coop_tr("Gather the party before continuing."), coop_tr("That party operation is unavailable at this location."),
+            coop_tr("An active traveller must request that operation."), coop_tr("The checkpoint could not be saved or loaded. The previous checkpoint is preserved."),
+            coop_tr("Save a party checkpoint first."), coop_tr("The checkpoint requires different game content."), coop_tr("Every saved owner must join with their original player profile."), coop_tr("The party operation was stopped."), coop_tr("That saved campaign changed. Refresh the save list and choose it again.") };
         unsigned result_status; uint32_t result = coop_controls_last_result(controls, &result_status);
         if (result != previous_control_result) {
             previous_control_result = result;
@@ -1191,12 +1192,12 @@ void coop_lobby_tick(void)
         if (previous_control_phase != COOP_CONTROL_IDLE && control->phase == COOP_CONTROL_IDLE) {
             if (control->notice) { snprintf(feedback, sizeof(feedback), "%s", errors[control->notice]); intgame_message_window_display_str(-1, feedback); }
             else if (control->action == COOP_CONTROL_SAVE || control->action == COOP_CONTROL_LOAD) {
-                char message[180]; snprintf(message, sizeof(message), "Party campaign %s: %s.%s", control->action == COOP_CONTROL_SAVE ? "saved" : "loaded",
-                    control->description[0] ? control->description : "Quick save", control->paused ? " The party remains paused." : "");
+                char message[180]; snprintf(message, sizeof(message), coop_tr("Party campaign %s: %s.%s"), control->action == COOP_CONTROL_SAVE ? "saved" : "loaded",
+                    control->description[0] ? control->description : coop_tr("Quick save"), control->paused ? coop_tr(" The party remains paused.") : "");
                 intgame_message_window_display_str(-1, message);
             }
             else if (control->action == COOP_CONTROL_REST) {
-                char message[120]; snprintf(message, sizeof(message), "The party rested for %u hour(s).%s", control->completed, control->paused ? " The party remains paused." : "");
+                char message[120]; snprintf(message, sizeof(message), coop_tr("The party rested for %u hour(s).%s"), control->completed, control->paused ? coop_tr(" The party remains paused.") : "");
                 intgame_message_window_display_str(-1, message);
             }
         }
@@ -1212,7 +1213,7 @@ void coop_lobby_tick(void)
             equipment_selling = false;
             equipment_quantity = 1;
             equipment_open = local->custom && equipment_rebuild();
-            if (!equipment_open) snprintf(feedback, sizeof(feedback), "Starting equipment is unavailable. Your current character is unchanged.");
+            if (!equipment_open) snprintf(feedback, sizeof(feedback), coop_tr("Starting equipment is unavailable. Your current character is unchanged."));
         }
     }
     if (character_pending && coop_runtime_phase() != COOP_RUNTIME_LOBBY) character_pending = false;
@@ -1341,7 +1342,7 @@ bool coop_lobby_dropin_probe(bool framebuffer)
          * the reader is looking back. No remote users are present here. */
         for (unsigned i = 0; i < 7; i++) {
             char message[COOP_CHAT_SIZE];
-            snprintf(message, sizeof(message), "Message %u: Gather at the entrance after reading the journal. We can save the campaign, compare the clues, and decide together which route to take. Keep the earlier instructions visible while new party messages arrive.", i + 1);
+            snprintf(message, sizeof(message), coop_tr("Message %u: Gather at the entrance after reading the journal. We can save the campaign, compare the clues, and decide together which route to take. Keep the earlier instructions visible while new party messages arrive."), i + 1);
             good &= coop_session_chat(session, message);
         }
         draw();
@@ -1352,7 +1353,7 @@ bool coop_lobby_dropin_probe(bool framebuffer)
         unsigned older = chat_layout();
         good &= !chat_live && older < latest && chat_line_count > 7;
         uint64_t anchor = chat_lines[older].ordinal; unsigned part = chat_lines[older].part;
-        good &= coop_session_chat(session, "New arrival: please keep reading; your place in chat history should stay put.");
+        good &= coop_session_chat(session, coop_tr("New arrival: please keep reading; your place in chat history should stay put."));
         draw();
         good &= chat_lines[chat_layout()].ordinal == anchor && chat_lines[chat_layout()].part == part;
         preparation_pump();

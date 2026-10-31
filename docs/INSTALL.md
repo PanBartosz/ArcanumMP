@@ -2,7 +2,7 @@
 
 Delivery is Linux and Windows drop-in executables with their required libraries.
 Use matching builds for the host and every client.
-The current build uses **protocol 59**; update everyone together. Existing
+The current build uses **protocol 60**; update everyone together. Existing
 campaign saves, player identities and personal settings remain readable.
 The prebuilt Linux bundle requires glibc 2.44 or newer on x86-64. For an older
 Linux distribution, [build from source](BUILDING.md). The Windows bundle is x86-64.
@@ -19,6 +19,11 @@ preferences/profile files. These include `arcmp-display.cfg`, `arcmp-ui.cfg`,
 `arcmp-play.cfg` and per-player settings. Replacing the supplied executables and
 libraries does not require deleting personal files. All players need the same
 protocol and matching game data.
+
+Preserve `arcmp-language.cfg` and `languages/` as well. English and Polish players
+can use different presentation packs with the same common gameplay data;
+see [personal language setup](LOCALIZATION.md). Language assets are separate
+from the executable downloads.
 
 Launch `./arcanum-mp -window` or `arcanum-mp.exe -window`. File-manager and
 absolute-path launches find the game data beside the executable when the

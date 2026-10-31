@@ -1,8 +1,10 @@
+#include "coop/localization.h"
 #include "coop/modern.h"
 #include "coop/hud.h"
 #include "coop/dialogue_ui.h"
 #include "coop/engine_dialogue.h"
 #include "coop/engine_journal.h"
+#include "coop/language_engine.h"
 #include "coop/lobby_ui.h"
 #include "game/hrp.h"
 #include "ui/mainmenu_ui.h"
@@ -30,7 +32,10 @@ static DialogueLine lines[LINES];
 static bool can_choose;
 static void draw(void);
 static bool latest(void) { return !browsing && history_count && history_index + 1 == history_count; }
-static bool page(void) { return coop_journal_page(coop_engine_journal(), history_index, &page_view, page_speaker); }
+static bool page(void) {
+    if(!coop_journal_page(coop_engine_journal(),history_index,&page_view,page_speaker))return false;
+    coop_language_view(&page_view);return true;
+}
 static void clear_lines(void)
 {
     for (unsigned i = 0; i < line_count; i++) free(lines[i].text);
@@ -86,11 +91,11 @@ static bool layout(void)
     if (!wrap(view->reply, MM_COLOR_WHITE, -1) || !line("", 0, MM_COLOR_WHITE, -1)) return false;
     if (view->mode == 3 || view->mode == 5 || view->mode == 6 || view->mode == 7 || view->mode == 8 || view->mode == 9) {
         char status[128];
-        const char* action = view->mode == 3 ? "exchanging items" : view->mode == 5 ? "viewing a character sheet"
+        const char* action = view->mode == 3 ? coop_tr("exchanging items") : view->mode == 5 ? coop_tr("viewing a character sheet")
             : view->mode == 6                                                       ? "studying a map"
-            : view->mode == 7                                                       ? "combining schematic components"
-            : view->mode == 8                                                       ? "having items identified"
-                                                                                    : "having items repaired";
+            : view->mode == 7                                                       ? coop_tr("combining schematic components")
+            : view->mode == 8                                                       ? coop_tr("having items identified")
+                                                                                    : coop_tr("having items repaired");
         snprintf(status, sizeof(status), "%s is %s.", view->chooser_name, action);
         if (!wrap(status, MM_COLOR_GOLD, -1) || !line("", 0, MM_COLOR_WHITE, -1)) return false;
     }
@@ -120,15 +125,15 @@ static void draw(void)
     snprintf(title, sizeof(title), "%s  |  %s chooses", page_speaker, view->chooser_name);
     text(title, 30, 9, bounds.width-284, MM_COLOR_GOLD);
     text("< Previous", bounds.width - 236, 9, 115, history_index ? MM_COLOR_GOLD : MM_COLOR_GRAY);
-    text("Next >", bounds.width - 110, 9, 94, history_index + 1 == history_count ? MM_COLOR_GRAY : MM_COLOR_GOLD);
-    snprintf(title, sizeof(title), "%s | Page %u of %u | F8: conversation journal", latest() ? can_choose ? "Your reply" : "Observing" : "Saved conversation history", history_count ? history_index + 1 : 0, history_count);
+    text(coop_tr("Next >"), bounds.width - 110, 9, 94, history_index + 1 == history_count ? MM_COLOR_GRAY : MM_COLOR_GOLD);
+    snprintf(title, sizeof(title), coop_tr("%s | Page %u of %u | F8: conversation journal"), latest() ? can_choose ? coop_tr("Your reply") : coop_tr("Observing") : coop_tr("Saved conversation history"), history_count ? history_index + 1 : 0, history_count);
     text(title, 16, LINE_HEIGHT + 12, 720, MM_COLOR_GRAY);
     for (unsigned i = 0; i < VISIBLE && scroll + i < line_count; i++) {
         DialogueLine* item = &lines[scroll + i];
         text(item->text, 20, CONTENT_Y + (int)i * LINE_HEIGHT, bounds.width - 40, item->color);
     }
     char footer[160];
-    snprintf(footer, sizeof(footer), "Wheel / Up / Down: scroll   Left / Right: history   %u-%u of %u lines",
+    snprintf(footer, sizeof(footer), coop_tr("Wheel / Up / Down: scroll   Left / Right: history   %u-%u of %u lines"),
         line_count ? scroll + 1 : 0, scroll + VISIBLE < line_count ? scroll + VISIBLE : line_count, line_count);
     text(footer, 16, bounds.height - LINE_HEIGHT - 4, bounds.width - 32, MM_COLOR_GRAY);
     coop_hud_handles(HUD_DIALOGUE,window,&bounds,bounds.width-244,true);

@@ -1,4 +1,5 @@
 #include "game/dialog.h"
+#include "coop/localization.h"
 #include "coop/social.h"
 #include "coop/campaign.h"
 #include "coop/authority.h"
@@ -475,6 +476,7 @@ void sub_412F60(int dlg)
 // 0x412FD0
 bool sub_412FD0(DialogState* state)
 {
+    memset(state->text_refs,0,sizeof(state->text_refs));
     int64_t pc_loc;
     int64_t npc_loc;
     int64_t tmp;
@@ -578,6 +580,7 @@ void sub_4132A0(int64_t npc_obj, int64_t pc_obj, char* buffer)
 // 0x413360
 void dialog_state_init(int64_t npc_obj, int64_t pc_obj, DialogState* state)
 {
+    memset(state->text_refs,0,sizeof(state->text_refs));
     state->npc_obj = npc_obj;
     state->pc_obj = pc_obj;
     sub_443EB0(state->npc_obj, &(state->field_40));
@@ -2334,6 +2337,7 @@ int sub_4167C0(const char* str)
 // 0x416840
 bool sub_416840(DialogState* a1, bool a2)
 {
+    a1->text_refs[0]=(CoopTextRef){0};
     DialogFileEntry entry;
 
     entry.num = a1->field_17EC;
@@ -2465,11 +2469,16 @@ void sub_416B00(char* dst, char* src, DialogState* a3)
     }
 
     strcat(dst, remainder);
+    coop_language_record(dst,src);
+    CoopTextRef reference=coop_language_reference(dst);
+    if(dst==a3->reply)a3->text_refs[0]=reference;
+    for(unsigned i=0;i<5;i++)if(dst==a3->options[i])a3->text_refs[i+1]=reference;
 }
 
 // 0x416C10
 bool sub_416C10(int a1, int a2, DialogState* a3)
 {
+    a3->text_refs[a2+1]=(CoopTextRef){0};
     DialogFileEntry entry;
     char* pch;
     int values[100];
@@ -2700,6 +2709,9 @@ void dialog_load_internal(DialogFile* dialog)
         }
 
         dialog_entry_copy(&(dialog->entries[dialog->entries_length]), &tmp_entry);
+        DialogFileEntry* added=&dialog->entries[dialog->entries_length];
+        coop_language_source(added->str,dialog->path,added->num,1);
+        if(!added->iq)coop_language_source(added->data.female_str,dialog->path,added->num,2);
         dialog->entries_length++;
 
         tmp_entry.data.female_str = female_str;
@@ -3143,7 +3155,7 @@ void dialog_copy_pc_generic_msg(char* buffer, DialogState* state, int start, int
 
     cnt = mes_entries_count_in_range(dialog_mes_files[gd], start, end);
     mes_file_entry.num = start + random_between(0, cnt - 1);
-    mes_get_msg(dialog_mes_files[gd], &mes_file_entry);
+    mes_get_msg_raw(dialog_mes_files[gd], &mes_file_entry);
 
     sub_416B00(buffer, mes_file_entry.str, state);
 }
@@ -3171,7 +3183,7 @@ void dialog_copy_pc_class_specific_msg(char* buffer, DialogState* state, int num
 
     cnt = mes_entries_count_in_range(dialog_mes_files[gd], num, num + 49);
     mes_file_entry.num = num + random_between(0, cnt - 1);
-    mes_get_msg(dialog_mes_files[gd], &mes_file_entry);
+    mes_get_msg_raw(dialog_mes_files[gd], &mes_file_entry);
 
     sub_416B00(buffer, mes_file_entry.str, state);
 }
@@ -3222,7 +3234,7 @@ void dialog_copy_npc_class_specific_msg(char* buffer, DialogState* state, int nu
 
     cnt = mes_entries_count_in_range(dialog_mes_files[gd], num, num + 49);
     mes_file_entry.num = num + random_between(0, cnt - 1);
-    mes_get_msg(dialog_mes_files[gd], &mes_file_entry);
+    mes_get_msg_raw(dialog_mes_files[gd], &mes_file_entry);
 
     sub_416B00(buffer, mes_file_entry.str, state);
     state->speech_id = -1;
@@ -3271,7 +3283,7 @@ void dialog_copy_npc_race_specific_msg(char* buffer, DialogState* state, int num
 
     cnt = mes_entries_count_in_range(dialog_mes_files[gd], num, num + 49);
     mes_file_entry.num = num + random_between(0, cnt - 1);
-    mes_get_msg(dialog_mes_files[gd], &mes_file_entry);
+    mes_get_msg_raw(dialog_mes_files[gd], &mes_file_entry);
 
     sub_416B00(buffer, mes_file_entry.str, state);
     state->speech_id = -1;
@@ -3302,7 +3314,7 @@ void dialog_copy_npc_generic_msg(char* buffer, DialogState* state, int start, in
 
     cnt = mes_entries_count_in_range(dialog_mes_files[gd], start, end);
     mes_file_entry.num = start + random_between(0, cnt - 1);
-    mes_get_msg(dialog_mes_files[gd], &mes_file_entry);
+    mes_get_msg_raw(dialog_mes_files[gd], &mes_file_entry);
 
     sub_416B00(buffer, mes_file_entry.str, state);
     state->speech_id = -1;
@@ -3333,21 +3345,22 @@ bool dialog_copy_npc_override_msg(char* buffer, DialogState* state, int num)
 
     entry.num = num;
     exists = dialog_search(dlg, &entry);
-    dialog_unload(dlg);
 
     if (!exists) {
+        dialog_unload(dlg);
         return false;
     }
 
     if (state->pc_obj != OBJ_HANDLE_NULL
         && obj_type_is_critter(obj_field_int32_get(state->pc_obj, OBJ_F_TYPE))
         && stat_level_get(state->pc_obj, STAT_GENDER) == GENDER_MALE) {
-        strcpy(buffer, entry.str);
+        sub_416B00(buffer, entry.str, state);
     } else {
-        strcpy(buffer, entry.data.female_str);
+        sub_416B00(buffer, entry.data.female_str, state);
     }
 
     state->speech_id = sub_4189C0(entry.conditions, scr.num);
+    dialog_unload(dlg);
 
     return true;
 }
@@ -3387,6 +3400,8 @@ void dialog_ask_money(int amt, int param1, int param2, int a4, int a5, DialogSta
     // NPC: "It will cost you %d coins. Are you interested?"
     dialog_copy_npc_class_specific_msg(buffer, state, 1000);
     snprintf(state->reply, sizeof(state->reply), buffer, amt);
+    state->text_refs[0]=coop_language_reference(buffer);
+    coop_language_remember(state->reply,&state->text_refs[0]);
 
     // PC: "Yes."
     dialog_copy_pc_generic_msg(state->options[0], state, 1, 99);
@@ -3446,11 +3461,14 @@ void dialog_offer_training(int* skills, int cnt, int back_response_val, DialogSt
     // Iterate through offered skills and use their names as options.
     for (index = 0; index < cnt; index++) {
         if (IS_TECH_SKILL(skills[index])) {
-            strcpy(state->options[index], tech_skill_name(GET_TECH_SKILL(skills[index])));
+            strcpy(state->options[index], coop_language_original(tech_skill_name(GET_TECH_SKILL(skills[index]))));
+            coop_language_record(state->options[index],tech_skill_name(GET_TECH_SKILL(skills[index])));
         } else {
-            strcpy(state->options[index], basic_skill_name(GET_BASIC_SKILL(skills[index])));
+            strcpy(state->options[index], coop_language_original(basic_skill_name(GET_BASIC_SKILL(skills[index]))));
+            coop_language_record(state->options[index],basic_skill_name(GET_BASIC_SKILL(skills[index])));
         }
 
+        state->text_refs[index+1]=coop_language_reference(state->options[index]);
         state->field_17F0[index] = 6;
         state->field_1804[index] = skills[index];
         state->actions[index] = NULL;
@@ -3909,12 +3927,14 @@ void dialog_build_use_skill_option(int index, int skill, int response_val, Dialo
     dialog_copy_pc_generic_msg(buffer, state, 900, 999);
 
     if (IS_TECH_SKILL(skill)) {
-        name = tech_skill_name(GET_TECH_SKILL(skill));
+        name = coop_language_original(tech_skill_name(GET_TECH_SKILL(skill)));
     } else {
-        name = basic_skill_name(GET_BASIC_SKILL(skill));
+        name = coop_language_original(basic_skill_name(GET_BASIC_SKILL(skill)));
     }
 
     snprintf(state->options[index], sizeof(state->options[index]), buffer, name);
+    state->text_refs[index+1]=coop_language_reference(buffer);
+    coop_language_remember(state->options[index],&state->text_refs[index+1]);
     state->field_17F0[index] = 14;
     state->field_1804[index] = skill;
     state->field_1818[index] = response_val;
@@ -3928,7 +3948,9 @@ void dialog_build_use_spell_option(int index, int spell, int response_val, Dialo
     // PC: "[%s Spell]"
     dialog_copy_pc_generic_msg(buffer, state, 1000, 1099);
 
-    snprintf(state->options[index], sizeof(state->options[index]), buffer, spell_name(spell));
+    snprintf(state->options[index], sizeof(state->options[index]), buffer, coop_language_original(spell_name(spell)));
+    state->text_refs[index+1]=coop_language_reference(buffer);
+    coop_language_remember(state->options[index],&state->text_refs[index+1]);
     state->field_17F0[index] = 15;
     state->field_1804[index] = spell;
     state->field_1818[index] = response_val;
@@ -4082,7 +4104,9 @@ void dialog_offer_directions(const char* str, int response_val, int offset, bool
             break;
         }
 
-        strcpy(state->options[idx], area_get_name(areas[offset + idx]));
+        strcpy(state->options[idx], coop_language_original(area_get_name(areas[offset + idx])));
+        coop_language_record(state->options[idx],area_get_name(areas[offset+idx]));
+        state->text_refs[idx+1]=coop_language_reference(state->options[idx]);
         state->field_17F0[idx] = mark ? 22 : 19;
         state->field_1804[idx] = areas[offset + idx];
         state->field_1818[idx] = response_val;
@@ -4255,7 +4279,7 @@ void dialog_copy_npc_story_msg(char* buffer, DialogState* state)
     dialog_load_generated(gd);
 
     mes_file_entry.num = stat_level_get(state->npc_obj, STAT_RACE) + 100 * story_state;
-    mes_get_msg(dialog_mes_files[gd], &mes_file_entry);
+    mes_get_msg_raw(dialog_mes_files[gd], &mes_file_entry);
     sub_416B00(buffer, mes_file_entry.str, state);
     state->speech_id = -1;
 }
