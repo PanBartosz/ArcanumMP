@@ -6,6 +6,12 @@ should use matching executables and game data. Current compatibility is
 
 ## Unreleased
 
+### v0.2.1 — translation text lifetime
+
+- Keep cached translated lines valid during long sessions, including when a UI
+  draw uses several translated strings together. Adds a regression beyond the
+  former 8,192-line cache boundary.
+
 ### v0.2.0 — personal languages and empty loot
 
 - Independent language selection in the original options and playability

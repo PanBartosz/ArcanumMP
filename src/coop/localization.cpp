@@ -381,7 +381,9 @@ extern "C" const char* coop_tr_rendered(const char* text)
             i += spec.length();
         }
         if (!result.empty() && argument == values.size()) {
-            if (translated_lines.size() >= 8192) translated_lines.clear();
+            /* Callers may use several returned strings in one printf. Keep
+             * their storage for the process lifetime, just like the UI
+             * catalog; clearing here could invalidate an earlier argument. */
             return translated_lines.emplace(text, result).first->second.c_str();
         }
     }

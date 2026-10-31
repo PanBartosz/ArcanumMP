@@ -126,6 +126,15 @@ int main(int argc, char** argv)
     CHECK(!coop_language_asset("art/interface/morph15font.art", buffer, 2));
     CHECK(std::strcmp(coop_tr_rendered("Alice hits Virgil: 5 HP, 2 fatigue"), "Alice hits Virgil: 5 HP, 2 fatigue") != 0 || !polish);
     CHECK(!std::strcmp(coop_tr_rendered("unmatched player text"), "unmatched player text"));
+    if (polish) {
+        const char* retained = coop_tr_rendered("Alice hits Virgil: 5 HP, 2 fatigue");
+        const std::string expected = retained;
+        for (unsigned i = 0; i < 8200; i++) {
+            const std::string event = "Alice hits Virgil: " + std::to_string(i) + " HP, 2 fatigue";
+            coop_tr_rendered(event.c_str());
+        }
+        CHECK(!std::strcmp(retained, expected.c_str()));
+    }
     CHECK(coop_language_select(polish ? 0 : 1));
     CHECK(!std::strcmp(coop_language_active(), argv[1])); // Restart, never a mid-dialogue switch.
     CHECK(coop_language_pending() == (polish ? 0u : 1u));

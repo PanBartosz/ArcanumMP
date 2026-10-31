@@ -5,7 +5,7 @@ campaign, with Linux/Windows cross-play and modern single-/multiplayer UI tools.
 
 | Item | State |
 | --- | --- |
-| Compatibility | Version 0.2.0, protocol 60; update all players together; existing campaign saves/settings remain readable |
+| Compatibility | Version 0.2.1, protocol 60; update all players together; existing campaign saves/settings remain readable |
 | Latest gameplay build | Optimized Linux and Windows drop-ins; source revision recorded in each package |
 | Interface | Saved layouts/transparency, themed art, portrait targeting and [compact UI polish](UI_POLISH.md) |
 | Playability | Shared log, searchable inventory/actions, previews, labels, text/controls, extra rows, quests, recipes and pings |
