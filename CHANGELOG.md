@@ -1,10 +1,30 @@
 # Changelog
 
-These are development milestones, not published release tags. All players
-should use matching executables and game data. Current compatibility is
-**protocol 60**.
+Published player releases and earlier engineering milestones are listed below.
+All players should use matching executables and game data. Current compatibility is
+**protocol 61**.
 
 ## Unreleased
+
+### v0.3.0 — party gold, autosave and in-session loading
+
+- Add F12 → Give gold with a recipient picker, exact amount and 25/100/All.
+  Host validation preserves ownership, proximity, funds and overflow checks.
+- Add host-configurable periodic saves (Off, 2/5/10/15/30 minutes) and saving
+  after map/world travel. Three slots rotate; automatic capture no longer
+  reloads clients. Load them through the host catalog and a unanimous vote.
+- Enable F12 → Load campaign without requiring a quick save; named and automatic
+  slots remain available during the campaign. A refusal preserves current play.
+- Preserve native hover descriptions during passive interface refreshes; avoid
+  refreshing unchanged combat cursor state on every world update.
+- Fully invalidate resized world buffers after native inventory/schematic views,
+  including zoomed rendering. Keep the original crafting path in the focused check.
+- Move native screenshots from F12 to Print Screen, avoiding a conflict with
+  the party panel. Exclude native screenshots from file identity. Normalize only unused bytes of
+  validated prototype ObjectIDs and zero-initialize new native identifiers.
+  Retain verified older save identities; real gameplay changes remain checked.
+- Translate the new controls and feedback into Polish. Update all participants
+  together; campaign saves, player profiles and language packs remain in place.
 
 ### v0.2.4 — Polish multiplayer messages and reliable file checks
 

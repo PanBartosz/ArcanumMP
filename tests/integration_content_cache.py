@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import struct
 import tempfile
 
 p = argparse.ArgumentParser(description=__doc__)
@@ -20,8 +21,15 @@ with tempfile.TemporaryDirectory(prefix='arcmp-content-') as temporary:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(bytes([index]) * (index + 1))
 
+    def canonical_bytes(path):
+        data = bytearray(path.read_bytes())
+        if path.suffix == '.pro' and len(data) >= 56 and struct.unpack_from('<Ih', data) == (0x77, -1) and struct.unpack_from('<h', data, 28)[0] == 1:
+            for start, end in [(6, 28), (30, 36), (40, 52)]:
+                data[start:end] = bytes(end-start)
+        return data
+
     def check(label, compatible=None, accepted=True):
-        manifest = [{'path': n, 'sha256': hashlib.sha256((root/n).read_bytes()).hexdigest(),
+        manifest = [{'path': n, 'sha256': hashlib.sha256(canonical_bytes(root/n)).hexdigest(),
                      'size': (root/n).stat().st_size} for n in sorted(assets)]
         expected = hashlib.sha256(json.dumps(manifest, separators=(',', ':')).encode()).hexdigest()
         command = ['wine', probe, 'Z:' + temporary.replace('/', '\\')] if args.wine else [probe, temporary]
@@ -61,7 +69,8 @@ with tempfile.TemporaryDirectory(prefix='arcmp-content-') as temporary:
                'modules/Arcanum/maps/generated.v1', 'modules/Arcanum/Save/Current/map.sec',
                'modules/Arcanum/players/character.pro', 'data/tigcache/decoded.dat',
                'arcanum.cfg', 'HighRes/config.ini', 'arcmp-display.cfg',
-               'languages/pl/mes/menu.mes', 'languages/pl/dlg/dialogue.dlg']
+               'languages/pl/mes/menu.mes', 'languages/pl/dlg/dialogue.dlg',
+               'modules/Arcanum/screen0000.bmp', 'modules/Arcanum/screen12345.bmp', 'data/screen0001.bmp']
     timestamp = (root/'arcmp-content.json').stat().st_mtime_ns
     for name in ignored:
         path = root/name
@@ -103,3 +112,43 @@ with tempfile.TemporaryDirectory(prefix='arcmp-content-') as temporary:
         assert check('real gameplay change rejected: ' + name, retired, False) != current
         (root/assets.pop()).unlink()
         check('original data restored', retired, False)
+
+    prototype = root/'data/proto/native.pro'
+    assets.append('data/proto/native.pro')
+    raw = bytearray(range(96))
+    struct.pack_into('<Ih', raw, 0, 0x77, -1)
+    struct.pack_into('<h', raw, 28, 1)
+    struct.pack_into('<i', raw, 36, 6065)
+    prototype.write_bytes(raw)
+    current = check('native prototype header')
+    # Simulate an actual old-release manifest with raw ObjectID padding hashes.
+    old = json.loads((root/'arcmp-content.json').read_text())
+    for row in old:
+        if row['path'] == assets[-1]:
+            row['sha256'] = hashlib.sha256(raw).hexdigest()
+    old_text = json.dumps(old, separators=(',', ':'))
+    retired = hashlib.sha256(old_text.encode()).hexdigest()
+    (root/'arcmp-content.json').write_text(old_text+'\n')
+    (root/'arcmp-content.id').write_text(retired+'\n')
+    (root/'arcmp-content.cache').write_text('ACCONTENT2\n')
+    assert check('raw-header saved identity migrated without losing saves', retired) == current
+    for start, end in [(6, 28), (30, 36), (40, 52)]:
+        for index in range(start, end):
+            raw[index] ^= 0x5a
+    prototype.write_bytes(raw)
+    assert check('regenerated ObjectID padding preserves identity and old saves', retired) == current
+    raw[36] ^= 1
+    prototype.write_bytes(raw)
+    assert check('changed real prototype ID rejected', retired, False) != current
+    raw[36] ^= 1
+    raw[60] ^= 1
+    prototype.write_bytes(raw)
+    assert check('changed gameplay field rejected', retired, False) != current
+    prototype.unlink()
+    assets.pop()
+    for name in ['data/art/screen0000.bmp', 'modules/arcanum/maps/cave/screen0000.bmp', 'data/screenshot.bmp']:
+        path = root/name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'actual game art')
+        assets.append(name)
+        assert check('game artwork still fingerprinted: '+name) != original

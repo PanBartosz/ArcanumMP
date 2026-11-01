@@ -17,7 +17,7 @@ An operation never reports success merely because its input was queued.
 - **Save party** and the native Save menu open the party save browser. There
   are 63 named slots, plus quick save, recovery and three rotating autosaves. Select a
   slot, type a name and choose Save here. Overwrite requires a second click.
-- **Load party** and the native Load menu show the host's saved campaigns to
+- **F12 → Load campaign** and the native Load menu show the host's saved campaigns to
   every traveller. The vote identifies the selected slot and saved name. A
   changed file invalidates the selection rather than loading a different save.
 - The lobby host's **Resume save** opens the same browser. All saved owners must
@@ -86,13 +86,20 @@ and exact file length. Actual load also validates the full payload checksum and
 native archive before replacing the campaign. Every participant stores the same
 selected slot and description before acknowledging the shared save.
 
-The host requests a shared autosave after ten minutes of advancing connected
-play. Three party-specific copies rotate, choosing an empty slot or the oldest
-valid copy. Autosave waits through combat, conversations, pending arrivals,
-character allocation, service/actions and other party operations. Pauses,
-movies, loading and time spent disconnected do not count toward its interval.
-Automatic copies are read-only in the save browser and load through the same
-unanimous vote. Manual and quick saves remain separate.
+The host selects periodic autosaves (Off or 2/5/10/15/30 minutes) and saving
+following map/world travel in F12 → Autosave or B → Settings. Defaults are five
+minutes and travel saving enabled. The authoritative host policy is shown to
+every player; client attempts to change it are refused. Preferences are local
+to the host and persist across launches.
+
+Three party-specific automatic copies rotate, selecting an empty or the oldest
+valid slot. Autosave waits through combat, conversations, arrivals, character
+allocation, service/actions, local native panels and other party operations.
+Pauses, movies, loading and disconnected time do not count toward the interval.
+The host captures the settled native world synchronously and writes the archive
+without a shared reload or epoch change. Clients retain their open interfaces.
+Automatic copies live on the host and appear in its shared save catalog; loading
+uses the ordinary unanimous vote. Manual and quick saves remain separate.
 
 All participants store the received shared checkpoint before acknowledging a
 manual save. Recovery snapshots are also stored after campaign bootstrap,
@@ -177,3 +184,22 @@ controls auto-attack, weapon switching, always-run and follower skill assistance
 initial values come from that owner's preferences, and authenticated changes persist
 in the campaign. Client preference files and the host's campaign difficulty remain
 separate. New options and destination recovery await native runtime acceptance.
+
+
+## Focused party controls check in 0.3.0
+
+The `runtime-party-qol` check reuses the existing four-process controller loop.
+Two Linux and two Windows/Wine engines, with Polish and English presentation,
+complete nine stages: replicated host policy and refused client edits; native
+recipient/amount gold UI; an original-T pistol craft on a Windows/Wine client;
+host autosave while that client keeps T open; named save; replicated gold/world
+mutation; F12 named-load refusal without a quick save; unanimous named load;
+and unanimous load of the host-only autosave. Restored balances and the crafted
+pistol are checked by every peer. No campaign route is replayed.
+
+A separate native renderer check crafts that pistol in Crash Site Cave at
+75/100/150% zoom, applies the world delta and closes T. The map remains visible,
+the lens is released and the native render lock is balanced. This does not
+reproduce the player's intermittent black map; that exact case remains open
+in the active TODO. Native hover text, skill and spell descriptions also survive
+12 passive refreshes, release on pointer movement and yield to explicit feedback.

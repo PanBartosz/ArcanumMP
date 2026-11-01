@@ -9,7 +9,8 @@ Development coverage uses retained checkpoints and strengthened characters; it i
 not a claim of one uninterrupted normal-party playthrough or every side quest.
 Manual multiplayer play has also covered much of the first area.
 
-No demonstrated campaign progression blocker is currently listed. Further fixes
+The reported intermittent black map after original crafting remains under
+observation; see the open item below. Further fixes
 will follow reports from actual play. See [current status](STATUS.md),
 [the player guide](PLAYER_GUIDE.md) and [contributing](../CONTRIBUTING.md).
 
@@ -48,3 +49,26 @@ will follow reports from actual play. See [current status](STATUS.md),
   different personal files.
 
 [File compatibility and verification](FILE_COMPATIBILITY.md).
+
+
+## Open after 0.3.0
+
+- [ ] Confirm the intermittent black client map after original-T pistol crafting
+  is resolved. UI/chat remained usable; travel restored the view. Full viewport
+  repaint and autosave changes are included, and native cave/Windows-Wine
+  crafting checks pass, but the exact reported failure has not been reproduced.
+
+## Added and fixed in 0.3.0
+
+- [x] F12 gold transfer with recipient and exact amount, validated on the host.
+- [x] Host periodic/travel autosave preferences, three rotating slots and capture
+  without reloading clients. Manual saves remain separate.
+- [x] F12 Load campaign without a quick save; unanimous named/autosave loading
+  and refusal without abandoning the running game.
+- [x] Native hover descriptions retained across passive refreshes; unchanged
+  combat batches no longer reset cursor presentation.
+- [x] Native F12 screenshot conflict moved to Print Screen; screenshot files
+  excluded from compatibility. Unused prototype identifier bytes canonicalized;
+  verified older save identities retained, actual gameplay fields still checked.
+
+[Controls and scoped checks](COORDINATION.md#focused-party-controls-check-in-030).

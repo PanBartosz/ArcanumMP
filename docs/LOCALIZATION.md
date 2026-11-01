@@ -127,9 +127,15 @@ Polish personal catalogs override individual builtin entries; missing entries
 still use the current embedded Polish catalog. A game update therefore adds
 new UI translations without re-importing the language pack.
 
+## Party controls in 0.3.0
+
+The catalog now has 959 entries. Gold transfer, recipient/amount feedback,
+host autosave preferences and automatic-save/load notices are translated.
+No language-pack re-import is needed.
+
 ## Interface corrections in 0.2.4
 
-The embedded Polish catalog has 928 entries, including 123 newly added messages
+Version 0.2.4 expanded the embedded Polish catalog to 928 entries, including 123 messages
 for lobby connections, admission failures, lost connections, synchronization,
 map notes and character development. Remaining fragments such as the host role,
 save/load results, gold prices and conversation-journal navigation are translated.

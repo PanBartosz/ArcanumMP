@@ -12,6 +12,8 @@
 #include "coop/saves_ui.h"
 #include "coop/session.h"
 #include "coop/starting_shop.h"
+#include "coop/gold_ui.h"
+#include "coop/modern.h"
 #include "game/gamelib.h"
 #include "game/critter.h"
 #include "game/hrp.h"
@@ -115,8 +117,10 @@ static const TigRect buttons[] = {
     { 600, 382, 132, 26 },
     { 450, 382, 132, 26 },
     { 286, 382, 154, 26 },
+    { 24, 382, 120, 26 },
+    { 156, 382, 120, 26 },
 };
-static const unsigned focus_order[] = { 0, 1, 2, 3, 4, 5, 20, 6, 7, 8, 12, 13, 14, 9, 11, 15, 16, 17, 18, 19, 21, 22, 23, 10 };
+static const unsigned focus_order[] = { 0, 1, 2, 3, 4, 5, 20, 6, 7, 8, 12, 13, 14, 9, 11, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 10 };
 static bool manage_lobby(void)
 {
     CoopSession* active = visible_session();
@@ -544,12 +548,13 @@ static uint32_t enabled_buttons(void)
             || ((i == 4 || i == 5 || i == 8 || i == 10) && choosing) || (i == 9 && choosing && local && local->custom) || (i == 6 && online) || (i == 7 && can_start)
             || (i == 11 && party_overlay && (idle || voting))
             || (i == 12 && ((party_overlay && idle) || can_start))
-            || (i == 13 && ((party_overlay && idle && coop_runtime_checkpoint_exists()) || (can_start && coop_runtime_recovery_exists())))
+            || (i == 13 && ((party_overlay && idle) || (can_start && coop_runtime_recovery_exists())))
             || (i == 14 && ((voting && !voted) || (party_overlay && control && control->paused && coop_session_is_host(session) && idle)))
             || (i == 15 && online && (voting || (control && (control->phase == COOP_CONTROL_RESTING || control->phase == COOP_CONTROL_JOURNEY) && !coop_controls_pending(controls))));
         if (i==16) enabled=!connected && !loading && !failed;
         if (i == 17 || i == 18) enabled = choosing && (i == 17 || (local && local->custom));
         if (i == 19) enabled = choosing && selected_player_valid();
+        if (i == 20 || i == 21) enabled = party_overlay && idle;
         if (library_open || equipment_open) {
             enabled = (i == 2 && connected) || (i == 3 && !loading) || i == 5
                 || (choosing && (i == 4 || i == 8 || i == 9 || i == 10 || (i >= 11 && i <= 14) || (library_open && i == 15) || i == 17 || i == 18));
@@ -627,10 +632,10 @@ static void draw(void)
     bool own_pause = control && local_slot < COOP_MAX_PLAYERS && (control->paused & (1u << local_slot));
     bool voting = online && coop_runtime_phase() != COOP_RUNTIME_FAILED && control && control->phase == COOP_CONTROL_VOTING && !coop_controls_pending(controls);
     const char* labels[] = { coop_tr("Host"), reconnecting ? coop_tr("Retry now") : coop_tr("Join"), coop_tr("Leave party"), party_overlay ? coop_tr("Return") : coop_tr("Back"), coop_tr("Pick preset >"), local && local->ready ? coop_tr("Not ready") : coop_tr("Ready"), coop_tr("Send"), coop_tr("Start campaign"), local && local->custom ? coop_tr("Edit character") : coop_tr("Create character"), coop_tr("New character"), coop_tr("Load saved"),
-        own_pause ? coop_tr("Resume mine") : coop_tr("Pause"), choosing ? coop_tr("Resume save") : coop_tr("Save party"), choosing ? coop_tr("Recover party") : coop_tr("Load party"), voting ? coop_tr("Agree") : coop_tr("Resume all"),
+        own_pause ? coop_tr("Resume mine") : coop_tr("Pause"), choosing ? coop_tr("Resume save") : coop_tr("Save party"), choosing ? coop_tr("Recover party") : coop_tr("Load campaign"), voting ? coop_tr("Agree") : coop_tr("Resume all"),
         control && control->phase == COOP_CONTROL_RESTING ? coop_tr("Stop resting") : control && control->phase == COOP_CONTROL_JOURNEY ? coop_tr("Stop journey")
                                                                                                                                : coop_tr("Decline"),
-        browsing ? coop_tr("Close LAN") : coop_tr("Find LAN"), coop_tr("Characters"), coop_tr("Equipment"), remove_confirm_until > SDL_GetTicks() ? coop_tr("Confirm remove") : coop_tr("Remove player") };
+        browsing ? coop_tr("Close LAN") : coop_tr("Find LAN"), coop_tr("Characters"), coop_tr("Equipment"), remove_confirm_until > SDL_GetTicks() ? coop_tr("Confirm remove") : coop_tr("Remove player"), coop_tr("Give gold"), coop_tr("Autosave") };
     if (failed) labels[3] = coop_tr("Back to title");
     if (pending_connect >= 0) labels[2] = coop_tr("Cancel");
     if (browsing) {
@@ -941,6 +946,12 @@ static void activate(unsigned button)
     case 11:
         if (!coop_runtime_pause_toggle()) snprintf(feedback, sizeof(feedback), coop_tr("The party cannot change pause right now."));
         break;
+    case 20:
+        if (!coop_gold_ui_open()) snprintf(feedback, sizeof(feedback), "%s", coop_tr("Gold cannot be given during the current party action."));
+        break;
+    case 21:
+        coop_play_autosave_settings_open();
+        break;
     case 12:
         if (!coop_saves_ui_open(coop_runtime_phase() == COOP_RUNTIME_LOBBY ? COOP_SAVES_RESUME : COOP_SAVES_SAVE)) snprintf(feedback, sizeof(feedback), coop_tr("The party cannot open its saved campaigns right now."));
         break;
@@ -1156,6 +1167,7 @@ void coop_lobby_tick(void)
     }
     if (session) coop_session_poll(session, SDL_GetTicks());
     coop_runtime_tick(SDL_GetTicks());
+    coop_gold_ui_tick();
     coop_saves_ui_tick();
     CoopSession* active=visible_session();
     bool advertise=active && coop_session_is_host(active) && coop_session_phase(active)==COOP_LOBBY;
@@ -1200,7 +1212,8 @@ void coop_lobby_tick(void)
             if (control->notice) { snprintf(feedback, sizeof(feedback), "%s", errors[control->notice]); intgame_message_window_display_str(-1, feedback); }
             else if (control->action == COOP_CONTROL_SAVE || control->action == COOP_CONTROL_LOAD) {
                 char message[180]; snprintf(message, sizeof(message), coop_tr("Party campaign %s: %s.%s"), control->action == COOP_CONTROL_SAVE ? coop_tr("saved") : coop_tr("loaded"),
-                    control->description[0] ? control->description : coop_tr("Quick save"), control->paused ? coop_tr(" The party remains paused.") : "");
+                    control->description[0] ? (control->value >= COOP_SAVE_AUTOSAVE_FIRST ? coop_tr_rendered(control->description) : control->description)
+                        : coop_tr("Quick save"), control->paused ? coop_tr(" The party remains paused.") : "");
                 intgame_message_window_display_str(-1, message);
             }
             else if (control->action == COOP_CONTROL_REST) {
@@ -1277,6 +1290,7 @@ void coop_lobby_tick(void)
 
 void coop_lobby_shutdown(void)
 {
+    coop_gold_ui_close();
     coop_content_shutdown();
     coop_discovery_destroy(discovery); discovery=NULL; browsing=false;
     mainmenu_ui_cancel_party_character();

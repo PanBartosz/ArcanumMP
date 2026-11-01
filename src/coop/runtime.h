@@ -123,4 +123,5 @@ bool coop_runtime_arrival_event(TimeEvent* event);
 /* Explicit integration-harness opt-in; writes private runtime state/view files. */
 void coop_runtime_probe_enable(void);
 void coop_runtime_probe_retry_delay(uint32_t milliseconds);
+bool coop_runtime_probe_autosave(bool travelled);
 #endif

@@ -270,11 +270,15 @@ bool combat_campaign_state_restore(const CombatCampaignState* state)
             || !obj_type_is_critter(obj_field_int32_get(state->order[i], OBJ_F_TYPE))) return false;
     bool old_active = combat_replica_state.active;
     bool changed_turn = combat_replica_state.generation != state->generation;
+    bool refresh = changed_turn || old_active != state->active || combat_replica_state.turn_based != state->turn_based
+        || combat_replica_state.actor != state->actor || combat_replica_state.points != state->points;
     combat_replica_state = *state;
     if (changed_turn) combat_required_action_points = 0;
     if (!old_active && state->active && combat_callbacks.field_4) combat_callbacks.field_4();
     if (old_active && !state->active && combat_callbacks.field_8) combat_callbacks.field_8();
-    combat_campaign_refresh_presentation();
+    /* Ordinary world batches also carry unchanged combat state. Reapplying
+     * the cursor callback for each one disturbs native hover/description UI. */
+    if (refresh) combat_campaign_refresh_presentation();
     return true;
 }
 

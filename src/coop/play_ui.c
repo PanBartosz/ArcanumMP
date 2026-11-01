@@ -179,6 +179,17 @@ static void settings_rows(void)
             coop_tr("Delay before hover help appears. Choose immediate, 300, 550 or 1000 milliseconds.")};
         snprintf(row.detail,sizeof(row.detail),coop_tr("%s\n\nClick or press Enter to change."),descriptions[i]); rows[count++]=row;
     }
+    bool host = !coop_campaign_active() || coop_authority_can_simulate();
+    PlayRow autosave = { .id = PLAY_PREF_AUTOSAVE_MINUTES, .available = host };
+    unsigned minutes = coop_play_autosave_minutes();
+    if (minutes) snprintf(autosave.name, sizeof(autosave.name), coop_tr("Autosave: every %u minutes"), minutes);
+    else snprintf(autosave.name, sizeof(autosave.name), "%s", coop_tr("Periodic autosave: Off"));
+    snprintf(autosave.detail, sizeof(autosave.detail), "%s", coop_tr("The host chooses Off, 2, 5, 10, 15 or 30 minutes. Saves rotate through three autosave slots and wait until the party is safe and idle. Manual saves are kept. Only the host can change this setting."));
+    rows[count++] = autosave;
+    autosave.id = PLAY_PREF_AUTOSAVE_TRAVEL;
+    snprintf(autosave.name, sizeof(autosave.name), coop_tr("Autosave after travel: %s"), coop_play_autosave_travel() ? coop_tr("On") : coop_tr("Off"));
+    snprintf(autosave.detail, sizeof(autosave.detail), "%s", coop_tr("Create a rotating autosave after changing maps or completing a world journey. Saving waits for a safe moment after arrival. Only the host can change this setting; every player sees the same choice."));
+    rows[count++] = autosave;
     const char* reasons[]={coop_tr("Enemy spotted"),coop_tr("Critical health"),coop_tr("Party member down"),coop_tr("Weapon broken")};
     for (unsigned i=0;i<4;i++) {
         PlayRow row={.id=100+(int)i,.available=true};
@@ -203,6 +214,14 @@ static void settings_rows(void)
         snprintf(row.name,sizeof(row.name),"%s: %s",coop_play_binding_name(i),SDL_GetScancodeName(coop_play_binding_key(i)));
         snprintf(row.detail,sizeof(row.detail),coop_tr("%s\nCurrent key: %s\n\nClick or press Enter, then press a replacement key. Escape cancels. Conflicting assignments swap so every command remains reachable. Text entry keeps ordinary typing."),coop_play_binding_name(i),SDL_GetScancodeName(coop_play_binding_key(i))); rows[count++]=row;
     }
+}
+bool coop_play_autosave_settings_open(void)
+{
+    if ((window == TIG_WINDOW_HANDLE_INVALID || tab != PLAY_TAB_SETTINGS) && !coop_play_ui_open(PLAY_TAB_SETTINGS)) return false;
+    for (unsigned i = 0; i < count; i++) if (rows[i].id == PLAY_PREF_AUTOSAVE_MINUTES) {
+        selected = first = i; refresh(); break;
+    }
+    return true;
 }
 static void log_rows(void)
 {
@@ -321,10 +340,14 @@ static void change_setting(void)
         int value=coop_play_pref((unsigned)id);
         if (id==PLAY_PREF_TEXT) value=value==150 ? 100 : value+25;
         else if (id==PLAY_PREF_TIP_DELAY) value=value==0 ? 300 : value==300 ? 550 : value==550 ? 1000 : 0;
+        else if (id==PLAY_PREF_AUTOSAVE_MINUTES) {
+            const int intervals[] = { 0, 2, 5, 10, 15, 30 };
+            for (unsigned i = 0; i < SDL_arraysize(intervals); i++) if (value == intervals[i]) { value = intervals[(i + 1) % SDL_arraysize(intervals)]; break; }
+        }
         else value=!value;
         good=coop_play_pref_set((unsigned)id,value);
     }
-    snprintf(feedback,sizeof(feedback),"%s",good ? coop_tr("Setting saved.") : coop_tr("Could not change this setting. Multiplayer pause policy is controlled by the host."));
+    snprintf(feedback,sizeof(feedback),"%s",good ? coop_tr("Setting saved.") : coop_tr("Could not change this setting. Session settings are controlled by the host."));
 }
 static void export_log(void)
 {

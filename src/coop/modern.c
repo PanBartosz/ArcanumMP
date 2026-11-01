@@ -30,11 +30,17 @@ enum { HISTORY = COOP_PLAY_HISTORY, EVENT_BYTES = COOP_PLAY_EVENT_BYTES };
 static PlayEvent history[HISTORY];
 static uint32_t next = 1, first = 1;
 static bool prefs_loaded, solo_pause;
-static int prefs[PLAY_PREF_COUNT] = {100, 0, 1, 0, 1, 1, 0, 550, 0};
+static int prefs[PLAY_PREF_COUNT] = {100, 0, 1, 0, 1, 1, 0, 550, 0, 5, 1};
 static tig_font_handle_t fonts[MM_COLOR_COUNT], chrome_fonts[MM_COLOR_COUNT];
 static CoopSession* network;
 static uint32_t network_epoch, cursors[4], sent_policy[4];
 static unsigned pause_policy;
+static unsigned autosave_minutes = 5;
+static bool autosave_travel = true;
+static bool valid_autosave_minutes(int value)
+{
+    return value == 0 || value == 2 || value == 5 || value == 10 || value == 15 || value == 30;
+}
 static char pause_reason[192];
 static uint64_t ping_at[4];
 static bool map_ping_add(unsigned member,unsigned context,unsigned x,unsigned y);
@@ -97,7 +103,8 @@ static void prefs_load(void)
             if ((i==PLAY_PREF_TEXT && n>=100 && n<=150 && n%25==0)
                 || (i==PLAY_PREF_TIP_DELAY && n>=0 && n<=1500)
                 || (i==PLAY_PREF_AUTOPAUSE && n>=0 && n<=15)
-                || (i!=PLAY_PREF_TEXT && i!=PLAY_PREF_TIP_DELAY && i!=PLAY_PREF_AUTOPAUSE && (n==0 || n==1))) prefs[i]=n;
+                || (i==PLAY_PREF_AUTOSAVE_MINUTES && valid_autosave_minutes(n))
+                || (i!=PLAY_PREF_TEXT && i!=PLAY_PREF_TIP_DELAY && i!=PLAY_PREF_AUTOPAUSE && i!=PLAY_PREF_AUTOSAVE_MINUTES && (n==0 || n==1))) prefs[i]=n;
         } else if (sscanf(line,"key%u=%d",&i,&n)==2 && i<SDL_arraysize(bindings)
             && n>SDL_SCANCODE_UNKNOWN && n<SDL_SCANCODE_COUNT && n!=SDL_SCANCODE_ESCAPE) bindings[i].assigned=(SDL_Scancode)n;
     }
@@ -125,8 +132,10 @@ bool coop_play_pref_set(unsigned i, int value)
     if (i>=PLAY_PREF_COUNT || (i==PLAY_PREF_TEXT && (value<100 || value>150 || value%25))
         || (i==PLAY_PREF_TIP_DELAY && (value<0 || value>1500))
         || (i==PLAY_PREF_AUTOPAUSE && (value<0 || value>15))
-        || (i!=PLAY_PREF_TEXT && i!=PLAY_PREF_TIP_DELAY && i!=PLAY_PREF_AUTOPAUSE && value!=0 && value!=1)) return false;
-    if (i==PLAY_PREF_AUTOPAUSE && coop_campaign_active() && !coop_authority_can_simulate()) return false;
+        || (i==PLAY_PREF_AUTOSAVE_MINUTES && !valid_autosave_minutes(value))
+        || (i!=PLAY_PREF_TEXT && i!=PLAY_PREF_TIP_DELAY && i!=PLAY_PREF_AUTOPAUSE && i!=PLAY_PREF_AUTOSAVE_MINUTES && value!=0 && value!=1)) return false;
+    if ((i==PLAY_PREF_AUTOPAUSE || i==PLAY_PREF_AUTOSAVE_MINUTES || i==PLAY_PREF_AUTOSAVE_TRAVEL)
+        && coop_campaign_active() && !coop_authority_can_simulate()) return false;
     int old=prefs[i]; prefs[i]=value;
     if (!prefs_save()) { prefs[i]=old; return false; }
     if (i==PLAY_PREF_TEXT || i==PLAY_PREF_CONTRAST) for (unsigned n=0;n<MM_COLOR_COUNT;n++) {
@@ -330,6 +339,10 @@ static bool decode(const uint8_t* p,size_t size,PlayEvent* e)
 }
 unsigned coop_play_pause_policy(void)
 { return coop_campaign_active() && !coop_authority_can_simulate() ? pause_policy : (unsigned)coop_play_pref(PLAY_PREF_AUTOPAUSE); }
+unsigned coop_play_autosave_minutes(void)
+{ return coop_campaign_active() && !coop_authority_can_simulate() ? autosave_minutes : (unsigned)coop_play_pref(PLAY_PREF_AUTOSAVE_MINUTES); }
+bool coop_play_autosave_travel(void)
+{ return coop_campaign_active() && !coop_authority_can_simulate() ? autosave_travel : coop_play_pref(PLAY_PREF_AUTOSAVE_TRAVEL) != 0; }
 void coop_play_network_tick(CoopSession* s,uint32_t epoch,unsigned ready)
 {
     if (network!=s || network_epoch!=epoch) {
@@ -338,10 +351,11 @@ void coop_play_network_tick(CoopSession* s,uint32_t epoch,unsigned ready)
     }
     if (!coop_session_is_host(s)) return;
     pause_policy=coop_play_pause_policy();
+    unsigned policy=pause_policy | (coop_play_autosave_minutes()<<4) | (coop_play_autosave_travel() ? 1u<<10 : 0);
     for (unsigned i=1;i<4;i++) if (ready&(1u<<i)) {
-        if (sent_policy[i]!=pause_policy) {
-            uint8_t p[8]; put32(p,epoch); put32(p+4,pause_policy);
-            if (coop_session_send(s,(uint8_t)i,COOP_PLAY_POLICY,p,sizeof(p))) sent_policy[i]=pause_policy;
+        if (sent_policy[i]!=policy) {
+            uint8_t p[8]; put32(p,epoch); put32(p+4,policy);
+            if (coop_session_send(s,(uint8_t)i,COOP_PLAY_POLICY,p,sizeof(p))) sent_policy[i]=policy;
         }
         uint32_t cursor=cursors[i]<first ? first : cursors[i];
         for (unsigned budget=0;cursor<next && budget<8;budget++,cursor++) {
@@ -381,8 +395,10 @@ bool coop_play_network_message(CoopSession* s,uint32_t epoch,uint8_t sender,int 
         append(e); return true;
     }
     if (type==COOP_PLAY_POLICY) {
-        if (coop_session_is_host(s) || sender || size!=8 || get32(p+4)>15) return false;
-        pause_policy=get32(p+4); return true;
+        if (coop_session_is_host(s) || sender || size!=8) return false;
+        unsigned policy=get32(p+4), minutes=(policy>>4)&63;
+        if ((policy&~2047u) || !valid_autosave_minutes((int)minutes)) return false;
+        pause_policy=policy&15; autosave_minutes=minutes; autosave_travel=(policy&(1u<<10))!=0; return true;
     }
     if (type==COOP_PLAY_PING) {
         if (!coop_session_is_host(s) || size!=16 || get32(p+4)!=(uint32_t)map_current_map()) return false;

@@ -111,11 +111,14 @@ unconsciousness still apply.
 | Action | Control |
 | --- | --- |
 | Party chat, votes and shared controls | F12 |
+| Native screenshot | Print Screen |
 | Older chat / latest messages | Page Up / Page Down; wheel over chat; End |
 | Discovered documents | F7 |
 | Conversation journal | F8 |
 | Shared quick save / propose quick load | F9 / F10 |
-| Named save or load | Native Save/Load menu or F12 party controls |
+| Named save or load | Native Save/Load menu or F12 → Save party / Load campaign |
+| Give a party member gold | F12 → Give gold; choose recipient and amount |
+| Automatic saves | F12 → Autosave (host configures) |
 | Propose rest or wait | S; gather the party first |
 | Map notes | N in the map |
 
@@ -123,6 +126,21 @@ Rest, travel and loading require party agreement. Answer the vote in F12;
 any player can decline or stop a rest/journey. Opening a local menu does not
 pause everyone. Use the party **Pause** control; the host can **Resume all**.
 If controls appear frozen, check F12 for a vote, pause hold or missing owner.
+
+**Give gold** transfers an exact amount from your purse. Stand within eight
+tiles of a connected, conscious party member, select them and type an amount
+or use 25 / 100 / All. The host validates both balances before applying it.
+
+**Load campaign** works during play, even without a quick save. Choose a named
+save, quick save, recovery or autosave from the host’s browser. Every player
+must agree; a refusal leaves the current campaign running.
+
+The host can set automatic saves to Off or every **2 / 5 / 10 / 15 / 30 minutes**,
+and toggle saving after map/world travel. The default is five minutes with
+travel saves enabled. Three slots rotate; manual saves remain separate. Saves
+wait until the party is safe and actions have settled. Automatic files stay on
+the host and are available through **F12 → Load campaign**; manual shared saves
+retain a copy on each participant. Preferences persist across launches.
 
 Plot world-map journeys using the original waypoint controls. Multiplayer keeps
 all plotted waypoints (up to 30), so routes around rivers and mountains follow

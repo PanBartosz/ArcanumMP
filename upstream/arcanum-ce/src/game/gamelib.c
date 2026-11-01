@@ -603,6 +603,10 @@ void gamelib_resize(GameResizeInfo* resize_info)
             gamelib_dirty_rects_head->rect = frame;
         }
     }
+    /* Native inventory/schematic panels resize the viewport when entering or
+     * leaving compact UI. A resized zoom surface starts empty; repaint its
+     * entire logical area, including when the previous scene was clean. */
+    gamelib_invalidate_rect(NULL);
 }
 
 // 0x402780

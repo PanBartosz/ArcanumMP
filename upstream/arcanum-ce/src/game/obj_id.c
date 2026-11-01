@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "game/location.h"
 #include "game/map.h"
@@ -16,6 +17,7 @@ static bool sub_4E6B00(char* dst, const char* src, size_t length);
 // 0x4E62A0
 void objid_create_guid(ObjectID* oid)
 {
+    memset(oid, 0, sizeof(*oid));
     tig_guid_create(&(oid->d.g));
     oid->type = OID_TYPE_GUID;
 }
@@ -23,6 +25,7 @@ void objid_create_guid(ObjectID* oid)
 // 0x4E62D0
 void objid_id_perm_by_load_order(ObjectID* oid, int64_t obj)
 {
+    memset(oid, 0, sizeof(*oid));
     if (object_is_static(obj)) {
         oid->d.p.location = obj_field_int64_get(obj, OBJ_F_LOCATION);
         oid->d.p.temp_id = obj_field_int32_get(obj, OBJ_F_TEMP_ID);
@@ -93,7 +96,7 @@ bool objid_is_equal(ObjectID a, ObjectID b)
 // 0x4E6540
 ObjectID sub_4E6540(int a1)
 {
-    ObjectID oid;
+    ObjectID oid = { 0 };
     oid.type = OID_TYPE_A;
     oid.d.a = a1;
     return oid;

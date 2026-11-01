@@ -48,7 +48,8 @@ static void choose(unsigned row)
     if (current && current->page == page && row >= current->count) return;
     selection = row; confirm = 0; editing = name_dirty = false; feedback[0] = 0;
     const CoopSaveEntry* entry = selected();
-    if (entry && entry->status == COOP_CHECKPOINT_OK) snprintf(name, sizeof(name), "%s", entry->info.description);
+    if (entry && entry->status == COOP_CHECKPOINT_OK) snprintf(name, sizeof(name), "%s",
+        entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? coop_tr_rendered(entry->info.description) : entry->info.description);
     else default_name();
 }
 static void request_page(unsigned wanted)
@@ -119,7 +120,8 @@ static void draw(void)
         snprintf(automatic, sizeof(automatic), coop_tr("Autosave %u"), entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? entry->slot - COOP_SAVE_AUTOSAVE_FIRST + 1 : 0);
         const char* kind = entry->slot == 0 ? coop_tr("Quick save") : entry->slot == COOP_SAVE_RECOVERY ? coop_tr("Recovery")
             : entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? automatic : NULL;
-        if (kind) snprintf(label, sizeof(label), "%s | %s", kind, entry->status == COOP_CHECKPOINT_OK ? entry->info.description : "");
+        if (kind) snprintf(label, sizeof(label), "%s | %s", kind, entry->status == COOP_CHECKPOINT_OK
+            ? (entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? coop_tr_rendered(entry->info.description) : entry->info.description) : "");
         else snprintf(label, sizeof(label), "%02u | %s", entry->slot, entry->status == COOP_CHECKPOINT_OK ? entry->info.description : entry->status == COOP_CHECKPOINT_MISSING ? coop_tr("Empty slot") : coop_tr("Unavailable save"));
         text(label, 30, box.y + 3, 700, row == selection ? MM_COLOR_GOLD : MM_COLOR_WHITE);
         if (entry->status == COOP_CHECKPOINT_OK) {

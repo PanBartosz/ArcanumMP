@@ -1,12 +1,13 @@
 # Current status
 
-Updated 2026-11-01. ArcanumMP implements four-player LAN co-op for the original
+Updated 2026-11-02. ArcanumMP implements four-player LAN co-op for the original
 campaign, with Linux/Windows cross-play and modern single-/multiplayer UI tools.
 
 | Item | State |
 | --- | --- |
-| Compatibility | Version 0.2.4, protocol 60; update all players together; existing campaign saves/settings remain readable |
-| File checks | Ignore settings/logs/backups and generated caches inside game-data folders; verified migration retains older saves/drafts; [details](FILE_COMPATIBILITY.md) |
+| Compatibility | Version 0.3.0, protocol 61; update all players together; existing campaign saves/settings remain readable |
+| File checks | Exclude native screenshots and generated/personal files; normalize unused prototype-ID bytes, retaining actual gameplay checks and proven older save identities; [details](FILE_COMPATIBILITY.md) |
+| Party controls | F12 gold transfer, in-session load votes, host periodic/travel autosaves without client reload; [guide](PLAYER_GUIDE.md) |
 | Latest gameplay build | Optimized Linux and Windows drop-ins; source revision recorded in each package |
 | Interface | Saved layouts/transparency, themed art, portrait targeting and [compact UI polish](UI_POLISH.md) |
 | Playability | Shared log, searchable inventory/actions, previews, labels, text/controls, extra rows, quests, recipes and pings |
@@ -26,10 +27,12 @@ playthrough, normal-party balance or every side quest. Manual multiplayer play
 through much of the first area has also been reported without major issues.
 
 Known limits: names/chat use printable ASCII; a running world does not migrate
-automatically to a new host. No known campaign blockers are currently listed.
+automatically to a new host. The reported black client map after crafting remains under observation; targeted
+native cave and Windows/Wine original-crafting checks have not reproduced it.
 
 Use [the active TODO](CAMPAIGN_TODO.md) for demonstrated remaining work,
 [readiness evidence](FINAL_READINESS.md) for retained results/qualifications,
 [features](FEATURES.md) for implementation mapping and [the player guide](PLAYER_GUIDE.md)
 for controls. [Release preparation](RELEASING.md#local-artifacts) explains the local
 artifact catalog; [showcase notes](SHOWCASE.md) record video provenance.
+

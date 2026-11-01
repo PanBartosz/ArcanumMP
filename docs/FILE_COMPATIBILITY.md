@@ -20,16 +20,30 @@ the native generated `art/tile/tilevariant.dat` and map preprocessing files
 directly inside a repository's `maps/` folder. Actual map resources in each map's
 subdirectory remain checked.
 
-The previous check included virtually every file inside those repositories.
-Adding a log, backup or preference file could therefore produce an apparent
-game-data mismatch. Reproductions confirm this mechanism; they do not establish
-which particular files differed on a player's computer without both manifests.
+Version 0.3.0 additionally excludes native `screenNNNN.bmp` screenshots at
+the repository root (`data/` or `modules/<module>/`). Images inside art or map
+subdirectories remain checked. A supplied player manifest contained three such
+screenshots that were absent from the comparison installation, while all game
+archives matched. Taking a screenshot previously changed the campaign identity. Native screenshot
+polling also still used F12, conflicting with the party panel. It now uses Print
+Screen, so normal party-panel visits no longer create image files.
+
+Old native prototype generation also left uninitialized bytes inside serialized
+`ObjectID` headers. For a validated version-0x77 prototype header, 0.3.0 normalizes
+only the padding and unused union payload of its blocked/integer identifiers
+before hashing. The prototype number, type and every gameplay field remain
+checked. New native identifier construction zero-initializes those bytes.
+Prototype SHA-256 entries therefore describe canonical meaningful data rather
+than the raw file bytes. The supplied manifests also differed in 307 equal-sized
+prototype hashes; manifests alone cannot establish that every difference was
+padding, and genuine prototype differences still require investigation.
 
 ## Keeping older saves
 
-On the first 0.2.4 launch the cache is refreshed once. The game compares the
+On the first 0.3.0 launch the cache is refreshed once. The game compares the
 previous `arcmp-content.json` with the newly verified manifest after excluding
-the files above. Only if every retained file still matches does it remember
+the files above. For older prototype hashes, the service also compares the old manifest with
+the freshly hashed raw files. Only a proven match of every retained file lets it remember
 the retired identity in `arcmp-content.compat`. This lets older campaign saves,
 named save slots, saved characters and character exports remain readable.
 Nothing is rewritten or deleted from the original saves.
@@ -58,7 +72,10 @@ delete the previous manifest or `arcmp-content.compat` during an upgrade.
 The production fingerprint service is checked on Linux and Windows through
 Wine. Cases cover changed launch-time settings/logs/caches, backup files,
 identical recopies, old cache migration, preserved retired identities and
-rejection of real prototype/rule/script/map/patch changes. Portable tests also
+rejection of real prototype/rule/script/map/patch changes. Additional cases
+verify native screenshots, padding-only prototype regeneration, migration from
+raw prototype hashes, and continued rejection of changed prototype IDs/fields
+and image resources. Portable tests also
 load an older checkpoint/character through a verified alias and locate its named
 save slot, while retaining ownership checks.
 

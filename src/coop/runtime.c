@@ -1,5 +1,6 @@
 #include "coop/runtime.h"
 #include "coop/localization.h"
+#include "coop/modern.h"
 #include "coop/authority.h"
 #include "coop/bootstrap.h"
 #include "coop/campaign.h"
@@ -59,6 +60,9 @@ typedef struct CoopRuntime {
     CoopReconnect* reconnect;
     CoopSaveCatalog* saves;
     uint64_t autosave_tick, autosave_elapsed;
+    uint64_t autosave_retry_at;
+    bool autosave_travel_pending;
+    bool autosaving;
     uint32_t seen_roster, reconnect_prepared;
     uint64_t waiting_since, retry_at;
     uint8_t saved_pauses;
@@ -210,7 +214,9 @@ static bool store_slot(CoopRuntime* r, unsigned slot, const uint8_t* bytes, size
         coop_save_inspect(&party, slot, &previous);
         if (previous.status != COOP_CHECKPOINT_OK && previous.status != COOP_CHECKPOINT_MISSING) return false;
     }
-    return store_checkpoint(r, path, bytes, size, description[0] ? description : "Party checkpoint");
+    bool saved = store_checkpoint(r, path, bytes, size, description[0] ? description : "Party checkpoint");
+    if (saved && slot >= COOP_SAVE_AUTOSAVE_FIRST) r->autosave_travel_pending = false;
+    return saved;
 }
 static unsigned validate_checkpoint(CoopRuntime* r, const CoopControlRequest* request)
 {
@@ -456,7 +462,7 @@ bool coop_runtime_checkpoint_request(CoopControlAction action, const CoopSaveEnt
 static bool exists(const char* path) { FILE* file = fopen(path, "rb"); if (!file) return false; fclose(file); return true; }
 bool coop_runtime_checkpoint_exists(void) { return exists(checkpoint_path); }
 bool coop_runtime_recovery_exists(void) { return exists(recovery_path); }
-bool coop_runtime_native_save_allowed(void) { return !runtime || ((!runtime->gameplay || coop_gameplay_finished(runtime->gameplay)) && runtime->phase != COOP_RUNTIME_FAILED && coop_session_is_host(runtime->session)); }
+bool coop_runtime_native_save_allowed(void) { return !runtime || ((runtime->autosaving || !runtime->gameplay || coop_gameplay_finished(runtime->gameplay)) && runtime->phase != COOP_RUNTIME_FAILED && coop_session_is_host(runtime->session)); }
 bool coop_runtime_native_load_allowed(void) { return !runtime || runtime->restoring || !runtime->campaign; }
 static bool probe;
 static uint32_t probe_retry_delay = 1000;
@@ -1231,6 +1237,7 @@ static const char* begin_travel(CoopRuntime* r, uint64_t now)
     if (!moved || map_current_map() != r->travel.map) return "The host could not load the destination map.";
     if (!coop_campaign_validate()) return "A party character is missing from the destination.";
     if (!place_party()) return "Could not find room for the party at the destination entrance.";
+    if (coop_play_autosave_travel()) r->autosave_travel_pending = true;
     coop_engine_transition_reset();
     coop_engine_teleport_reset();
     fprintf(stderr, "ARCMP campaign travel epoch=%u map=%d\n", r->epoch, map_current_map());
@@ -1286,15 +1293,19 @@ static void autosave(CoopRuntime* r, uint64_t now)
 {
     uint64_t elapsed = r->autosave_tick && now >= r->autosave_tick ? now - r->autosave_tick : 0;
     r->autosave_tick = now;
-    if (probe || !coop_session_is_host(r->session) || !r->campaign || !playing_allowed() || coop_runtime_paused()
+    if (r->autosaving || probe || !coop_session_is_host(r->session) || !r->campaign || !playing_allowed() || coop_runtime_paused()
         || r->operation_pending || r->travel_pending || r->dialogue_journey_pending) return;
     /* Charge time only while ordinary connected gameplay is advancing. A
      * long snapshot, movie, pause or suspended OS process is not playtime. */
     r->autosave_elapsed += elapsed > 1000 ? 1000 : elapsed;
-    if (r->autosave_elapsed < 600000 || coop_controls_pending(r->controls)) return;
+    unsigned minutes = coop_play_autosave_minutes();
+    if (!coop_play_autosave_travel()) r->autosave_travel_pending = false;
+    if ((!r->autosave_travel_pending && (!minutes || r->autosave_elapsed < (uint64_t)minutes * 60000))
+        || now < r->autosave_retry_at || coop_controls_pending(r->controls)) return;
     const CoopControlView* control = coop_controls_current(r->controls);
     CoopGameplay* game = r->gameplay;
-    if (control->phase != COOP_CONTROL_IDLE || coop_saves_ui_active() || coop_engine_dialogue_pending() || coop_engine_teleport_any()
+    if (control->phase != COOP_CONTROL_IDLE || coop_saves_ui_active() || coop_lobby_is_open() || coop_play_ui_blocking()
+        || intgame_mode_get() != INTGAME_MODE_MAIN || coop_engine_dialogue_pending() || coop_engine_teleport_any()
         || coop_dialogue_current(coop_gameplay_dialogue(game))->active || combat_turn_based_is_active()
         || !coop_dialogue_settled(coop_gameplay_dialogue(game)) || !coop_engine_use_settled()
         || !coop_items_settled(coop_gameplay_items(game)) || !coop_battle_settled(coop_gameplay_battle(game))
@@ -1317,17 +1328,42 @@ static void autosave(CoopRuntime* r, uint64_t now)
         if (!found || (entry.status == COOP_CHECKPOINT_MISSING && selected.status != COOP_CHECKPOINT_MISSING)
             || (entry.status == selected.status && entry.modified < selected.modified)) { selected = entry; found = true; }
     }
-    if (!found) { r->autosave_elapsed = 540000; return; }
+    if (!found) { r->autosave_retry_at = now + 15000; return; }
     int64_t pc = player_get_local_pc_obj();
     if (!pc) return;
-    CoopControlRequest request = { .map = (uint32_t)map_current_map(), .action = COOP_CONTROL_SAVE, .value = selected.slot,
-        .checkpoint_present = selected.status == COOP_CHECKPOINT_OK, .checkpoint_fingerprint = selected.fingerprint };
-    memcpy(request.actor, obj_get_id(pc).d.g.data, 16);
-    snprintf(request.description, sizeof(request.description), "Autosave %u", selected.slot - COOP_SAVE_AUTOSAVE_FIRST + 1);
-    if (coop_controls_submit(r->controls, &request)) {
-        r->autosave_elapsed = 0;
-        fprintf(stderr, "ARCMP party autosave requested slot=%u\n", selected.slot);
-    }
+    /* The host owns the complete world. A native snapshot taken synchronously
+     * between settled actions needs no destructive reload or client UI reset.
+     * The host catalog makes this save available to every participant's load
+     * vote. Manual shared saves still retain their existing replicated copies. */
+    char description[COOP_CHECKPOINT_DESCRIPTION];
+    bool travelled = r->autosave_travel_pending;
+    unsigned number = selected.slot - COOP_SAVE_AUTOSAVE_FIRST + 1;
+    snprintf(description, sizeof(description), travelled ? "Travel autosave %u" : "Autosave %u", number);
+    size_t size = 0;
+    r->autosaving = true;
+    uint8_t* snapshot = coop_engine_snapshot_capture(&size);
+    r->autosaving = false;
+    bool saved = snapshot && store_slot(r, selected.slot, snapshot, size, description);
+    free(snapshot);
+    gamelib_invalidate_rect(NULL);
+    r->autosave_retry_at = now + 15000;
+    if (saved) {
+        char message[160];
+        snprintf(message, sizeof(message), travelled ? "Travel autosave %u created." : "Autosave %u created.", number);
+        coop_play_event(PLAY_NOTICE, pc, 0, message, "Automatic saves are kept on the host. Load them from F12, Load campaign.");
+        fprintf(stderr, "ARCMP party autosave completed slot=%u bytes=%zu epoch=%u\n", selected.slot, size, r->epoch);
+    } else fprintf(stderr, "ARCMP party autosave failed slot=%u; previous saves retained\n", selected.slot);
+}
+bool coop_runtime_probe_autosave(bool travelled)
+{
+    if (!probe || !runtime || !coop_session_is_host(runtime->session)) return false;
+    runtime->autosave_elapsed = (uint64_t)coop_play_autosave_minutes() * 60000;
+    runtime->autosave_travel_pending = travelled;
+    runtime->autosave_retry_at = 0;
+    probe = false;
+    autosave(runtime, SDL_GetTicks());
+    probe = true;
+    return runtime->autosave_elapsed == 0 && !runtime->autosave_travel_pending;
 }
 bool coop_runtime_resume_slot(const CoopSaveEntry* entry)
 {
@@ -1347,7 +1383,7 @@ CoopCheckpointStatus coop_runtime_remove_slot(const CoopSaveEntry* entry)
 void coop_runtime_tick(uint64_t now)
 {
     CoopRuntime* r = runtime;
-    if (!r || r->phase == COOP_RUNTIME_FAILED) return;
+    if (!r || r->autosaving || r->phase == COOP_RUNTIME_FAILED) return;
     if (coop_session_failed(r->session)) { fail(coop_session_status(r->session)); return; }
     /* Intro media precedes the first snapshot. Bind its locked launch roster
      * once; a later roster change must still interrupt active playback. */
@@ -1434,6 +1470,7 @@ void coop_runtime_tick(uint64_t now)
     if (r->phase == COOP_RUNTIME_JOURNEY) {
         if (r->journey_done) {
             if (!finish_journey(r)) { fail("Could not restore the party after the world journey."); return; }
+            if (coop_play_autosave_travel()) r->autosave_travel_pending = true;
             if (!capture(r, now)) { fail("Could not save the shared world journey destination."); return; }
             phase(COOP_RUNTIME_LOADING);
         } else {
@@ -1608,6 +1645,7 @@ const char* coop_runtime_status(void)
 }
 bool coop_runtime_blocks_simulation(void)
 {
+    if (runtime && runtime->autosaving) return true;
     if (runtime && (runtime->presenting || runtime->present_recovering || runtime->ending_at || coop_present_active(runtime->presentation))) return true;
     CoopRuntimePhase state = coop_runtime_phase();
     if (state == COOP_RUNTIME_RESTING || state == COOP_RUNTIME_JOURNEY) return false;

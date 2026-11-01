@@ -1,6 +1,19 @@
-# LAN wire protocol, version 60
+# LAN wire protocol, version 61
 
-All participants must use protocol 60. Version 60 adds presentation references
+All participants must use protocol 61. Version 61 adds wallet-to-wallet gold
+transfers (item opcode 18, null item ID, recipient campaign member, positive
+32-bit amount bounded by INT_MAX). The host checks sender ownership, activity,
+proximity, funds and recipient overflow, then uses the existing ordered item
+request/world acknowledgment path.
+
+`COOP_PLAY_POLICY` remains two big-endian u32s: epoch and packed host settings.
+The second word uses bits 0–3 for auto-pause, bits 4–9 for autosave minutes
+(0/2/5/10/15/30), and bit 10 for save after travel. Remaining bits must be zero.
+Host autosaves capture at safe idle without changing the epoch; loading them
+uses the existing save fingerprint and unanimous party vote. Older campaign
+archives remain readable; network peers must update together.
+
+Version 60 adds presentation references
 to dialogue views (`ACD2`) and saved dialogue recovery (`ACDLGR06`). A reference
 is a canonical resource path, numeric text key and text variant. Each player
 resolves it locally; original conditions, actions and choice indices remain

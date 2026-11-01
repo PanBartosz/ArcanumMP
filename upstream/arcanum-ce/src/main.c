@@ -260,7 +260,9 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    screenshotter.key = SDL_SCANCODE_F12;
+    /* F12 opens the party panel. Native screenshot polling runs before UI
+     * dispatch and used to write a BMP on each ordinary party-panel visit. */
+    screenshotter.key = SDL_SCANCODE_PRINTSCREEN;
     screenshotter.field_4 = 0;
     tig_video_screenshot_set_settings(&screenshotter);
 

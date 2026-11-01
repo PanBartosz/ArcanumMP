@@ -1,4 +1,7 @@
 #include "coop/controls_probe.h"
+#include "coop/gold_ui.h"
+#include "coop/modern.h"
+#include "coop/display.h"
 #include "coop/runtime.h"
 #include "coop/saves_ui.h"
 #include "coop/lobby_ui.h"
@@ -33,6 +36,8 @@
 #include "game/stat.h"
 #include "game/spell.h"
 #include "game/timeevent.h"
+#include "game/tech.h"
+#include "ui/schematic_ui.h"
 #include "game/tile.h"
 #include "game/teleport.h"
 #include "game/trap.h"
@@ -52,7 +57,7 @@
 #include <string.h>
 enum { CONTROL_PHASES = 18, ITEM_TAG = 187700, FOLLOWER_TAG = 187701 };
 static CoopSession* held;
-static bool tools_mode;
+static bool tools_mode, qol_mode;
 static int bound_members[4] = { -1, -1, -1, -1 };
 void coop_controls_probe_cleanup(void)
 {
@@ -309,6 +314,32 @@ static bool named_browser(bool save, unsigned* step, uint64_t* next, bool frameb
     (*step)++; *next = now + 350;
     return true;
 }
+static bool qol_prepare(CoopSession* session)
+{
+    if (!prepare(session) || !gather(session)) return false;
+    int64_t actor = pc_slot(session, 1);
+    stat_base_set(actor, STAT_INTELLIGENCE, 20);
+    obj_arrayfield_uint32_set(actor, OBJ_F_CRITTER_SPELL_TECH_IDX, 17 + TECH_GUN, 1);
+    SchematicInfo recipe;
+    schematic_ui_info_get(tech_schematic_get(TECH_GUN, 1), &recipe);
+    int components[] = { recipe.item1[0], recipe.item2[0] };
+    for (unsigned i = 0; i < 2; i++) {
+        int64_t item;
+        if (!object_create(sub_4685A0(components[i]), obj_field_int64_get(actor, OBJ_F_LOCATION), &item)
+            || !item_transfer(item, actor)) return false;
+    }
+    return coop_play_pref_set(PLAY_PREF_AUTOSAVE_MINUTES, 2) && coop_play_pref_set(PLAY_PREF_AUTOSAVE_TRAVEL, 1);
+}
+static bool qol_pistol(CoopSession* session)
+{
+    static int prototype;
+    if (!prototype) {
+        SchematicInfo recipe;
+        schematic_ui_info_get(tech_schematic_get(TECH_GUN, 1), &recipe);
+        prototype = recipe.prod[0];
+    }
+    return sub_462540(pc_slot(session, 1), sub_4685A0(prototype), 7) != 0;
+}
 static bool announce(CoopSession* session, unsigned phase)
 {
     if (phase == 1 || phase == 8) for (unsigned slot = 0; slot < 4; slot++) {
@@ -316,7 +347,7 @@ static bool announce(CoopSession* session, unsigned phase)
         char text[64]; snprintf(text, sizeof(text), "control-bind:%u:%d", slot, member);
         if (member < 0 || !coop_session_chat(session, text)) return false;
     }
-    if (phase == 8 && !tools_mode && !gather(session)) return false;
+    if (phase == 8 && !tools_mode && !qol_mode && !gather(session)) return false;
     if (phase == 11) {
         script_global_var_set(0, 52002);
         for (unsigned i = 0; i < 4; i++) { item_gold_transfer(0, coop_campaign_object(i), 17, 0); object_hp_damage_set(coop_campaign_object(i), 12); }
@@ -335,11 +366,12 @@ bool coop_controls_probe(int argc, char** argv)
         if (!strcmp(argv[i], "--coop-engine-probe=runtime-controls-ui")) native_ui = true;
         if (!strcmp(argv[i], "--coop-engine-probe=runtime-preferences")) preferences = true;
         if (!strcmp(argv[i], "--coop-engine-probe=runtime-native-tools")) tools_mode = true;
+        if (!strcmp(argv[i], "--coop-engine-probe=runtime-party-qol")) qol_mode = true;
         if (!strncmp(argv[i], "--coop-probe-port=", 18)) port = (unsigned)atoi(argv[i] + 18);
         if (!strncmp(argv[i], "--coop-probe-player=", 20)) player = (unsigned)atoi(argv[i] + 20);
     }
     if (!port || port > 65535 || player >= 4 || host != (player == 0)) return false;
-    unsigned last_phase = tools_mode ? 10u : preferences ? 4u : recovery ? 1u : CONTROL_PHASES;
+    unsigned last_phase = qol_mode ? 9u : tools_mode ? 10u : preferences ? 4u : recovery ? 1u : CONTROL_PHASES;
     CoopConfig config = { 0 }; snprintf(config.name, sizeof(config.name), "Control player %u", player);
     if (!content(config.content_id) || !coop_identity_load_or_create("arcmp-player.id", config.identity)) return false;
     held = coop_session_create(&config); if (!held) return false;
@@ -367,7 +399,7 @@ bool coop_controls_probe(int argc, char** argv)
         if (game && coop_runtime_phase() == COOP_RUNTIME_PLAYING) {
             if (!playing) playing = now;
             const CoopDialogueView* dialogue = coop_dialogue_current(coop_gameplay_dialogue(game));
-            if (!initialized && host && !dialogue->active && now - playing > 1200) { initialized = true; good = (tools_mode ? tools_prepare(held) : preferences ? preference_prepare(held) : recovery || (tail && !native_ui) || prepare(held)) && announce(held, tail ? 8 : 1); }
+            if (!initialized && host && !dialogue->active && now - playing > 1200) { initialized = true; good = (qol_mode ? qol_prepare(held) : tools_mode ? tools_prepare(held) : preferences ? preference_prepare(held) : recovery || (tail && !native_ui) || prepare(held)) && announce(held, tail ? 8 : 1); }
             if (!phase && dialogue->active && dialogue->chooser == coop_session_local_slot(held)) coop_engine_dialogue_submit(COOP_DIALOGUE_CANCEL);
         }
         for (; chats < coop_session_chat_count(held); chats++) {
@@ -386,6 +418,8 @@ bool coop_controls_probe(int argc, char** argv)
             }
             if (chat->slot < 4 && sscanf(chat->text, "control-done:%u", &value) == 1) ack[chat->slot] = value;
             if (chat->slot < 4 && !strcmp(chat->text, "control-story-seen")) story_observers |= 1u << chat->slot;
+            if (qol_mode && chat->slot == 1 && !strcmp(chat->text, "qol-schematic-open")) story_queued = true;
+            if (qol_mode && !chat->slot && !strcmp(chat->text, "qol-autosave-done")) story_seen = true;
         }
         uint8_t slot = coop_session_local_slot(held);
         bool live = game && coop_runtime_phase() == COOP_RUNTIME_PLAYING && v && v->phase == COOP_CONTROL_IDLE;
@@ -394,7 +428,93 @@ bool coop_controls_probe(int argc, char** argv)
             int64_t item = tagged(false), parent = 0; if (item) item_parent(item, &parent);
             bool preferences_live = game && coop_runtime_phase() == COOP_RUNTIME_PLAYING && v
                 && (v->phase == COOP_CONTROL_IDLE || (phase == 4 && v->phase == COOP_CONTROL_VOTING));
-            if (tools_mode) {
+            if (qol_mode) {
+                int64_t actor = player_get_local_pc_obj();
+                ready = game && coop_runtime_phase() == COOP_RUNTIME_PLAYING && v
+                    && (v->phase == COOP_CONTROL_IDLE || v->phase == COOP_CONTROL_VOTING);
+                if (phase == 1) {
+                    ready &= coop_play_autosave_minutes() == 2 && coop_play_autosave_travel();
+                    if (slot && !sent) {
+                        good &= !coop_play_pref_set(PLAY_PREF_AUTOSAVE_MINUTES, 30)
+                            && !coop_play_pref_set(PLAY_PREF_AUTOSAVE_TRAVEL, 0);
+                        sent = true;
+                    }
+                } else if (phase == 2) {
+                    if (slot == 1 && !sent && live) {
+                        good &= coop_gold_ui_open();
+                        unsigned row = 0, member = (unsigned)coop_campaign_slot_for_object(pc_slot(held, 0));
+                        for (unsigned i = 0; i < member; i++) if (coop_campaign_object(i) != actor) row++;
+                        click(230, 112 + 104 + (int)row * 28);
+                        TigMessage input = { .type = TIG_MESSAGE_TEXT_INPUT, .data.text.text = "137" };
+                        tig_message_enqueue(&input); click(260, 450); sent = true;
+                    }
+                    ready &= item_gold_get(pc_slot(held, 0)) == 1137 && item_gold_get(pc_slot(held, 1)) == 864
+                        && coop_items_settled(coop_gameplay_items(game));
+                    if (ready && slot == 1) { good &= image(402, framebuffer); coop_gold_ui_close(); }
+                } else if (phase == 3) {
+                    if (slot == 1 && !sent && live) {
+                        coop_view_zoom_set(150, 400, 240);
+                        schematic_ui_toggle(actor, actor);
+                        good &= intgame_mode_get() == INTGAME_MODE_SCHEMATIC
+                            && schematic_ui_process(tech_schematic_get(TECH_GUN, 1), actor, actor);
+                        sent = true;
+                    }
+                    ready &= qol_pistol(held) && coop_services_settled(coop_gameplay_services(game));
+                    if (ready && slot == 1) { schematic_ui_close(); good &= intgame_mode_get() == INTGAME_MODE_MAIN && image(403, framebuffer); }
+                } else if (phase == 4) {
+                    if (slot == 1 && !sent) {
+                        schematic_ui_toggle(actor, actor);
+                        good &= intgame_mode_get() == INTGAME_MODE_SCHEMATIC && coop_session_chat(held, "qol-schematic-open");
+                        sent = true;
+                    }
+                    if (host && story_queued && !sent && live && coop_runtime_probe_autosave(true)) {
+                        CoopSaveSet party; CoopSaveEntry entry;
+                        good &= coop_runtime_save_set(&party);
+                        coop_save_inspect(&party, COOP_SAVE_AUTOSAVE_FIRST, &entry);
+                        good &= entry.status == COOP_CHECKPOINT_OK && !coop_runtime_checkpoint_exists();
+                        good &= coop_session_chat(held, "qol-autosave-done"); sent = true;
+                    }
+                    ready &= story_seen && coop_runtime_epoch() == baseline_epoch;
+                    if (ready && slot == 1) {
+                        good &= intgame_mode_get() == INTGAME_MODE_SCHEMATIC;
+                        schematic_ui_close(); good &= image(404, framebuffer);
+                    }
+                } else if (phase == 5) {
+                    if (slot == 3 && !sent && live) { good &= named_browser(true, &browser_step, &browser_next, framebuffer); sent = browser_step >= 7; }
+                    ready &= coop_runtime_epoch() == baseline_epoch + 1 && v->notice == COOP_CONTROL_OK && v->action == COOP_CONTROL_SAVE;
+                } else if (phase == 6) {
+                    if (host && !sent) { script_global_var_set(0, 52002); sent = coop_runtime_item(COOP_ITEM_GOLD, 0, (uint8_t)coop_campaign_slot_for_object(pc_slot(held, 2)), 100); }
+                    ready &= script_global_var_get(0) == 52002 && item_gold_get(pc_slot(held, 0)) == 1037
+                        && item_gold_get(pc_slot(held, 2)) == 1102 && coop_items_settled(coop_gameplay_items(game));
+                } else {
+                    if (phase < 9 && slot == 3 && live && browser_step < 7) {
+                        if (!browser_step) { coop_lobby_open(); browser_step = 1; browser_next = now + 350; }
+                        else if (browser_step == 1 && now >= browser_next) {
+                            click(340, 565); browser_step = 2; browser_next = now + 350;
+                        } else if (browser_step >= 2 && now >= browser_next) {
+                            good &= coop_saves_ui_active();
+                            unsigned step = browser_step - 1;
+                            good &= named_browser(false, &step, &browser_next, framebuffer); browser_step = step + 1;
+                        }
+                        sent = browser_step >= 7;
+                    }
+                    if (phase == 9 && host && !sent && live) {
+                        CoopSaveSet party; CoopSaveEntry entry;
+                        good &= coop_runtime_save_set(&party); coop_save_inspect(&party, COOP_SAVE_AUTOSAVE_FIRST, &entry);
+                        good &= coop_runtime_checkpoint_request(COOP_CONTROL_LOAD, &entry, NULL); sent = true;
+                    }
+                    if (v->phase == COOP_CONTROL_VOTING && !voted && now - at > 1500) {
+                        if (phase == 7 && slot == 2) voted = coop_runtime_control(COOP_CONTROL_VOTE, 0, v->proposal, 0);
+                        else if (phase != 7 && slot != (phase == 9 ? 0u : 3u)) voted = coop_runtime_control(COOP_CONTROL_VOTE, 1, v->proposal, 0);
+                    }
+                    ready &= v->action == COOP_CONTROL_LOAD && v->notice == (phase == 7 ? COOP_CONTROL_DECLINED : COOP_CONTROL_OK);
+                    ready &= coop_runtime_epoch() == baseline_epoch + (phase != 7);
+                    ready &= script_global_var_get(0) == (phase == 7 ? 52002 : 52001);
+                    ready &= item_gold_get(pc_slot(held, 0)) == (phase == 7 ? 1037 : 1137)
+                        && item_gold_get(pc_slot(held, 1)) == 864 && qol_pistol(held);
+                    if (ready) good &= image(400 + phase, framebuffer);
+                }
+            } else if (tools_mode) {
                 ready = game && coop_runtime_phase() == COOP_RUNTIME_PLAYING && v
                     && (v->phase == COOP_CONTROL_IDLE || (phase == 9 && v->phase == COOP_CONTROL_VOTING));
                 if (ready && phase <= 3) {
@@ -684,14 +804,14 @@ bool coop_controls_probe(int argc, char** argv)
     }
     CoopGameplay* game = coop_runtime_gameplay();
     good = good && game && coop_gameplay_finished(game) && completed == last_phase
-        && coop_controls_executed(coop_runtime_controls()) == (host && !recovery ? preferences || tools_mode ? 2u : 5u : 0u);
+        && coop_controls_executed(coop_runtime_controls()) == (host && !recovery ? qol_mode ? 3u : preferences || tools_mode ? 2u : 5u : 0u);
     FILE* report = fopen("arcmp-controls-result.json", "wb"); if (!report) good = false;
     if (report) {
         unsigned first = tail ? 8 : 1;
         fprintf(report, "{\"verified\":%s,\"phases\":%u,\"first_phase\":%u,\"phases_completed\":%u,\"epoch\":%u,\"executed\":%u,\"long_pause_ms\":%u,\"cancelled_hours\":%u,\"native_guards\":%s,\"recovery\":%s,\"rest_story\":%s,\"story_observers\":%u}\n",
             good ? "true" : "false", completed, first, completed >= first ? completed - first + 1 : 0,
             coop_runtime_epoch(), coop_controls_executed(coop_runtime_controls()),
-            recovery || tail || preferences || tools_mode ? 0 : native_ui ? 2000 : 35000,
+            recovery || tail || preferences || tools_mode || qol_mode ? 0 : native_ui ? 2000 : 35000,
             rest_hours, guards ? "true" : "false", recovery ? "true" : "false",
             rest_story && story_seen ? "true" : "false", story_observers);
         if (fclose(report)) good = false;

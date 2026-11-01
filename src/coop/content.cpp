@@ -96,6 +96,11 @@ bool ignored(const fs::path& relative)
     if (parts.empty()) return true;
     const auto& name = parts.back();
     if (name == "thumbs.db") return true;
+    const bool repository_root = (parts.size() == 2 && parts[0] == "data")
+        || (parts.size() == 3 && parts[0] == "modules");
+    if (repository_root && name.size() >= 14 && name.compare(0, 6, "screen") == 0
+        && name.compare(name.size() - 4, 4, ".bmp") == 0
+        && std::all_of(name.begin() + 6, name.end() - 4, [](char c) { return c >= '0' && c <= '9'; })) return true;
     if (parts.size() >= 3 && parts[parts.size() - 3] == "art" && parts[parts.size() - 2] == "tile"
         && name == "tilevariant.dat") return true;
     if ((parts.size() == 4 && parts[0] == "modules" && parts[2] == "maps")
@@ -224,6 +229,20 @@ void save_legacy(const fs::path& root, const std::string& digest)
     write_atomic(root / "arcmp-content.compat", text);
 }
 
+/* ObjectID is stored as 24 bytes, but only type and the active union member
+ * have meaning. Older native prototype generation wrote stack garbage into
+ * padding and the unused tail of its integer ID. Preserve every gameplay byte;
+ * normalize only those unused bytes in a validated native prototype header. */
+void prototype_header(std::array<char, 65536>& bytes, size_t size)
+{
+    if (size < 56 || static_cast<uint8_t>(bytes[0]) != 0x77 || bytes[1] || bytes[2] || bytes[3]
+        || static_cast<uint8_t>(bytes[4]) != 0xff || static_cast<uint8_t>(bytes[5]) != 0xff
+        || bytes[28] != 1 || bytes[29]) return;
+    std::fill(bytes.begin() + 6, bytes.begin() + 28, 0);
+    std::fill(bytes.begin() + 30, bytes.begin() + 36, 0);
+    std::fill(bytes.begin() + 40, bytes.begin() + 52, 0);
+}
+
 void generate(fs::path root)
 {
     try {
@@ -241,7 +260,7 @@ void generate(fs::path root)
         bool complete = cached.peek() == EOF && identity.peek() == EOF;
         cached.close(); identity.close();
         uint8_t decoded[32];
-        if (version == "ACCONTENT2" && previous_stamp == stamp && previous_id == stored_id
+        if (version == "ACCONTENT3" && previous_stamp == stamp && previous_id == stored_id
             && complete && decode(stored_id, decoded)) {
             restore_legacy(root, stored_id);
             std::lock_guard<std::mutex> guard(job.mutex);
@@ -251,38 +270,48 @@ void generate(fs::path root)
         uint64_t total = 0;
         for (const auto& asset : assets) total += asset.size;
         { std::lock_guard<std::mutex> guard(job.mutex); job.total = total; }
-        std::string manifest = "[";
+        std::string manifest = "[", raw_manifest = "[";
         std::array<char, 65536> buffer;
         for (const auto& asset : assets) {
             std::ifstream in(asset.path, std::ios::binary);
             if (!in) throw std::runtime_error("Cannot read game data. Check the game folder.");
-            Sha256 hash;
+            Sha256 hash, raw_hash;
+            bool prototype = lower(asset.path.extension().u8string()) == ".pro";
             uint64_t bytes = 0;
             while (in) {
                 if (job.cancel) return;
                 in.read(buffer.data(), buffer.size());
                 size_t count = size_t(in.gcount());
+                if (prototype) raw_hash.update(buffer.data(), count);
+                if (prototype && !bytes) prototype_header(buffer, count);
                 hash.update(buffer.data(), count);
                 bytes += count;
                 std::lock_guard<std::mutex> guard(job.mutex);
                 job.done += count;
             }
             if (!in.eof() || bytes != asset.size) throw std::runtime_error("Game data changed while reading. Restart the game.");
-            if (manifest.size() > 1) manifest += ',';
-            manifest += "{\"path\":" + quote(asset.key) + ",\"sha256\":\"" + hash.finish() + "\",\"size\":" + std::to_string(bytes) + "}";
+            const auto digest = hash.finish();
+            const auto raw_digest = prototype ? raw_hash.finish() : digest;
+            if (manifest.size() > 1) { manifest += ','; raw_manifest += ','; }
+            const auto prefix = "{\"path\":" + quote(asset.key) + ",\"sha256\":\"";
+            const auto suffix = "\",\"size\":" + std::to_string(bytes) + "}";
+            manifest += prefix + digest + suffix;
+            raw_manifest += prefix + raw_digest + suffix;
         }
         manifest += ']';
+        raw_manifest += ']';
         auto digest = Sha256::text(manifest);
         auto after = inventory(root);
         if (job.cancel) return;
         if (inventory_id(after) != stamp) throw std::runtime_error("Game data changed while reading. Restart the game.");
         auto previous_manifest = read_manifest(root / "arcmp-content.json");
-        const auto retired = filtered_manifest(previous_manifest) == manifest ? Sha256::text(previous_manifest) : std::string();
+        const auto previous_filtered = filtered_manifest(previous_manifest);
+        const auto retired = previous_filtered == manifest || previous_filtered == raw_manifest ? Sha256::text(previous_manifest) : std::string();
         restore_legacy(root, digest, retired);
         save_legacy(root, digest);
         write_atomic(root / "arcmp-content.json", manifest + '\n');
         write_atomic(root / "arcmp-content.id", digest + '\n');
-        write_atomic(root / "arcmp-content.cache", "ACCONTENT2\n" + digest + '\n' + stamp + '\n');
+        write_atomic(root / "arcmp-content.cache", "ACCONTENT3\n" + digest + '\n' + stamp + '\n');
         std::lock_guard<std::mutex> guard(job.mutex);
         decode(digest, job.id);
         job.state = 2;

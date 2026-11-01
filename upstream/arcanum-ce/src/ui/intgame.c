@@ -180,6 +180,7 @@ static void intgame_message_history_scroll_up(void);
 static void intgame_message_history_scroll_down(void);
 static void intgame_message_refresh(bool play_sound);
 static void intgame_message_store(UiMessage* ui_message, bool persistent_feedback);
+static bool intgame_hover_message_active(void);
 static void intgame_message_draw(tig_window_handle_t window_handle, UiMessage* ui_message, bool play_sound);
 static void intgame_spell_maintain_art_set_func(UiButtonInfo* button, int slot, tig_art_id_t art_id, tig_window_handle_t window_handle);
 static void intgame_spell_maintain_refresh_func(tig_button_handle_t button_handle, UiButtonInfo* info, int slot, bool active, tig_window_handle_t window_handle);
@@ -880,6 +881,11 @@ static tig_font_handle_t intgame_morph15_orange_font;
 
 // 0x64C540
 static UiMessage intgame_message_history[MAX_MESSAGE_HISTORY_ITEMS];
+static UiMessage intgame_hover_message;
+static char intgame_hover_text[2048];
+static bool intgame_hover_valid;
+static int intgame_hover_x, intgame_hover_y;
+static tig_button_handle_t intgame_hover_button = TIG_BUTTON_HANDLE_INVALID;
 
 // 0x64C630
 static bool intgame_big_window_locked;
@@ -1042,6 +1048,7 @@ bool intgame_init(GameInitInfo* init_info)
 // 0x549F00
 void intgame_reset(void)
 {
+    intgame_hover_valid = false;
     int index;
 
     coop_party_ui_close();
@@ -1406,6 +1413,7 @@ void iso_interface_create(tig_window_handle_t window_handle)
 // 0x54A9A0
 void iso_interface_destroy(void)
 {
+    intgame_hover_valid = false;
     int index;
 
     if (intgame_iso_interface_created) {
@@ -2637,6 +2645,13 @@ bool handle_button_unhover(TigMessage* msg)
         || msg->data.button.state != TIG_BUTTON_STATE_MOUSE_OUTSIDE) {
         return false;
     }
+
+    /* A native control refresh may queue an OUTSIDE event followed by INSIDE
+     * without a physical pointer move. Ignore the stale exit if this is still
+     * the visible, topmost button under the mouse. */
+    TigMouseState mouse;
+    if (tig_mouse_get_state(&mouse) == TIG_OK
+        && tig_button_get_at_position(mouse.x, mouse.y) == msg->data.button.button_handle) return true;
 
     sub_54ECD0();
 
@@ -4166,6 +4181,7 @@ void iso_interface_window_set(RotatingWindowType window_type)
 // 0x550720
 void intgame_message_window_clear(void)
 {
+    intgame_hover_valid = false;
     if (!intgame_iso_interface_created) {
         return;
     }
@@ -4184,6 +4200,7 @@ void intgame_message_window_clear(void)
 // Discard pre-campaign feedback when a lobby character wizard closes.
 void intgame_message_history_clear(void)
 {
+    intgame_hover_valid = false;
     intgame_message_history_size = 0;
     intgame_message_history_end = 0;
     intgame_message_history_curr = 0;
@@ -4211,6 +4228,7 @@ void intgame_message_window_display_str(int a1, const char* str)
     UiMessage ui_message;
 
     (void)a1;
+    intgame_hover_valid = false;
     str = coop_tr_rendered(str);
 
     if (dword_64C6D4 != NULL) {
@@ -4672,7 +4690,9 @@ void iso_interface_refresh(void)
     iso_interface_window_enable(intgame_iso_window_type);
 
     if (intgame_iso_window_type == ROTWIN_TYPE_MSG) {
-        if (pc_obj != OBJ_HANDLE_NULL) {
+        if (intgame_hover_message_active()) {
+            intgame_message_refresh(false);
+        } else if (pc_obj != OBJ_HANDLE_NULL) {
             if (qword_64C690 != OBJ_HANDLE_NULL) {
                 sub_57CCF0(pc_obj, qword_64C690);
             } else if ((obj = object_hover_obj_get()) != OBJ_HANDLE_NULL) {
@@ -5545,6 +5565,17 @@ void sub_552770(UiMessage* ui_message)
 {
     intgame_message_store(ui_message, false);
 }
+static bool intgame_hover_message_active(void)
+{
+    if (!intgame_hover_valid) return false;
+    TigMouseState mouse;
+    if (tig_mouse_get_state(&mouse) != TIG_OK) return false;
+    bool same = intgame_hover_button != TIG_BUTTON_HANDLE_INVALID
+        ? tig_button_get_at_position(mouse.x, mouse.y) == intgame_hover_button
+        : mouse.x == intgame_hover_x && mouse.y == intgame_hover_y;
+    if (!same) intgame_hover_valid = false;
+    return same;
+}
 static void intgame_message_store(UiMessage* ui_message, bool persistent_feedback)
 {
     // 0x64C6EC
@@ -5556,12 +5587,26 @@ static void intgame_message_store(UiMessage* ui_message, bool persistent_feedbac
         bool ability = ui_message->type == UI_MSG_TYPE_SPELL || ui_message->type == UI_MSG_TYPE_SKILL || ui_message->type == UI_MSG_TYPE_COLLEGE;
         if ((tig_timer_elapsed(dword_64C6EC) > 3000 || (coop_runtime_gameplay() && ability))
             && intgame_iso_window_type == ROTWIN_TYPE_MSG) {
+            /* The history is persistent feedback; a passive replica repaint
+             * must keep the current hover description instead of restoring an
+             * older history entry. Own the only transient string payload. */
+            memcpy(&intgame_hover_message, ui_message, sizeof(intgame_hover_message));
+            snprintf(intgame_hover_text, sizeof(intgame_hover_text), "%s",
+                ui_message->type == UI_MSG_TYPE_FEEDBACK && ui_message->str ? ui_message->str : "");
+            intgame_hover_message.str = intgame_hover_text;
+            TigMouseState mouse;
+            intgame_hover_valid = tig_mouse_get_state(&mouse) == TIG_OK;
+            if (intgame_hover_valid) {
+                intgame_hover_x = mouse.x; intgame_hover_y = mouse.y;
+                intgame_hover_button = tig_button_get_at_position(mouse.x, mouse.y);
+            }
             intgame_message_window_clear_internal();
             intgame_message_draw(intgame_rotwin_text_frame[intgame_iso_window_type].window_handle,
                 ui_message,
                 true);
         }
     } else {
+        intgame_hover_valid = false;
         tig_timer_now(&dword_64C6EC);
 
         prev_idx = intgame_message_history_end;
@@ -5598,6 +5643,7 @@ static void intgame_message_store(UiMessage* ui_message, bool persistent_feedbac
 // 0x5528E0
 void intgame_message_history_scroll_up(void)
 {
+    intgame_hover_valid = false;
     int idx;
 
     if (intgame_iso_window_type == ROTWIN_TYPE_MSG) {
@@ -5614,6 +5660,7 @@ void intgame_message_history_scroll_up(void)
 // 0x552930
 void intgame_message_history_scroll_down(void)
 {
+    intgame_hover_valid = false;
     if (intgame_iso_window_type == ROTWIN_TYPE_MSG) {
         if (intgame_message_history_curr != intgame_message_history_end) {
             intgame_message_history_curr = (intgame_message_history_curr + 1) % MAX_MESSAGE_HISTORY_ITEMS;
@@ -5630,6 +5677,11 @@ void intgame_message_refresh(bool play_sound)
         return;
     }
 
+    if (!play_sound && intgame_iso_window_type == ROTWIN_TYPE_MSG && intgame_hover_message_active()) {
+        intgame_message_window_clear_internal();
+        intgame_message_draw(intgame_rotwin_text_frame[intgame_iso_window_type].window_handle, &intgame_hover_message, false);
+        return;
+    }
     iso_interface_window_set(ROTWIN_TYPE_MSG);
 
     if (intgame_iso_window_type == ROTWIN_TYPE_MSG) {

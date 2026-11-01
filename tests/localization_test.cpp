@@ -82,12 +82,16 @@ int main(int argc, char** argv)
              "Incompatible co-op protocol. Use the same Arcanum MP build.",
              "The host disconnected.", "Campaign snapshot loading timed out.",
              "World object replication failed; resynchronization is required.",
-             "Character updated.", "Party map note updated.", "< Previous" }) {
+             "Character updated.", "Party map note updated.", "< Previous",
+             "Give gold", "Load campaign", "Gold given to your party member.",
+             "Autosave", "Periodic autosave: Off" }) {
         CHECK((std::strcmp(coop_tr_rendered(status), status) != 0) == polish);
     }
     for (const char* status : { "Checking game files for multiplayer... 37%",
              "Connection lost. Rejoining your party automatically (23s).",
-             "Preparing the shared story: 2/4 travellers ready." }) {
+             "Preparing the shared story: 2/4 travellers ready.",
+             "Autosave: every 5 minutes", "Travel autosave 3 created.",
+             "Control hero 1 gave 137 gold to Control hero 0." }) {
         CHECK((std::strcmp(coop_tr_rendered(status), status) != 0) == polish);
     }
     char progress[256];

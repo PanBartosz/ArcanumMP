@@ -1,5 +1,6 @@
 #include "coop/items.h"
 #include "coop/campaign.h"
+#include "coop/modern.h"
 #include "coop/engine_object.h"
 #include "coop/engine_theft.h"
 #include "game/ai.h"
@@ -162,7 +163,7 @@ bool coop_items_message(CoopItems* items, uint8_t sender, uint8_t type, const ui
     }
     if (items->host) {
         if (type != COOP_ITEM_REQUEST || size != REQUEST_SIZE || sender >= COOP_MAX_PLAYERS
-            || !coop_session_players(items->session)[sender].connected || !sequence || p[28] > COOP_ITEM_DROP_AMOUNT) return false;
+            || !coop_session_players(items->session)[sender].connected || !sequence || p[28] > COOP_ITEM_GOLD) return false;
         ItemPeer* peer = &items->peers[sender];
         if (sequence == peer->sequence) {
             if (memcmp(p, peer->request, size)) return false;
@@ -390,6 +391,27 @@ static unsigned execute(CoopItems* items, ItemPeer* peer, int64_t pc)
 {
     const uint8_t* p = peer->request;
     unsigned op = p[28];
+    if (op == COOP_ITEM_GOLD) {
+        CoopObjectId empty = { 0 };
+        uint32_t amount = coop_object_read32(p + 47);
+        if (memcmp(p + 29, &empty, sizeof(empty)) || !amount || amount > INT_MAX || p[46] >= COOP_MAX_PLAYERS) return COOP_ITEM_TARGET;
+        int64_t recipient = coop_campaign_object(p[46]);
+        if (!recipient || recipient == pc || !critter_is_active(recipient)) return COOP_ITEM_TARGET;
+        if (location_dist(obj_field_int64_get(pc, OBJ_F_LOCATION), obj_field_int64_get(recipient, OBJ_F_LOCATION)) > 8) return COOP_ITEM_DISTANCE;
+        int available = item_gold_get(pc), held = item_gold_get(recipient);
+        if (available < (int)amount || held < 0 || held > INT_MAX - (int)amount) return COOP_ITEM_TARGET;
+        peer->changed = true;
+        if (!item_gold_transfer(pc, recipient, (int)amount, OBJ_HANDLE_NULL)) return COOP_ITEM_REFUSED;
+        int member = coop_campaign_slot_for_object(pc);
+        const CoopCampaignMember* from = member >= 0 ? coop_campaign_member((unsigned)member) : NULL;
+        const CoopCampaignMember* to = coop_campaign_member(p[46]);
+        if (from && to && obj_handle_is_valid(pc) && obj_handle_is_valid(recipient)) {
+            char message[192];
+            snprintf(message, sizeof(message), "%s gave %u gold to %s.", from->character, amount, to->character);
+            coop_play_event(PLAY_NOTICE, pc, recipient, message, "Gold transfer between party members.");
+        }
+        return 0;
+    }
     if (op == COOP_LOOT_TAKE_AMOUNT || op == COOP_LOOT_PUT_AMOUNT || op == COOP_ITEM_DROP_AMOUNT) {
         bool drop = op == COOP_ITEM_DROP_AMOUNT, putting = op == COOP_LOOT_PUT_AMOUNT;
         if (!drop && (coop_object_read32(p + 51) != peer->access_generation || !access_valid(items, peer, pc)
@@ -840,7 +862,7 @@ bool coop_items_submit(CoopItems* items, int map, const uint8_t actor[16], CoopI
 }
 bool coop_items_submit_access(CoopItems* items, int map, const uint8_t actor[16], CoopItemOperation op, CoopObjectId item, uint8_t recipient, int location, uint32_t access)
 {
-    if (items->pending || items->submitted == UINT32_MAX || !actor || op < COOP_ITEM_PICKUP || op > COOP_ITEM_DROP_AMOUNT) return false;
+    if (items->pending || items->submitted == UINT32_MAX || !actor || op < COOP_ITEM_PICKUP || op > COOP_ITEM_GOLD) return false;
     uint8_t p[REQUEST_SIZE];
     coop_object_write32(p, items->epoch); coop_object_write32(p + 4, items->submitted + 1); coop_object_write32(p + 8, (uint32_t)map);
     memcpy(p + 12, actor, 16); p[28] = (uint8_t)op; memcpy(p + 29, item.bytes, sizeof(item.bytes)); p[46] = recipient;
