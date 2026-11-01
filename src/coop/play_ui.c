@@ -489,7 +489,7 @@ bool coop_play_control_hint(int x,int y,char* text,size_t size)
         }
     }
     if (log_button!=TIG_WINDOW_HANDLE_INVALID && inside(log_button_rect,x,y)) {
-        snprintf(text,size,coop_tr("Combat log: click the journal to show/hide it (F11). Click UI to %s moving/resizing HUD panels. Drag title strips to move; bottom-right grips resize. Each panel has saved transparency in Settings."),coop_hud_editing() ? "finish" : "start"); return true;
+        snprintf(text,size,coop_tr("Combat log: click the journal to show/hide it (F11). Click UI to %s moving/resizing HUD panels. Drag title strips to move; bottom-right grips resize. Each panel has saved transparency in Settings."),coop_hud_editing() ? coop_tr("finish") : coop_tr("start")); return true;
     }
     if (coop_play_ui_blocking()) return false;
     if (bar!=TIG_WINDOW_HANDLE_INVALID && inside(bar_rect,x,y)) {

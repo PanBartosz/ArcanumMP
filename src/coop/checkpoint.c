@@ -1,4 +1,5 @@
 #include "coop/checkpoint.h"
+#include "coop/content_identity.h"
 #include "coop/bootstrap.h"
 #include "coop/object_state.h"
 #include "coop/snapshot.h"
@@ -147,7 +148,7 @@ static CoopCheckpointStatus load(const char* path, const uint8_t content[32], co
         good = header_decode(header, &info, &length) && (!checked || coop_object_read32(header + 192) == fingerprint);
     }
     if (!good) { fclose(file); return COOP_CHECKPOINT_INVALID; }
-    if (memcmp(info.content, content, 32)) { fclose(file); return COOP_CHECKPOINT_CONTENT; }
+    if (!coop_content_matches(content, info.content)) { fclose(file); return COOP_CHECKPOINT_CONTENT; }
     bool member = false;
     for (unsigned i = 0; i < COOP_MAX_PLAYERS; i++) if ((info.members & (1u << i)) && !memcmp(info.owners[i], owner, COOP_IDENTITY_SIZE)) member = true;
     if (!member) { fclose(file); return COOP_CHECKPOINT_OWNER; }

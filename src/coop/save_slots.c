@@ -1,4 +1,5 @@
 #include "coop/save_slots.h"
+#include "coop/content_identity.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,7 @@ bool coop_save_label_valid(const char* text)
     return end;
 }
 static int compare_owner(const void* left, const void* right) { return memcmp(left, right, COOP_IDENTITY_SIZE); }
-bool coop_save_path(const CoopSaveSet* party, unsigned slot, char path[COOP_SAVE_PATH])
+static bool save_path(const CoopSaveSet* party, const uint8_t content[32], unsigned slot, char path[COOP_SAVE_PATH])
 {
     if (!party || !path || slot >= COOP_SAVE_TOTAL || !party->members || (party->members & ~15u)) return false;
     if (slot == 0) { strcpy(path, "arcmp-campaign.acsave"); return true; }
@@ -27,15 +28,31 @@ bool coop_save_path(const CoopSaveSet* party, unsigned slot, char path[COOP_SAVE
     qsort(owners, count, COOP_IDENTITY_SIZE, compare_owner);
     uint64_t key = UINT64_C(14695981039346656037);
     for (unsigned i = 0; i < 32 + count * COOP_IDENTITY_SIZE; i++) {
-        key ^= i < 32 ? party->content[i] : ((const uint8_t*)owners)[i - 32];
+        key ^= i < 32 ? content[i] : ((const uint8_t*)owners)[i - 32];
         key *= UINT64_C(1099511628211);
     }
     snprintf(path, COOP_SAVE_PATH, "arcmp-save-%016llx-%02u.acsave", (unsigned long long)key, slot);
     return true;
 }
+bool coop_save_path(const CoopSaveSet* party, unsigned slot, char path[COOP_SAVE_PATH])
+{
+    if (!party || !save_path(party, party->content, slot, path)) return false;
+    if (!slot || slot == COOP_SAVE_RECOVERY) return true;
+    for (size_t i = 0; ; i++) {
+        const uint8_t* previous = coop_content_legacy_at(party->content, i);
+        if (!previous) break;
+        FILE* current = fopen(path, "rb");
+        if (current) { fclose(current); return true; }
+        char legacy[COOP_SAVE_PATH];
+        if (!save_path(party, previous, slot, legacy)) continue;
+        FILE* file = fopen(legacy, "rb");
+        if (file) { fclose(file); strcpy(path, legacy); return true; }
+    }
+    return true;
+}
 bool coop_save_matches(const CoopSaveSet* party, const CoopCheckpointInfo* info)
 {
-    if (!party || !info || memcmp(party->content, info->content, 32)) return false;
+    if (!party || !info || !coop_content_matches(party->content, info->content)) return false;
     unsigned required = 0, present = 0;
     for (unsigned i = 0; i < COOP_MAX_PLAYERS; i++) if (party->members & (1u << i)) {
         present++;
@@ -53,7 +70,7 @@ void coop_save_inspect(const CoopSaveSet* party, unsigned slot, CoopSaveEntry* e
     if (!coop_save_path(party, slot, path)) return;
     entry->status = coop_checkpoint_inspect(path, &entry->info, &entry->fingerprint, &entry->payload_size, &entry->modified);
     if (entry->status == COOP_CHECKPOINT_OK) {
-        if (memcmp(party->content, entry->info.content, 32)) entry->status = COOP_CHECKPOINT_CONTENT;
+        if (!coop_content_matches(party->content, entry->info.content)) entry->status = COOP_CHECKPOINT_CONTENT;
         else if (!coop_save_matches(party, &entry->info)) entry->status = COOP_CHECKPOINT_OWNER;
     }
 }

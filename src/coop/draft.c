@@ -1,4 +1,5 @@
 #include "coop/draft.h"
+#include "coop/content_identity.h"
 #include "coop/object_state.h"
 #include "coop/bootstrap.h"
 #include <errno.h>
@@ -83,7 +84,7 @@ static CoopDraftStatus read_record(const char* path, const uint8_t content[32], 
     bool share = count == COOP_DRAFT_SHARE_BYTES && !memcmp(bytes, "ACBUILD1", 8);
     if (!good || (!legacy && !draft && (!share || owner)) || count < 44
         || coop_object_read32(bytes + count - 4) != coop_snapshot_crc(bytes, count - 4)) return COOP_DRAFT_INVALID;
-    if (memcmp(bytes + 8, content, 32)) return COOP_DRAFT_CONTENT;
+    if (!coop_content_matches(content, bytes + 8)) return COOP_DRAFT_CONTENT;
     if (owner && memcmp(bytes + 40, owner, 16)) return COOP_DRAFT_PROFILE;
     CoopCharacter c;
     size_t offset = share ? 40 : 56;

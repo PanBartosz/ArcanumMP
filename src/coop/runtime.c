@@ -1,4 +1,5 @@
 #include "coop/runtime.h"
+#include "coop/localization.h"
 #include "coop/authority.h"
 #include "coop/bootstrap.h"
 #include "coop/campaign.h"
@@ -749,7 +750,7 @@ int coop_runtime_present_pump(void)
 }
 static int movie_pump(void* context) { (void)context; return coop_runtime_present_pump(); }
 static void movie_skip(void* context) { (void)context; coop_runtime_present_input(); }
-static const char* movie_status(void* context) { (void)context; return coop_runtime_present_status(); }
+static const char* movie_status(void* context) { (void)context; return coop_tr_rendered(coop_runtime_present_status()); }
 static bool present_wait_input(TigMessage* message)
 {
     if (message->type == TIG_MESSAGE_KEYBOARD) { if (message->data.keyboard.pressed) coop_runtime_present_input(); return true; }
@@ -813,7 +814,7 @@ static bool present_launch_rejoin(CoopRuntime* r, const CoopPresentView* origina
         timeevent_ping((tig_timestamp_t)now);
         tig_window_fill(waiting, NULL, 0);
         TigRect label = { 30, 248, 740, 100 };
-        tig_window_text_write(waiting, "Waiting for the original party. The opening story will resume when everyone returns.", &label);
+        tig_window_text_write(waiting, coop_tr("Waiting for the original party. The opening story will resume when everyone returns."), &label);
         tig_window_display(); tig_ping();
         TigMessage message;
         while (tig_message_dequeue(&message) == TIG_OK)
@@ -851,7 +852,7 @@ static bool present_rejoin(CoopRuntime* r, const CoopPresentView* original)
         }
         tig_window_fill(waiting, NULL, 0);
         TigRect label = { 30, 248, 740, 100 };
-        tig_window_text_write(waiting, "Rejoining the party. The shared story will restart when everyone returns.", &label);
+        tig_window_text_write(waiting, coop_tr("Rejoining the party. The shared story will restart when everyone returns."), &label);
         tig_window_display();
         tig_ping();
         TigMessage message;
@@ -912,7 +913,7 @@ restart:;
             if (tig_window_create(&data, &waiting) != TIG_OK) { success = false; break; }
         }
         tig_window_fill(waiting, NULL, 0); TigRect label = { 30, 276, 740, 48 };
-        tig_window_text_write(waiting, coop_runtime_present_status(), &label); tig_window_display();
+        tig_window_text_write(waiting, coop_tr_rendered(coop_runtime_present_status()), &label); tig_window_display();
         tig_ping(); TigMessage message; while (tig_message_dequeue(&message) == TIG_OK) {
             if (message.type == TIG_MESSAGE_QUIT) { success = false; break; }
             present_wait_input(&message);

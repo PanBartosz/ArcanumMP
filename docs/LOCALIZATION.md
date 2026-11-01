@@ -123,6 +123,29 @@ same JSON-quoted English-key / tab / JSON-quoted-translation layout as
 [`assets/localization/pl.tsv`](../assets/localization/pl.tsv). Preserve printf
 placeholders, their order and widths, and dialogue `@pcname@` / `@npcname@`
 tokens. Translated gameplay instructions are never executed.
+Polish personal catalogs override individual builtin entries; missing entries
+still use the current embedded Polish catalog. A game update therefore adds
+new UI translations without re-importing the language pack.
+
+## Interface corrections in 0.2.4
+
+The embedded Polish catalog has 928 entries, including 123 newly added messages
+for lobby connections, admission failures, lost connections, synchronization,
+map notes and character development. Remaining fragments such as the host role,
+save/load results, gold prices and conversation-journal navigation are translated.
+Lobby status messages have room for two lines. Save dates use numeric months,
+independent of the operating system's English month abbreviations.
+
+Feedback callbacks, conversation action/title text and shared-story waiting
+overlays now use local translations. Canonical network statuses and shared
+events remain unchanged; names, typed fields and lobby chat are drawn verbatim.
+
+Asset-free tests cover the connection/error strings, formatted progress and an
+older personal UI catalog with builtin fallback. Native Polish Linux and
+Windows/Wine lobby captures show the connection messages and role labels, with
+an English participant in the same four-player session. The separate
+[file-check correction](FILE_COMPATIBILITY.md) keeps personal/generated files
+out of compatibility decisions.
 
 ## Verification for 0.2.0
 

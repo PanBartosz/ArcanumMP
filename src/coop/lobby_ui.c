@@ -170,12 +170,16 @@ static void leave_party(void)
     }
 }
 
-static void text(const char* value, int x, int y, int width, MainMenuColor color)
+static void text_raw(const char* value, int x, int y, int width, MainMenuColor color)
 {
     TigRect r = { x, y, width, 22 };
     tig_font_push(mainmenu_ui_font(MM_FONT_FLARE12, color));
-    tig_window_text_write(window, coop_tr_rendered(value), &r);
+    tig_window_text_write(window, value, &r);
     tig_font_pop();
+}
+static void text(const char* value, int x, int y, int width, MainMenuColor color)
+{
+    text_raw(coop_tr_rendered(value), x, y, width, color);
 }
 
 static void frame(const TigRect* rect, bool active)
@@ -608,7 +612,7 @@ static void draw(void)
         frame(&fields[i], focus == i);
         char value[256];
         snprintf(value, sizeof(value), "%s%s", values[i], focus == i && (SDL_GetTicks() / 500) % 2 ? "_" : "");
-        text(value, fields[i].x + 8, fields[i].y + 5, fields[i].width - 16, MM_COLOR_WHITE);
+        text_raw(value, fields[i].x + 8, fields[i].y + 5, fields[i].width - 16, MM_COLOR_WHITE);
     }
     bool online = session && coop_session_phase(session) == COOP_LOBBY;
     const CoopPlayer* players = session ? coop_session_players(session) : NULL;
@@ -671,7 +675,7 @@ static void draw(void)
         const char* name = control->proposer < COOP_MAX_PLAYERS && players ? players[control->proposer].name : coop_tr("A traveller");
         const char* durations[] = { coop_tr("one hour"), coop_tr("two hours"), coop_tr("four hours"), coop_tr("eight hours"), coop_tr("one day"), coop_tr("until morning"), coop_tr("until evening"), coop_tr("until healed") };
         snprintf(operation, sizeof(operation), coop_tr("%s requests %s%s. Everyone must agree (%u seconds)."), name,
-            control->action == COOP_CONTROL_REST ? "rest " : control->action == COOP_CONTROL_TRAVEL ? coop_tr("a world journey") : coop_tr("loading the checkpoint"), control->action == COOP_CONTROL_REST ? durations[control->value] : "", (control->remaining_ms + 999) / 1000);
+            control->action == COOP_CONTROL_REST ? coop_tr("rest ") : control->action == COOP_CONTROL_TRAVEL ? coop_tr("a world journey") : coop_tr("loading the checkpoint"), control->action == COOP_CONTROL_REST ? durations[control->value] : "", (control->remaining_ms + 999) / 1000);
         if (control->action == COOP_CONTROL_TRAVEL && control->route_count > 1)
             snprintf(operation, sizeof(operation), coop_tr("%s requests a journey via %u waypoints. Everyone must agree (%us)."),
                 name, control->route_count, (control->remaining_ms + 999) / 1000);
@@ -680,7 +684,7 @@ static void draw(void)
             if (!control->value) strcpy(target, coop_tr("Quick save"));
             else if (control->value == COOP_SAVE_RECOVERY) strcpy(target, coop_tr("Recovery"));
             else if (control->value >= COOP_SAVE_AUTOSAVE_FIRST) snprintf(target, sizeof(target), coop_tr("Autosave %u"), control->value - COOP_SAVE_AUTOSAVE_FIRST + 1);
-            else snprintf(target, sizeof(target), "slot %02u", control->value);
+            else snprintf(target, sizeof(target), coop_tr("slot %02u"), control->value);
             snprintf(operation, sizeof(operation), coop_tr("Load %s: %s (%us)"), target,
                 control->description[0] ? control->description : coop_tr("Party checkpoint"), (control->remaining_ms + 999) / 1000);
         }
@@ -699,7 +703,10 @@ static void draw(void)
     char content_status[160];
     if ((!session || coop_session_phase(session) == COOP_OFFLINE)
         && coop_content_status(content_status, sizeof(content_status))) status = content_status;
-    text(status,24,174,708,MM_COLOR_WHITE);
+    TigRect status_rect = { 24, 170, 708, 36 };
+    tig_font_push(mainmenu_ui_font(MM_FONT_FLARE12, MM_COLOR_WHITE));
+    tig_window_text_write(window, coop_tr_rendered(status), &status_rect);
+    tig_font_pop();
     text(library_open ? coop_tr("CHARACTER LIBRARY") : equipment_open ? (equipment_selling ? coop_tr("YOUR EQUIPMENT") : coop_tr("STARTING SHOP"))
             : browsing                                       ? coop_tr("LAN PARTIES")
                                                              : coop_tr("PARTY"),
@@ -744,7 +751,7 @@ static void draw(void)
             }
             text(item->name, 24, 240 + (int)i * 25, 250, MM_COLOR_WHITE);
             char price[64], count[32];
-            snprintf(price, sizeof(price), item->price > 0 ? "%d gold" : coop_tr("Not tradable"), item->price);
+            snprintf(price, sizeof(price), item->price > 0 ? coop_tr("%d gold") : coop_tr("Not tradable"), item->price);
             snprintf(count, sizeof(count), "%u", item->quantity);
             text(price, 280, 240 + (int)i * 25, 320, item->price > 0 ? MM_COLOR_GOLD : MM_COLOR_GRAY);
             text(count, 620, 240 + (int)i * 25, 100, MM_COLOR_WHITE);
@@ -768,8 +775,8 @@ static void draw(void)
             tig_window_fill(window, &row, tig_color_make(65, 46, 24));
         }
         bool reserved = session && (coop_session_reserved(session) & (1u << i));
-        snprintf(name, sizeof(name), "%u. %s%s", i + 1, p && (p->connected || reserved) && p->name[0] ? p->name : coop_tr("Open slot"), i == 0 && p && p->connected ? " (Host)" : "");
-        text(name, 24, 240 + (int)i * 25, 250, p && p->connected ? MM_COLOR_WHITE : MM_COLOR_GRAY);
+        snprintf(name, sizeof(name), "%u. %s%s", i + 1, p && (p->connected || reserved) && p->name[0] ? p->name : coop_tr("Open slot"), i == 0 && p && p->connected ? coop_tr(" (Host)") : "");
+        text_raw(name, 24, 240 + (int)i * 25, 250, p && p->connected ? MM_COLOR_WHITE : MM_COLOR_GRAY);
         const char* character = p && p->prototype ? p->character : "-";
         int member = coop_gameplay_member_for_connection(coop_runtime_gameplay(), i);
         const CoopCampaignMember* saved = member >= 0 ? coop_campaign_member((unsigned)member) : NULL;
@@ -779,7 +786,7 @@ static void draw(void)
             if (actor) obj_field_string_get(actor, OBJ_F_PC_PLAYER_NAME, &live_character);
             character = live_character && *live_character ? live_character : saved->character;
         }
-        text(character, 280, 240 + (int)i * 25, party_overlay ? 210 : 320, MM_COLOR_WHITE);
+        text_raw(character, 280, 240 + (int)i * 25, party_overlay ? 210 : 320, MM_COLOR_WHITE);
         if (party_overlay && saved) {
             bool immortal = coop_engine_options_immortal(coop_campaign_object((unsigned)member));
             TigRect toggle = { 498, 239 + (int)i * 25, 113, 22 };
@@ -795,7 +802,7 @@ static void draw(void)
         else if (p && p->connected && saved) {
             int64_t actor = coop_campaign_object((unsigned)member);
             if (actor) {
-                snprintf(health, sizeof(health), "%d/%d HP %d FP", object_hp_current(actor), object_hp_max(actor), critter_fatigue_current(actor));
+                snprintf(health, sizeof(health), coop_tr("%d/%d HP %d FP"), object_hp_current(actor), object_hp_max(actor), critter_fatigue_current(actor));
                 status = critter_is_dead(actor) ? coop_tr("Dead") : critter_is_unconscious(actor) ? coop_tr("Unconscious") : health;
                 incapacitated = critter_is_dead(actor) || critter_is_unconscious(actor);
             }
@@ -815,7 +822,7 @@ static void draw(void)
     }
     unsigned start = chat_layout();
     for (unsigned i = start; i < chat_line_count && i < start + CHAT_VISIBLE_LINES; i++)
-        text(chat_lines[i].text, 24, 410 + (int)(i - start) * 19, 708, MM_COLOR_WHITE);
+        text_raw(chat_lines[i].text, 24, 410 + (int)(i - start) * 19, 708, MM_COLOR_WHITE);
 }
 
 static void activate(unsigned button)
@@ -1192,7 +1199,7 @@ void coop_lobby_tick(void)
         if (previous_control_phase != COOP_CONTROL_IDLE && control->phase == COOP_CONTROL_IDLE) {
             if (control->notice) { snprintf(feedback, sizeof(feedback), "%s", errors[control->notice]); intgame_message_window_display_str(-1, feedback); }
             else if (control->action == COOP_CONTROL_SAVE || control->action == COOP_CONTROL_LOAD) {
-                char message[180]; snprintf(message, sizeof(message), coop_tr("Party campaign %s: %s.%s"), control->action == COOP_CONTROL_SAVE ? "saved" : "loaded",
+                char message[180]; snprintf(message, sizeof(message), coop_tr("Party campaign %s: %s.%s"), control->action == COOP_CONTROL_SAVE ? coop_tr("saved") : coop_tr("loaded"),
                     control->description[0] ? control->description : coop_tr("Quick save"), control->paused ? coop_tr(" The party remains paused.") : "");
                 intgame_message_window_display_str(-1, message);
             }

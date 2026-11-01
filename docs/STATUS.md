@@ -5,11 +5,13 @@ campaign, with Linux/Windows cross-play and modern single-/multiplayer UI tools.
 
 | Item | State |
 | --- | --- |
-| Compatibility | Version 0.2.3, protocol 60; update all players together; existing campaign saves/settings remain readable |
+| Compatibility | Version 0.2.4, protocol 60; update all players together; existing campaign saves/settings remain readable |
+| File checks | Ignore settings/logs/backups and generated caches inside game-data folders; verified migration retains older saves/drafts; [details](FILE_COMPATIBILITY.md) |
 | Latest gameplay build | Optimized Linux and Windows drop-ins; source revision recorded in each package |
 | Interface | Saved layouts/transparency, themed art, portrait targeting and [compact UI polish](UI_POLISH.md) |
 | Playability | Shared log, searchable inventory/actions, previews, labels, text/controls, extra rows, quests, recipes and pings |
 | Languages and loot | Personal English/Polish selection, presentation-only Eselter 1.7 support, translated added UI and Empty/Pusto labels; [setup and scoped verification](LOCALIZATION.md) |
+| Polish interface | 123 additional translations for connection states, synchronization, errors, map notes and character development; older personal catalogs inherit new builtin entries |
 | Windows dialogue | Canonical DAT paths normalized in 0.2.3; Polish Windows chooser/observer verified with Wine, existing language data retained |
 | Polish setup | One executable imports the adjacent Eselter package without Python, backs up previous language data and selects Polish; Windows/Linux tools included in 0.2.2 |
 | Campaign evidence | Connected original acquisition/travel through the Device ending; shared slides and native menu return |

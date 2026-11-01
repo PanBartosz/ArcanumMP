@@ -1,4 +1,6 @@
 #include "coop/checkpoint.h"
+#include "coop/content_identity.h"
+#include "coop/save_slots.h"
 #include "coop/snapshot.h"
 #include "coop/bootstrap.h"
 #include "coop/object_state.h"
@@ -58,6 +60,24 @@ int main(void)
     CHECK(coop_checkpoint_load(path, content, info.owners[0], &loaded, &restored, &restored_size) == COOP_CHECKPOINT_OK && loaded.epoch == 7); free(restored);
     unchanged_load(path, other, info.owners[0], COOP_CHECKPOINT_CONTENT);
     unchanged_load(path, content, other, COOP_CHECKPOINT_OWNER);
+    coop_content_legacy_set(other, content, 1);
+    CHECK(coop_checkpoint_load(path, other, info.owners[0], &loaded, &restored, &restored_size) == COOP_CHECKPOINT_OK);
+    CHECK(restored_size == size && !memcmp(restored, snapshot, size)); free(restored);
+    unchanged_load(path, other, other, COOP_CHECKPOINT_OWNER);
+    uint8_t unrelated[32] = { 13 };
+    unchanged_load(path, unrelated, info.owners[0], COOP_CHECKPOINT_CONTENT);
+    CoopSaveSet party = { .members = 15 };
+    memcpy(party.content, content, 32); memcpy(party.owners, info.owners, sizeof(party.owners));
+    char legacy_path[COOP_SAVE_PATH], resolved_path[COOP_SAVE_PATH];
+    CHECK(coop_save_path(&party, 3, legacy_path));
+    CHECK(coop_checkpoint_save(legacy_path, &info, snapshot, size) == COOP_CHECKPOINT_OK);
+    memcpy(party.content, other, 32);
+    CHECK(coop_save_path(&party, 3, resolved_path) && !strcmp(legacy_path, resolved_path));
+    CoopSaveEntry entry;
+    coop_save_inspect(&party, 3, &entry);
+    CHECK(entry.status == COOP_CHECKPOINT_OK && coop_save_matches(&party, &entry.info));
+    CHECK(!remove(legacy_path));
+    coop_content_legacy_set(NULL, NULL, 0);
     info.epoch = 8; CHECK(coop_checkpoint_save(path, &info, snapshot, size) == COOP_CHECKPOINT_OK);
     info.owners[1][0] = 1; CHECK(coop_checkpoint_save(path, &info, snapshot, size) == COOP_CHECKPOINT_INVALID); info.owners[1][0] = 2;
     CHECK(coop_checkpoint_save(dir, &info, snapshot, size) == COOP_CHECKPOINT_IO);

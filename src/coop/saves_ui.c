@@ -123,13 +123,13 @@ static void draw(void)
         else snprintf(label, sizeof(label), "%02u | %s", entry->slot, entry->status == COOP_CHECKPOINT_OK ? entry->info.description : entry->status == COOP_CHECKPOINT_MISSING ? coop_tr("Empty slot") : coop_tr("Unavailable save"));
         text(label, 30, box.y + 3, 700, row == selection ? MM_COLOR_GOLD : MM_COLOR_WHITE);
         if (entry->status == COOP_CHECKPOINT_OK) {
-            char saved[48] = "Unknown date"; time_t when = (time_t)entry->modified;
+            char saved[48]; snprintf(saved, sizeof(saved), "%s", coop_tr("Unknown date")); time_t when = (time_t)entry->modified;
             struct tm* date = entry->modified <= INT64_MAX ? localtime(&when) : NULL;
-            if (date) strftime(saved, sizeof(saved), "%d %b %Y %H:%M", date);
+            if (date) strftime(saved, sizeof(saved), "%d.%m.%Y %H:%M", date);
             char* area = NULL; unsigned members = 0;
             for (unsigned n = 0; n < COOP_MAX_PLAYERS; n++) members += (entry->info.members >> n) & 1u;
             if (!map_get_name((int)entry->info.map, &area)) area = NULL;
-            snprintf(label, sizeof(label), "%s | %s | %u travellers", saved, area ? area : coop_tr("Campaign"), members);
+            snprintf(label, sizeof(label), coop_tr("%s | %s | %u travellers"), saved, area ? area : coop_tr("Campaign"), members);
         } else {
             const char* errors[] = { "", coop_tr("No save in this slot."), coop_tr("This save is damaged."), coop_tr("Requires different game files."), coop_tr("Belongs to a different party."), coop_tr("Could not read this save.") };
             snprintf(label, sizeof(label), "%s", entry->status <= COOP_CHECKPOINT_IO ? errors[entry->status] : coop_tr("Unavailable save."));

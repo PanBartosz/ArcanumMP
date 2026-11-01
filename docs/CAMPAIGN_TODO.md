@@ -36,3 +36,15 @@ will follow reports from actual play. See [current status](STATUS.md),
   and observer with Polish/English participants. No pack re-import is needed.
 
 [Cause and verification](LOCALIZATION.md#windows-dialogue-correction-in-023).
+
+## Fixed in 0.2.4
+
+- [x] English multiplayer connection/error text and missing UI fragments: 123
+  added Polish translations, presentation hooks and builtin fallback for older
+  personal catalogs. Polish Linux/Windows-Wine lobby views verified.
+- [x] False file mismatches from personal/generated files inside game-data folders.
+  Preserve verified older save/character identities and named slots while
+  retaining strict gameplay checks. Four mixed native engines join despite
+  different personal files.
+
+[File compatibility and verification](FILE_COMPATIBILITY.md).

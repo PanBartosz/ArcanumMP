@@ -29,6 +29,7 @@ arcmp-*.cfg
 arcmp-content.id
 arcmp-content.json
 arcmp-content.cache
+arcmp-content.compat
 *.o
 *.obj
 *.a

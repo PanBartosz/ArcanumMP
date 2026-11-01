@@ -1,4 +1,5 @@
 #include "coop/draft.h"
+#include "coop/content_identity.h"
 #include "coop/bootstrap.h"
 #include "coop/object_state.h"
 #include <stdio.h>
@@ -49,6 +50,10 @@ int main(void)
     CHECK(!memcmp(bytes + 56, "ACH2", 4));
     CHECK(coop_draft_load(path, other, owner, &loaded) == COOP_DRAFT_CONTENT); compare(&c, &loaded);
     CHECK(coop_draft_load(path, content, other, &loaded) == COOP_DRAFT_PROFILE); compare(&c, &loaded);
+    coop_content_legacy_set(other, content, 1);
+    CHECK(coop_draft_load(path, other, owner, &loaded) == COOP_DRAFT_OK); compare(&c, &loaded);
+    CHECK(coop_draft_load(path, other, other, &loaded) == COOP_DRAFT_PROFILE);
+    coop_content_legacy_set(NULL, NULL, 0);
     for (unsigned index = 0; index < COOP_DRAFT_BYTES; index++) {
         bytes[index] ^= 0x40;
         write_bytes(path, bytes, COOP_DRAFT_BYTES);

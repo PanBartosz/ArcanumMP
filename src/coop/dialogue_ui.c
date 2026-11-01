@@ -92,11 +92,11 @@ static bool layout(void)
     if (view->mode == 3 || view->mode == 5 || view->mode == 6 || view->mode == 7 || view->mode == 8 || view->mode == 9) {
         char status[128];
         const char* action = view->mode == 3 ? coop_tr("exchanging items") : view->mode == 5 ? coop_tr("viewing a character sheet")
-            : view->mode == 6                                                       ? "studying a map"
+            : view->mode == 6                                                       ? coop_tr("studying a map")
             : view->mode == 7                                                       ? coop_tr("combining schematic components")
             : view->mode == 8                                                       ? coop_tr("having items identified")
                                                                                     : coop_tr("having items repaired");
-        snprintf(status, sizeof(status), "%s is %s.", view->chooser_name, action);
+        snprintf(status, sizeof(status), coop_tr("%s is %s."), view->chooser_name, action);
         if (!wrap(status, MM_COLOR_GOLD, -1) || !line("", 0, MM_COLOR_WHITE, -1)) return false;
     }
     for (unsigned i = 0; i < view->option_count; i++) {
@@ -122,9 +122,9 @@ static void draw(void)
     page();
     const CoopDialogueView* view = &page_view;
     char title[256];
-    snprintf(title, sizeof(title), "%s  |  %s chooses", page_speaker, view->chooser_name);
+    snprintf(title, sizeof(title), coop_tr("%s  |  %s chooses"), page_speaker, view->chooser_name);
     text(title, 30, 9, bounds.width-284, MM_COLOR_GOLD);
-    text("< Previous", bounds.width - 236, 9, 115, history_index ? MM_COLOR_GOLD : MM_COLOR_GRAY);
+    text(coop_tr("< Previous"), bounds.width - 236, 9, 115, history_index ? MM_COLOR_GOLD : MM_COLOR_GRAY);
     text(coop_tr("Next >"), bounds.width - 110, 9, 94, history_index + 1 == history_count ? MM_COLOR_GRAY : MM_COLOR_GOLD);
     snprintf(title, sizeof(title), coop_tr("%s | Page %u of %u | F8: conversation journal"), latest() ? can_choose ? coop_tr("Your reply") : coop_tr("Observing") : coop_tr("Saved conversation history"), history_count ? history_index + 1 : 0, history_count);
     text(title, 16, LINE_HEIGHT + 12, 720, MM_COLOR_GRAY);

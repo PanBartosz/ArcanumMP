@@ -144,7 +144,7 @@ bool coop_party_ui_target_actor(int64_t actor, bool attack_enemy)
         char name[160], text[240];
         actor_name(actor, name, sizeof(name));
         snprintf(text, sizeof(text), coop_tr("%s: %d/%d HP, %d/%d fatigue%s"), name, object_hp_current(actor), object_hp_max(actor),
-            critter_fatigue_current(actor), critter_fatigue_max(actor), coop_engine_options_immortal(actor) ? " (Immortal)" : "");
+            critter_fatigue_current(actor), critter_fatigue_max(actor), coop_engine_options_immortal(actor) ? coop_tr(" (Immortal)") : "");
         intgame_message_window_display_str(-1, text);
     }
     drawn = 0;

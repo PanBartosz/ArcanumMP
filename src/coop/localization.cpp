@@ -241,17 +241,21 @@ std::string polish_bytes(const std::string& utf8)
 }
 void load_ui()
 {
-    std::string text = read(fs::path("languages") / active / "ui.tsv");
-    if (text.empty() && active == "pl") text = reinterpret_cast<const char*>(builtin_polish_ui);
-    std::istringstream stream(text);
-    std::string line;
-    while (std::getline(stream, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        auto tab = line.find('\t');
-        if (tab == std::string::npos) continue;
-        auto source = unquote(line.substr(0, tab)), value = unquote(line.substr(tab + 1));
-        if (!source.empty() && !value.empty() && format_safe(source, value)) ui.emplace(source, polish_bytes(value));
-    }
+    auto load = [](const std::string& text) {
+        std::istringstream stream(text);
+        std::string line;
+        while (std::getline(stream, line)) {
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            auto tab = line.find('\t');
+            if (tab == std::string::npos) continue;
+            auto source = unquote(line.substr(0, tab)), value = unquote(line.substr(tab + 1));
+            if (!source.empty() && !value.empty() && format_safe(source, value)) ui.insert_or_assign(source, polish_bytes(value));
+        }
+    };
+    /* An older personal catalog may override individual translations, but must
+     * not hide new translations delivered with a game update. */
+    if (active == "pl") load(reinterpret_cast<const char*>(builtin_polish_ui));
+    load(read(fs::path("languages") / active / "ui.tsv"));
     for (auto& [source, value] : ui)
         if (source.find('%') != std::string::npos) {
             std::string pattern;

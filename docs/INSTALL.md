@@ -40,6 +40,14 @@ If an external tool changes bytes while preserving both size and modification
 time, remove `arcmp-content.cache` to force a full check. Make data changes while
 the game is closed. Preserve `arcmp-player.id`.
 
+Version 0.2.4 excludes settings, logs, backups and generated map/tile caches
+inside `data/` and `modules/` as well. Game scripts, rules, prototypes, maps and
+patches are still checked. Old saves/character drafts remain compatible when
+the only fingerprint changes are newly excluded files; keep the generated
+`arcmp-content.compat` alongside your saves. See [file compatibility](FILE_COMPATIBILITY.md)
+if the game reports a mismatch. Reinstalling the whole game is not the normal
+update procedure.
+
 Host a party or join the host's IPv4 address.
 Discovery uses UDP 35740; the game uses TCP 35741 by default. Select or create a
 character, mark Ready, and let the host Start campaign. F12 opens party chat and

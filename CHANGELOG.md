@@ -6,6 +6,22 @@ should use matching executables and game data. Current compatibility is
 
 ## Unreleased
 
+### v0.2.4 — Polish multiplayer messages and reliable file checks
+
+- Add 123 Polish translations for connection states, refusals, reconnection,
+  synchronization errors, map notes, character development and remaining UI
+  labels. Translate feedback callbacks and shared-story overlays; older personal
+  UI catalogs inherit missing builtin entries. Keep player chat/name input raw.
+- Ignore settings, logs, backups, temporary files and native generated map/tile
+  caches inside game-data repositories. Replacing drop-ins or changing personal
+  files does not create a false game-data mismatch.
+- Preserve older saves, named slots and saved/exported characters when the old
+  manifest proves the retained game data is identical. Gameplay differences,
+  ownership and corruption still block incompatible loads/connections.
+- File-mismatch feedback points to the two manifests for diagnosis. Verified
+  with four mixed-language Linux/Windows-Wine lobby engines; protocol remains 60.
+  [File checks and troubleshooting](docs/FILE_COMPATIBILITY.md).
+
 ### v0.2.3 — Polish dialogue on Windows
 
 - Normalize resource-path separators before Windows DAT archive lookups. Polish

@@ -54,6 +54,9 @@ the games and make those files match. Normal file changes are detected on the
 next launch. If a tool changed bytes while keeping file size and modification
 time unchanged, remove `arcmp-content.cache` to force a fresh check. Do not delete
 `arcmp-player.id`: it identifies your saved character.
+Settings, logs, saves, language packs, backups and generated map/tile caches do
+not need to match. A remaining mismatch can be investigated using
+`arcmp-content.json` from both game folders; see [file compatibility](FILE_COMPATIBILITY.md).
 
 ## During play
 

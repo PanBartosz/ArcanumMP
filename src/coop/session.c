@@ -562,7 +562,7 @@ static bool dispatch(CoopSession* s, Peer* peer, unsigned type, const uint8_t* p
                 || !coop_identity_valid(payload + 32)
                 || !valid_text((const char*)payload + 32 + COOP_IDENTITY_SIZE, COOP_NAME_SIZE)) return false;
             if (memcmp(s->config.content_id, payload, 32) != 0) {
-                reject_peer(peer, "Game content differs from the host. Use the same campaign data and patches.");
+                reject_peer(peer, "Game content differs from the host. Compare arcmp-content.json in both game folders.");
                 return true;
             }
             for (unsigned i = 0; i < COOP_MAX_PLAYERS; i++) {

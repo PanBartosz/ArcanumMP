@@ -53,6 +53,7 @@ int main(int argc, char** argv)
                                           "ycie}{2}{99}{3}{Zdrowie %s}{4}{Witaj, @pcname@!}{5}{nie uruchamiaj}{6}{Koszt to %d monet.}");
     write("languages/pl/art/interface/morph15font.art", "font fixture");
     write("languages/pl/movies/intro.srt", "subtitle fixture");
+    write("languages/pl/ui.tsv", "\"Local override\"\t\"Wlasny wpis\"\n\"Close\"\t\"Zamknij lokalnie\"\n");
     write("languages/fr/name.txt", "Francais\n");
     write("languages/../invalid/name.txt", "not a language\n");
 #ifdef _WIN32
@@ -67,6 +68,31 @@ int main(int argc, char** argv)
     CHECK(!std::strcmp(coop_language_active(), argv[1]));
     CHECK(!std::strcmp(coop_tr("Empty"), polish ? "Pusto" : "Empty"));
     CHECK(!std::strcmp(coop_tr("Poisoned"), polish ? "Zatrucie" : "Poisoned"));
+    CHECK(!std::strcmp(coop_tr("Local override"), polish ? "Wlasny wpis" : "Local override"));
+    CHECK(!std::strcmp(coop_tr("Close"), polish ? "Zamknij lokalnie" : "Close"));
+    for (const char* status : {
+             "Choose Host or Join to assemble your party.", "Disconnected.",
+             "Hosting. Friends can join using your LAN IPv4 address.", "Connecting to the host...",
+             "Connected. Choose your character and ready up.",
+             "Connected to the running party. Waiting for campaign synchronization.",
+             "Game content differs from the host. Use the same campaign data and patches.",
+             "Game content differs from the host. Compare arcmp-content.json in both game folders.",
+             "Connection refused or unreachable. Check the address, port and host firewall.",
+             "This player profile is already connected.", "The party is full (four players).",
+             "Incompatible co-op protocol. Use the same Arcanum MP build.",
+             "The host disconnected.", "Campaign snapshot loading timed out.",
+             "World object replication failed; resynchronization is required.",
+             "Character updated.", "Party map note updated.", "< Previous" }) {
+        CHECK((std::strcmp(coop_tr_rendered(status), status) != 0) == polish);
+    }
+    for (const char* status : { "Checking game files for multiplayer... 37%",
+             "Connection lost. Rejoining your party automatically (23s).",
+             "Preparing the shared story: 2/4 travellers ready." }) {
+        CHECK((std::strcmp(coop_tr_rendered(status), status) != 0) == polish);
+    }
+    char progress[256];
+    std::snprintf(progress, sizeof(progress), coop_tr("Checking game files for multiplayer... %u%%"), 37u);
+    CHECK(!std::strcmp(coop_tr_rendered("Checking game files for multiplayer... 37%"), progress));
     CHECK(!std::strcmp(coop_language_message("mes/example.mes", 1, "Life"), polish ? "\xaf"
                                                                                      "ycie"
                                                                                    : "Life"));

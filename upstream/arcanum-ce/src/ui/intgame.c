@@ -4200,7 +4200,7 @@ void intgame_message_window_display_msg(UiMessage* ui_message)
 }
 void intgame_message_window_display_feedback(const char* text)
 {
-    UiMessage message = { .type = UI_MSG_TYPE_FEEDBACK, .str = (char*)text };
+    UiMessage message = { .type = UI_MSG_TYPE_FEEDBACK, .str = (char*)coop_tr_rendered(text) };
     intgame_message_store(&message, true);
     if (dword_64C6D4) dword_64C6D4(&message);
 }
@@ -4211,6 +4211,7 @@ void intgame_message_window_display_str(int a1, const char* str)
     UiMessage ui_message;
 
     (void)a1;
+    str = coop_tr_rendered(str);
 
     if (dword_64C6D4 != NULL) {
         ui_message.type = UI_MSG_TYPE_FEEDBACK;
