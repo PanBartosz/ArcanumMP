@@ -6,6 +6,20 @@ All players should use matching executables and game data. Current compatibility
 
 ## Unreleased
 
+### v0.4.1 — personal spell-loop audio controls
+
+- Add **B → Settings → Mute looping spell sounds**, with Polish text. Each
+  player chooses independently; the setting persists across launches and
+  applies immediately to sounds already playing.
+- Silence sustained spell loops and the six repeating buff/familiar samples
+  covered by No Noise / Elemental Silence. Keep ordinary casting, impacts,
+  other creatures, ambient effects, voice and music audible.
+- Filter output gain without destroying sound instances, replacing game data
+  or changing replicated sound lifetimes. Turning the option off restores live
+  effects; movement, stereo balance and the effects-volume slider respect it.
+- Keep protocol 62 and the existing save format. Preserve older-save readers
+  and verified content migrations as a standing release requirement.
+
 ### v0.4.0 — combat feedback and corrected party tools
 
 - Show native, locally translated status floaters above PCs and NPCs as effects

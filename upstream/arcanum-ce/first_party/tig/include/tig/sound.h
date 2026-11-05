@@ -9,6 +9,12 @@ extern "C" {
 
 typedef int tig_sound_handle_t;
 
+/* Personal output filter. Playback identity, requested volume, positional
+ * updates and loop/stop lifetimes remain intact. Never used for voices/music. */
+typedef bool (*TigSoundMuteFilter)(const char* path, int loops);
+void tig_sound_set_effect_mute_filter(TigSoundMuteFilter filter);
+void tig_sound_refresh_effect_filter(void);
+
 #define TIG_SOUND_HANDLE_INVALID ((tig_sound_handle_t)(-1))
 #define TIG_SOUND_MAX_HANDLES 60
 

@@ -85,7 +85,7 @@ int main(int argc, char** argv)
              "Character updated.", "Party map note updated.", "< Previous",
              "Give gold", "Load campaign", "Gold given to your party member.",
              "Autosave", "Periodic autosave: Off", "Autosaves", "Turn-based", "Concealed", "Knocked down",
-             "Before travel autosave 2", "Automatic turn-based radius: 20 tiles", "Poisoned ended", "Critical-hit screen shake: On" }) {
+             "Before travel autosave 2", "Automatic turn-based radius: 20 tiles", "Poisoned ended", "Critical-hit screen shake: On", "Mute looping spell sounds: On" }) {
         CHECK((std::strcmp(coop_tr_rendered(status), status) != 0) == polish);
     }
     for (const char* status : { "Checking game files for multiplayer... 37%",

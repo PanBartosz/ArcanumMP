@@ -1,15 +1,16 @@
 # Current status
 
-Updated 2026-11-05. ArcanumMP implements four-player LAN co-op for the original
+Updated 2026-11-06. ArcanumMP implements four-player LAN co-op for the original
 campaign, with Linux/Windows cross-play and modern single-/multiplayer UI tools.
 
 | Item | State |
 | --- | --- |
-| Compatibility | Version 0.4.0, protocol 62; update all players together; existing campaign saves/settings remain readable |
+| Compatibility | Version 0.4.1, protocol 62; preserve older saves, profiles and verified content migrations |
 | File checks | Exclude native screenshots and generated/personal files; normalize unused prototype-ID bytes, retaining actual gameplay checks and proven older save identities; [details](FILE_COMPATIBILITY.md) |
 | Party controls | F12 gold transfer, in-session load votes, host periodic/pre-travel autosaves, direct latest-autosave access; [guide](PLAYER_GUIDE.md) |
 | Latest gameplay build | Optimized Linux and Windows drop-ins; source revision recorded in each package |
 | Combat feedback | Native status floaters, personal critical shake, automatic native turns with host radius and no pause popup |
+| Spell audio | Personal live mute for repeating spells, elemental buffs, Tempus Fugit and familiar fidget; [scope and checks](QOL_BENCHMARKS.md#spell-loop-audio-controls-in-041) |
 | Interface | Saved layouts/transparency, themed main-menu lobby, repaired chat/log chrome, portrait targeting and [compact UI polish](UI_POLISH.md) |
 | Playability | Shared log, searchable inventory/actions, previews, labels, text/controls, extra rows, quests, recipes and pings |
 | Languages and loot | Personal English/Polish selection, presentation-only Eselter 1.7 support, translated added UI and Empty/Pusto labels; [setup and scoped verification](LOCALIZATION.md) |

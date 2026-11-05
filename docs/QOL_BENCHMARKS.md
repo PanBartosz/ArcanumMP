@@ -137,3 +137,39 @@ Raw reports, native frames, logs, failed diagnostic setups and the frozen
 previous executable remain local under `evidence/qol-2026-10-30/` and
 `build/qol-baseline/`. The comparison manifest is `acceptance.json` in that
 evidence directory. Only the named final runs enter the figures above.
+
+## Spell-loop audio controls in 0.4.1
+
+The personal **B → Settings → Mute looping spell sounds** switch filters
+effect output gain. It keeps live handles, requested volume, positional updates
+and replicated START/MOVE/STOP lifetimes intact. Disabling it restores current
+effects without recasting. It changes neither game assets nor network/save
+formats; protocol 62 and verified older content identities remain supported.
+
+The six recurring samples are those silenced by the author's
+[No Noise / Elemental Silence](https://terra-arcanum.com/drog/misc.html): four
+elemental attribute buffs, Tempus Fugit and Krag/familiar fidgeting. Some recur
+as one-shots rather than infinite handles. Match those resource names in either
+case and additionally filter true infinite `spell_*.wav` effects. Voice/music
+channels and ordinary one-shot casts/impacts are excluded.
+
+Focused verification on 2026-11-06:
+
+- 35 post-gain PCM observations in the native engine using its software mixer
+  and SDL dummy audio output. Each sampled 10,240–11,264 frames: all 18 muted windows
+  had exactly zero left/right energy; the other 17 were audible. The six effects
+  resume on the same instances. Listener movement, stereo changes and the
+  effects-volume slider cannot bypass the mute. Recurring one-shots are also
+  silent; cast/impact, another looping effect and voice/music-type playback
+  remain audible.
+- The saved preference survives a process restart and is writable with replica
+  authority. Native settings rendering was inspected. The Windows build's
+  portable audio and Polish localization checks pass under Wine; PCM figures
+  above are native Linux measurements.
+- Five retained named/automatic saves from 0.3.0 and 0.4.0 load through the
+  ordinary content-migration/checkpoint reader and native restore. Maps, four
+  original owners, local character selection, gold and world markers survive;
+  the original save files are unchanged. This is a concrete regression sample,
+  not a claim to have tested every historical save.
+- All 34 portable tests pass. Existing campaign/network acceptance is reused;
+  no campaign replay was needed for a local output preference.

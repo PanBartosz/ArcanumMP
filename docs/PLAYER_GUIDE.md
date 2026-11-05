@@ -159,6 +159,13 @@ locally and expires normally. **Critical-hit screen shake** briefly moves only
 the world when your character receives a damaging critical hit. Turn it off in
 **B → Settings**; each player has their own saved choice.
 
+**Mute looping spell sounds**, also in **B → Settings**, silences persistent
+spell loops, the four elemental attribute buffs, Tempus Fugit and the familiar's
+repeating wing sound. Ordinary casting, hits, other creature sounds, ambience,
+dialogue and music remain audible. This is a personal choice, saved across
+launches; change it during play to mute or restore effects already sounding.
+Other players can keep their own choice. No game-data replacement is needed.
+
 Plot world-map journeys using the original waypoint controls. Multiplayer keeps
 all plotted waypoints (up to 30), so routes around rivers and mountains follow
 your chosen approach. Everyone votes on the same route. Encounters and Stop

@@ -1,5 +1,6 @@
 #include "coop/audio.h"
 #include "coop/object_state.h"
+#include "coop/spell_sounds.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,26 @@ static void pump(unsigned rounds, unsigned peers)
 }
 int main(void)
 {
+    /* Buff/familiar fidgets repeat as one-shots too. Resource names, rather
+     * than sound-index IDs, keep this independent of local sound catalogs. */
+    const char* repeated[] = { "Spell_Elemental_Air_Vitality.wav", "Spell_Elemental_Earth_Strength.wav",
+        "Spell_Elemental_Fire_Agility.wav", "Spell_Elemental_Water_Purity.wav",
+        "spell_temporal_tempus_fugit.wav", "Krag_fidgeting.wav" };
+    for (unsigned i = 0; i < sizeof(repeated) / sizeof(*repeated); i++) {
+        char path[160]; snprintf(path, sizeof(path), "sound\\sfx\\%s", repeated[i]);
+        CHECK(coop_spell_sound_repeats(path, 1));
+        CHECK(coop_spell_sound_repeats(repeated[i], 0));
+    }
+    CHECK(coop_spell_sound_repeats("SOUND/SPELL_Sustained.WAV", 0));
+    CHECK(!coop_spell_sound_repeats("sound/spell_sustained.wav", 1));
+    CHECK(!coop_spell_sound_repeats("sound/creature_fidget.wav", 0));
+    CHECK(!coop_spell_sound_repeats("sound/spell_cast.wav", 1));
+    CHECK(!coop_spell_sound_repeats("sound/spell_impact.wav", 1));
+    CHECK(!coop_spell_sound_repeats("sound/wind.wav", 0));
+    CHECK(!coop_spell_sound_repeats("sound/spell_cast.wav.backup", 0));
+    CHECK(!coop_spell_sound_repeats("sound/Krag_fidgeting.wav.backup", 1));
+    CHECK(!coop_spell_sound_repeats(NULL, 0));
+    CHECK(!coop_spell_sound_repeats("", 0));
     CoopAudioEvent event = { .operation = COOP_AUDIO_START, .token = UINT64_C(0xfedcba9876543210),
         .sound = 1234, .loops = 65535, .size = 3, .x = 123, .y = 456 }, decoded;
     uint8_t bytes[COOP_AUDIO_EVENT_BYTES], canonical[COOP_AUDIO_EVENT_BYTES];

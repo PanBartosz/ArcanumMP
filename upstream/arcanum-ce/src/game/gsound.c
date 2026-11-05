@@ -1,3 +1,4 @@
+#include "coop/modern.h"
 #include "game/gsound.h"
 #include "coop/authority.h"
 #include "coop/campaign.h"
@@ -465,6 +466,7 @@ bool gsound_init(GameInitInfo* init_info)
 
     gsound_initialized = true;
     tig_sound_set_stop_observer(coop_engine_audio_native_stop);
+    tig_sound_set_effect_mute_filter(coop_play_spell_sound_muted);
 
     // Place the listener at the center of the viewport.
     x = 400;

@@ -6,6 +6,7 @@
 #include "coop/display.h"
 #include "coop/play_feedback.h"
 #include "coop/party_ui.h"
+#include "coop/spell_sounds.h"
 #include "coop/play_data.h"
 #include "coop/runtime.h"
 #include "game/combat.h"
@@ -31,7 +32,7 @@ enum { HISTORY = COOP_PLAY_HISTORY, EVENT_BYTES = COOP_PLAY_EVENT_BYTES };
 static PlayEvent history[HISTORY];
 static uint32_t next = 1, first = 1;
 static bool prefs_loaded;
-static int prefs[PLAY_PREF_COUNT] = {100, 0, 1, 0, 1, 1, 0, 550, 0, 5, 1, 20, 1};
+static int prefs[PLAY_PREF_COUNT] = {100, 0, 1, 0, 1, 1, 0, 550, 0, 5, 1, 20, 1, 0};
 static tig_font_handle_t fonts[MM_COLOR_COUNT], chrome_fonts[MM_COLOR_COUNT];
 static CoopSession* network;
 static uint32_t network_epoch, cursors[4], sent_policy[4];
@@ -127,6 +128,8 @@ static bool prefs_save(void)
     return good && SDL_RenamePath("arcmp-play.cfg.tmp","arcmp-play.cfg");
 }
 int coop_play_pref(unsigned i) { prefs_load(); return i<PLAY_PREF_COUNT ? prefs[i] : 0; }
+bool coop_play_spell_sound_muted(const char* path, int loops)
+{ return coop_play_pref(PLAY_PREF_MUTE_SPELL_LOOPS) && coop_spell_sound_repeats(path, loops); }
 bool coop_play_pref_set(unsigned i, int value)
 {
     prefs_load();
@@ -146,6 +149,7 @@ bool coop_play_pref_set(unsigned i, int value)
     }
     if (i==PLAY_PREF_AUTOPAUSE) pause_policy=(unsigned)value;
     if (i==PLAY_PREF_CRIT_SHAKE && !value) coop_view_effect_reset();
+    if (i==PLAY_PREF_MUTE_SPELL_LOOPS) tig_sound_refresh_effect_filter();
     if (i==PLAY_PREF_TEXT) tc_readability_changed();
     if (i==PLAY_PREF_TEXT || i==PLAY_PREF_CONTRAST) coop_hud_refresh();
     return true;

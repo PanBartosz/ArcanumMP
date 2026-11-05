@@ -86,3 +86,14 @@ will follow reports from actual play. See [current status](STATUS.md),
 - [x] Personal, persistent switch for world-only shake on received critical hits.
 
 [Behavior and focused evidence](COORDINATION.md#playthrough-feedback-corrections-in-040).
+
+## Added in 0.4.1
+
+- [x] Personal, persistent live spell-loop mute, including the six recurring
+  No Noise / Elemental Silence samples; preserve active effects and other audio.
+- [x] Verify five retained named/automatic saves from 0.3.0 and 0.4.0 through
+  the existing content migration and native restore. Original saves retained.
+
+Earlier campaign saves remain a standing compatibility requirement for future
+releases. Preserve saves, player profiles and verified content migrations.
+[Behavior and focused checks](QOL_BENCHMARKS.md#spell-loop-audio-controls-in-041).

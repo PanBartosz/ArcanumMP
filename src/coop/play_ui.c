@@ -196,6 +196,9 @@ static void settings_rows(void)
     PlayRow shake={.id=PLAY_PREF_CRIT_SHAKE,.available=true};
     snprintf(shake.name,sizeof(shake.name),coop_tr("Critical-hit screen shake: %s"),coop_play_pref(PLAY_PREF_CRIT_SHAKE) ? coop_tr("On") : coop_tr("Off"));
     snprintf(shake.detail,sizeof(shake.detail),"%s",coop_tr("Briefly shake the world view when your own character receives a damaging critical hit. The interface stays still. This personal setting is saved and never changes another player's screen.")); rows[count++]=shake;
+    PlayRow sound={.id=PLAY_PREF_MUTE_SPELL_LOOPS,.available=true};
+    snprintf(sound.name,sizeof(sound.name),coop_tr("Mute looping spell sounds: %s"),coop_play_pref(PLAY_PREF_MUTE_SPELL_LOOPS) ? coop_tr("On") : coop_tr("Off"));
+    snprintf(sound.detail,sizeof(sound.detail),"%s",coop_tr("Silence sustained spell loops, elemental stat buffs, Tempus Fugit and the familiar's repeated wing sound. Casting, impacts, other creature sounds, ambience, dialogue and music stay audible. Changes apply immediately, including to active sounds. This personal choice is saved and does not affect other players.")); rows[count++]=sound;
     const char* reasons[]={coop_tr("Enemy spotted"),coop_tr("Critical health"),coop_tr("Party member down"),coop_tr("Weapon broken")};
     for (unsigned i=0;i<4;i++) {
         PlayRow row={.id=100+(int)i,.available=host};

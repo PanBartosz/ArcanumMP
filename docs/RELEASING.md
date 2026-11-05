@@ -8,7 +8,10 @@ UI art. Original game data and local development artifacts stay separate.
 
 1. Follow [optimized building](BUILDING.md#optimized-drop-ins). Keep the source revision, protocol and
    dependency configuration consistent for both target builds.
-2. Perform validation appropriate to the changed behavior. Reuse unaffected
+2. Preserve campaign-save compatibility with earlier published releases. Keep
+   old readers or provide migrations, retain original saves/profiles and check a
+   retained older save. Release/protocol numbers and personal preferences must
+   not invalidate saves. Perform validation appropriate to the changed behavior. Reuse unaffected
    [campaign/network evidence](FINAL_READINESS.md) and report its limits.
 3. Review and commit the source. The packaging tool rejects a dirty working
    tree unless explicitly allowed for a local smoke package.
@@ -40,7 +43,7 @@ name and `package.json`; documentation-only commits do not create game binaries.
 
 | Local path | Purpose |
 | --- | --- |
-| `dist/public-v0.4.0/` | Current public drop-ins, staging trees and checksums |
+| `dist/public-v0.4.1/` | Current public drop-ins, staging trees and checksums |
 | `dist/arcanum-mp-*-p59-*` | Previous optimized builds retained for rollback |
 | `dist/arcanum-mp-*-p58-0840f41*` | Previous HUD-art drop-ins retained for comparison |
 | `dist/archive/` | Older release archives/checksums, kept for rollback |
