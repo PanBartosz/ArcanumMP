@@ -7,6 +7,7 @@
 #include "coop/lobby_ui.h"
 #include "coop/party_ui.h"
 #include "coop/runtime.h"
+#include "coop/play_feedback.h"
 #include "game/combat.h"
 #include "game/ai.h"
 #include "game/critter.h"
@@ -31,23 +32,22 @@
 typedef struct Label { int64_t obj; TigRect rect; } Label;
 static Label labels[96];
 static unsigned label_count;
-static bool labels_on, enemy_visible, enemy_before;
+static bool labels_on;
 static int64_t seen_enemies[128];
 static unsigned seen_enemy_count;
+static int64_t visible_enemy;
 static TigRect erase[256];
 static unsigned erase_count;
 static bool collect_labels,collect_enemies;
 static TigRect path_bounds;
 static int observed_map=-1;
 static uint64_t last_scan;
-typedef struct Watch { int64_t actor, weapon; int hp,weapon_hp; unsigned status; } Watch;
-static Watch watches[32];
-static tig_window_handle_t banner=TIG_WINDOW_HANDLE_INVALID;
-static TigRect banner_rect;
+typedef struct Watch { int64_t actor, weapon; int hp,weapon_hp; unsigned status; uint64_t seen; bool engaged; } Watch;
+static Watch watches[512];
 static tig_window_handle_t preview_window=TIG_WINDOW_HANDLE_INVALID;
 static TigRect preview_rect;
-static char preview_text[384],banner_text[256];
-static int preview_min_height=68,banner_min_height=72;
+static char preview_text[384];
+static int preview_min_height=68;
 static TigRect card_bounds(unsigned element,TigRect fallback,int min_width,const char* title,const char* body,int* minimum)
 {
     TigRect r=coop_hud_rect(element,fallback,min_width,64);
@@ -65,6 +65,11 @@ static bool play_enemy(int64_t actor)
     return actor && obj_handle_is_valid(actor) && obj_field_int32_get(actor,OBJ_F_TYPE)==OBJ_TYPE_NPC
         && !critter_is_dead(actor) && object_relation_color(actor)==tig_color_make(245,55,45);
 }
+static bool known_enemy(int64_t actor)
+{
+    for (unsigned i=0;i<SDL_min(seen_enemy_count,SDL_arraysize(seen_enemies));i++) if (seen_enemies[i]==actor) return true;
+    return false;
+}
 static bool notice_enemy(int64_t actor)
 {
     for (unsigned i=0;i<SDL_min(seen_enemy_count,SDL_arraysize(seen_enemies));i++) if (seen_enemies[i]==actor) return false;
@@ -73,11 +78,9 @@ static bool notice_enemy(int64_t actor)
 }
 void coop_play_world_reset(void)
 {
-    preview_close(); coop_hud_detach(HUD_PAUSE);
-    if (banner!=TIG_WINDOW_HANDLE_INVALID) tig_window_destroy(banner);
-    banner=TIG_WINDOW_HANDLE_INVALID; observed_map=-1; last_scan=0; labels_on=false; label_count=0;
-    enemy_visible=enemy_before=false; memset(watches,0,sizeof(watches));
-    seen_enemy_count=erase_count=0; collect_labels=collect_enemies=false;
+    preview_close(); observed_map=-1; last_scan=0; labels_on=false; label_count=0;
+    memset(watches,0,sizeof(watches));
+    visible_enemy=0; seen_enemy_count=erase_count=0; collect_labels=collect_enemies=false;
 }
 static bool in_world(void)
 {
@@ -88,99 +91,110 @@ static bool in_world(void)
 static void draw_text(tig_window_handle_t window,const char* value,TigRect rect,MainMenuColor color)
 {
     tig_font_push(coop_play_font(color)); tig_window_text_write(window,value,&rect); tig_font_pop();
-    if (window!=banner && window!=preview_window && erase_count<SDL_arraysize(erase)) erase[erase_count++]=rect;
+    if (window!=preview_window && erase_count<SDL_arraysize(erase)) erase[erase_count++]=rect;
 }
-static void pause_for(const char* reason)
+static int64_t nearby_player(int64_t actor)
 {
-    if (coop_play_paused() || coop_runtime_paused()) return;
-    coop_play_pause_toggle();
-    coop_play_pause_announce(reason);
-}
-static bool banner_input(TigMessage* msg)
-{
-    if (coop_hud_input(HUD_PAUSE,banner,&banner_rect,msg,banner_rect.width-20,280,banner_min_height,false)) return true;
-    if (msg->type==TIG_MESSAGE_MOUSE && msg->data.mouse.x>=banner_rect.x && msg->data.mouse.x<banner_rect.x+banner_rect.width
-        && msg->data.mouse.y>=banner_rect.y && msg->data.mouse.y<banner_rect.y+banner_rect.height
-        && msg->data.mouse.event==TIG_MESSAGE_MOUSE_LEFT_BUTTON_DOWN && !msg->data.mouse.repeat) {
-        CoopSession* session=coop_runtime_session();
-        const CoopControlView* state=coop_runtime_controls() ? coop_controls_current(coop_runtime_controls()) : NULL;
-        if (session && state && !(state->paused&(1u<<coop_session_local_slot(session)))) return true;
-        coop_play_pause_toggle(); return true;
+    if (!actor || !obj_handle_is_valid(actor)) return 0;
+    int64_t closest=0, distance=INT64_MAX;
+    if (!coop_campaign_active()) {
+        int64_t pc=player_get_local_pc_obj();
+        return pc && object_dist(pc,actor)<=coop_play_turn_radius() ? pc : 0;
     }
-    return false;
+    for (unsigned i=coop_campaign_next_slot(0);i<COOP_MAX_PLAYERS;i=coop_campaign_next_slot(i+1)) {
+        int64_t pc=coop_campaign_object(i);
+        if (!pc || !critter_is_active(pc)) continue;
+        int64_t value=object_dist(pc,actor);
+        if (value>=0 && value<=coop_play_turn_radius() && value<distance) { closest=pc; distance=value; }
+    }
+    return closest;
+}
+bool coop_play_turn_trigger(int64_t actor, const char* reason)
+{
+    if (!coop_authority_can_simulate() || !in_world() || coop_play_ui_blocking()) return false;
+    CoopGameplay* game=coop_runtime_gameplay();
+    if (game && (coop_runtime_phase()!=COOP_RUNTIME_PLAYING || coop_gameplay_finishing(game)
+        || coop_runtime_paused() || coop_dialogue_current(coop_gameplay_dialogue(game))->active)) return false;
+    int64_t pc=nearby_player(actor);
+    if (!pc) return false;
+    if (combat_turn_based_is_active()) return true;
+    if (!sub_4B6C90(true) || !combat_is_turn_based()) return false;
+    if (!combat_critter_is_combat_mode_active(pc)) combat_critter_activate_combat_mode(pc);
+    if (!combat_turn_based_is_active()) return false;
+    char line[192]; snprintf(line,sizeof(line),"Turn-based combat: %s",reason);
+    coop_play_event(PLAY_NOTICE,pc,actor,line,"Automatic combat timing. The host chooses triggers and their distance from a player character.");
+    return true;
+}
+static Watch* watch(int64_t actor, uint64_t now)
+{
+    Watch* oldest=&watches[0];
+    for (unsigned i=0;i<SDL_arraysize(watches);i++) {
+        if (watches[i].actor==actor) return &watches[i];
+        if (!watches[i].actor) oldest=&watches[i];
+        else if (oldest->actor && watches[i].seen<oldest->seen) oldest=&watches[i];
+    }
+    *oldest=(Watch){.actor=0,.seen=now}; return oldest;
+}
+static void observe(int64_t actor, uint64_t now, unsigned policy)
+{
+    if (!actor || !obj_handle_is_valid(actor)) return;
+    Watch* old=watch(actor,now);
+    if (old->seen==now && old->actor==actor) return;
+    unsigned status=coop_party_ui_statuses(actor);
+    if (!critter_is_unconscious(actor)) status &= ~COOP_STATUS_UNCONSCIOUS;
+    if (!critter_is_dead(actor) && critter_is_prone(actor)) status |= 1u<<9;
+    int hp=object_hp_current(actor),maximum=object_hp_max(actor);
+    int64_t weapon=critter_is_dead(actor) ? 0 : item_wield_get(actor,ITEM_INV_LOC_WEAPON);
+    bool party=coop_play_members(actor)!=0;
+    bool engaged=play_enemy(actor) && ai_is_fighting(actor);
+    if ((policy&PLAY_PAUSE_ENEMY) && engaged && (old->actor!=actor || !old->engaged) && nearby_player(actor)
+        && !combat_turn_based_is_active() && coop_play_turn_trigger(actor,"Enemy engaged the party")) notice_enemy(actor);
+    if (old->actor==actor) {
+        char name[96],why[192]; coop_play_name(actor,name,sizeof(name));
+        if (party && nearby_player(actor)) {
+            if ((policy&PLAY_PAUSE_DOWN) && (status&(COOP_STATUS_DEAD|COOP_STATUS_UNCONSCIOUS)) && !(old->status&(COOP_STATUS_DEAD|COOP_STATUS_UNCONSCIOUS))) {
+                snprintf(why,sizeof(why),"%s is incapacitated",name); coop_play_turn_trigger(actor,why);
+            } else if ((policy&PLAY_PAUSE_CRITICAL) && maximum>0 && hp>0 && (int64_t)hp*4<=maximum && (int64_t)old->hp*4>maximum) {
+                snprintf(why,sizeof(why),"%s has critical health",name); coop_play_turn_trigger(actor,why);
+            }
+            if ((policy&PLAY_PAUSE_BREAK) && old->weapon && old->weapon_hp>0 && obj_handle_is_valid(old->weapon) && object_hp_current(old->weapon)<=0) {
+                snprintf(why,sizeof(why),"%s's weapon broke",name); coop_play_turn_trigger(actor,why);
+            }
+        }
+        /* Flag statuses already have exact native setter hooks. Observe the
+         * remaining derived conditions for allies and NPCs outside combat too. */
+        unsigned changed=(status^old->status)&(COOP_STATUS_DEAD|COOP_STATUS_UNCONSCIOUS|COOP_STATUS_POISONED|COOP_STATUS_TIRED|COOP_STATUS_ENCUMBERED|(1u<<9));
+        const char* names[]={"Dead","Unconscious","Poisoned","Low fatigue",NULL,NULL,NULL,NULL,"Encumbered","Knocked down"};
+        for (unsigned bit=0;bit<SDL_arraysize(names);bit++) if ((changed&(1u<<bit)) && names[bit]) {
+            coop_play_status_feedback(actor,names[bit],(status&(1u<<bit))!=0);
+            snprintf(why,sizeof(why),"%s: %s %s",name,names[bit],status&(1u<<bit) ? "applied" : "ended");
+            coop_play_event(PLAY_EFFECT,actor,0,why,"Native condition changed, during or outside combat.");
+        }
+    }
+    *old=(Watch){.actor=actor,.weapon=weapon,.hp=hp,.weapon_hp=weapon ? object_hp_current(weapon) : 0,.status=status,.seen=now,.engaged=engaged};
 }
 void coop_play_tick(uint64_t now)
 {
-    coop_play_ui_tick(now);
-    wmap_ui_play_tick(now);
+    coop_play_ui_tick(now); wmap_ui_play_tick(now); coop_feedback_tick(now);
     int64_t pc=player_get_local_pc_obj();
     if (!pc || !obj_handle_is_valid(pc)) { coop_play_world_reset(); return; }
     if (observed_map!=map_current_map()) {
-        observed_map=map_current_map(); memset(watches,0,sizeof(watches)); enemy_before=enemy_visible=false; seen_enemy_count=0; last_scan=0;
+        observed_map=map_current_map(); memset(watches,0,sizeof(watches)); seen_enemy_count=0; last_scan=0;
     }
     if (!in_world() || !combat_turn_based_is_active() || !coop_play_pref(PLAY_PREF_PREVIEW) || coop_play_ui_blocking()) preview_close();
-    if (coop_authority_can_simulate() && now-last_scan>=150) {
+    if (coop_authority_can_simulate() && intgame_interface_is_visible() && !mainmenu_ui_is_active() && now-last_scan>=150) {
         unsigned policy=coop_play_pause_policy();
-        if ((policy&PLAY_PAUSE_ENEMY) && enemy_visible) pause_for("Enemy spotted");
-        enemy_visible=false;
+        if ((policy&PLAY_PAUSE_ENEMY) && visible_enemy && obj_handle_is_valid(visible_enemy)
+            && coop_play_turn_trigger(visible_enemy,"Enemy spotted")) notice_enemy(visible_enemy);
+        visible_enemy=0;
         ObjectList party; object_list_party(pc,&party);
-        unsigned i=0;
-        for (ObjectNode* node=party.head;node && i<SDL_arraysize(watches);node=node->next,i++) {
-            int64_t actor=node->obj; Watch* old=&watches[i];
-            if (policy&PLAY_PAUSE_ENEMY) {
-                ObjectList vicinity; object_list_vicinity(actor,OBJ_TM_NPC,&vicinity);
-                for (ObjectNode* enemy=vicinity.head;enemy;enemy=enemy->next)
-                    if (ai_is_fighting(enemy->obj) && play_enemy(enemy->obj) && notice_enemy(enemy->obj))
-                        pause_for("Enemy engaged the party");
-                object_list_destroy(&vicinity);
-            }
-            unsigned status=coop_party_ui_statuses(actor);
-            int hp=object_hp_current(actor),maximum=object_hp_max(actor);
-            int64_t weapon=item_wield_get(actor,ITEM_INV_LOC_WEAPON);
-            if (old->actor==actor) {
-                char name[96],why[192]; coop_play_name(actor,name,sizeof(name));
-                if ((policy&PLAY_PAUSE_DOWN) && (status&(COOP_STATUS_DEAD|COOP_STATUS_UNCONSCIOUS)) && !(old->status&(COOP_STATUS_DEAD|COOP_STATUS_UNCONSCIOUS))) {
-                    snprintf(why,sizeof(why),"%s is incapacitated",name); pause_for(why);
-                } else if ((policy&PLAY_PAUSE_CRITICAL) && maximum>0 && hp>0 && (int64_t)hp*4<=maximum && (int64_t)old->hp*4>maximum) {
-                    snprintf(why,sizeof(why),"%s has critical health",name); pause_for(why);
-                }
-                if ((policy&PLAY_PAUSE_BREAK) && old->weapon && old->weapon_hp>0 && obj_handle_is_valid(old->weapon) && object_hp_current(old->weapon)<=0) {
-                    snprintf(why,sizeof(why),"%s's weapon broke",name); pause_for(why);
-                }
-                unsigned changed=status^old->status;
-                if (changed) {
-                    const char* names[]={"Dead","Unconscious","Poisoned","Low fatigue","Stunned","Paralyzed","Blinded","Injured","Encumbered"};
-                    for (unsigned bit=0;bit<SDL_arraysize(names);bit++) if (changed&(1u<<bit)) {
-                        snprintf(why,sizeof(why),"%s: %s %s",name,names[bit],status&(1u<<bit) ? "applied" : "ended");
-                        coop_play_event(PLAY_EFFECT,actor,0,why,"Party status changed in the native simulation.");
-                    }
-                }
-            }
-            *old=(Watch){.actor=actor,.weapon=weapon,.hp=hp,.weapon_hp=weapon ? object_hp_current(weapon) : 0,.status=status};
+        for (ObjectNode* node=party.head;node;node=node->next) {
+            observe(node->obj,now,policy);
+            ObjectList vicinity; object_list_vicinity(node->obj,OBJ_TM_CRITTER,&vicinity);
+            for (ObjectNode* other=vicinity.head;other;other=other->next) observe(other->obj,now,policy);
+            object_list_destroy(&vicinity);
         }
         object_list_destroy(&party); last_scan=now;
-    }
-    bool paused=coop_play_paused() || coop_runtime_paused();
-    if (!paused || !in_world()) {
-        if (banner!=TIG_WINDOW_HANDLE_INVALID) { coop_hud_detach(HUD_PAUSE); tig_window_destroy(banner); }
-        banner=TIG_WINDOW_HANDLE_INVALID; return;
-    }
-    CoopSession* session=coop_runtime_session();
-    const CoopControlView* state=coop_runtime_controls() ? coop_controls_current(coop_runtime_controls()) : NULL;
-    bool mine=!session || !state || (state->paused&(1u<<coop_session_local_slot(session)));
-    char text[256]; snprintf(text,sizeof(text),"%s%s%s",coop_tr_rendered(coop_play_pause_reason()),*coop_play_pause_reason() ? "\n" : "",
-        mine ? coop_tr("Click to resume") : coop_tr("Waiting for the pausing player"));
-    int width=SDL_min(380,hrp_iso_window_width_get()-208),height=coop_hud_card_height(coop_tr("Paused"),text,width);
-    TigRect r=card_bounds(HUD_PAUSE,(TigRect){(hrp_iso_window_width_get()-width)/2,122,width,height},280,coop_tr("Paused"),text,&banner_min_height);
-    if (banner!=TIG_WINDOW_HANDLE_INVALID && memcmp(&r,&banner_rect,sizeof(r))) { coop_hud_detach(HUD_PAUSE); tig_window_destroy(banner); banner=TIG_WINDOW_HANDLE_INVALID; }
-    if (banner==TIG_WINDOW_HANDLE_INVALID) {
-        TigWindowData data={.flags=TIG_WINDOW_MESSAGE_FILTER,.rect=r,.background_color=tig_color_make(16,15,12),.message_filter=banner_input};
-        if (tig_window_create(&data,&banner)!=TIG_OK) { banner=TIG_WINDOW_HANDLE_INVALID; return; }
-        banner_rect=r; *banner_text=0; coop_hud_attach(HUD_PAUSE,banner);
-    }
-    if (coop_hud_changed(HUD_PAUSE) || strcmp(text,banner_text)) {
-        coop_hud_card(banner,(TigRect){0,0,r.width,r.height},coop_tr("Paused"),text,true);
-        coop_hud_handles(HUD_PAUSE,banner,&r,r.width-20,false); snprintf(banner_text,sizeof(banner_text),"%s",text);
     }
 }
 void coop_play_draw_begin(void)
@@ -226,7 +240,7 @@ void coop_play_label_object(int64_t obj,const TigRect* rect)
     unsigned flags=(unsigned)obj_field_int32_get(obj,OBJ_F_FLAGS);
     if (flags&(OF_OFF|OF_DESTROYED|OF_EXTINCT|OF_DONTDRAW|OF_INVENTORY)) return;
     if (collect_enemies && obj_type_is_critter(type) && play_enemy(obj)) {
-        if (notice_enemy(obj)) enemy_visible=true;
+        if (nearby_player(obj) && !known_enemy(obj) && !combat_turn_based_is_active()) visible_enemy=obj;
     }
     if (!collect_labels || label_count>=SDL_arraysize(labels) || (flags&OF_CLICK_THROUGH)) return;
     bool corpse=obj_type_is_critter(type) && critter_is_dead(obj);

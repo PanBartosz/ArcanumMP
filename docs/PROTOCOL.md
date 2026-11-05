@@ -1,14 +1,28 @@
-# LAN wire protocol, version 61
+# LAN wire protocol, version 62
 
-All participants must use protocol 61. Version 61 adds wallet-to-wallet gold
+All participants must use protocol 62. Version 62 extends the host policy
+with a turn-trigger radius (bits 11–16, 5/10/15/20/25/30/35/40 tiles). Bits 0–3
+now select native automatic turn-based triggers; bit 10 selects saving before
+travel. Other existing fields retain their widths. Network peers update together.
+
+`COOP_PLAY_FEEDBACK` (80) is a 128-byte transient host message: epoch u32,
+sequence u32, map u32, target object ID (17 bytes), kind u8 (0 status, 1 critical),
+active u8, reserved zero u8, remaining lifetime u32 (at most 2500ms), and
+NUL-terminated canonical status text (92 bytes). Clients resolve the target,
+translate locally and use native floaters or their personal world-shake setting.
+Receipt-relative lifetime, sequence deduplication and per-epoch reset prevent
+stale feedback. This channel is not saved or replayed from combat history.
+
+Version 61 adds wallet-to-wallet gold
 transfers (item opcode 18, null item ID, recipient campaign member, positive
 32-bit amount bounded by INT_MAX). The host checks sender ownership, activity,
 proximity, funds and recipient overflow, then uses the existing ordered item
 request/world acknowledgment path.
 
 `COOP_PLAY_POLICY` remains two big-endian u32s: epoch and packed host settings.
-The second word uses bits 0–3 for auto-pause, bits 4–9 for autosave minutes
-(0/2/5/10/15/30), and bit 10 for save after travel. Remaining bits must be zero.
+In version 61 the second word used bits 0–3 for auto-pause, bits 4–9 for autosave minutes
+(0/2/5/10/15/30), and bit 10 for save after travel. Version 62 replaces the automatic pause
+behavior and uses the radius extension above.
 Host autosaves capture at safe idle without changing the epoch; loading them
 uses the existing save fingerprint and unanimous party vote. Older campaign
 archives remain readable; network peers must update together.

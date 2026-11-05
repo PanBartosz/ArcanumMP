@@ -539,7 +539,7 @@ void gamelib_ping(void)
         gsound_ping(gamelib_ping_time);
         return;
     }
-    if (coop_runtime_blocks_simulation() || coop_play_paused()) {
+    if (coop_runtime_blocks_simulation()) {
         /* Keep the timer anchor current while a shared load barrier is held.
          * Otherwise the first resumed tick accounts for paused wall time. */
         timeevent_ping(gamelib_ping_time);

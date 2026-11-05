@@ -690,11 +690,11 @@ static bool handle_message(void* context, uint8_t sender, uint8_t type, const ui
     if (type == COOP_SAVE_QUERY || type == COOP_SAVE_PAGE) return coop_runtime_save_message(sender, type, p, size);
     if (type == COOP_RECONNECT_VIEW || type == COOP_RECONNECT_ACK) return coop_runtime_reconnect_message(sender,type,p,size);
     if (coop_session_revision(g->session) != g->roster_revision)
-        return type >= 16 && type <= COOP_GAME_QUIESCED;
+        return type >= 16 && type <= COOP_PLAY_FEEDBACK;
     if (type == COOP_PRESENT_VIEW || type == COOP_PRESENT_ACK) return coop_runtime_present_message(sender, type, p, size);
     if (type >= COOP_CONTROL_REQUEST && type <= COOP_CONTROL_ACK) return coop_runtime_control_message(sender, type, p, size);
     if (size < 4 || read_u32(p) != g->epoch || g->failed) return false;
-    if (type >= COOP_PLAY_EVENT && type <= COOP_PLAY_MAP_PING)
+    if (type >= COOP_PLAY_EVENT && type <= COOP_PLAY_FEEDBACK)
         return coop_play_network_message(g->session,g->epoch,sender,
             coop_gameplay_member_for_connection(g,sender),type,p,size);
     if (type == COOP_GAME_QUIESCE) {

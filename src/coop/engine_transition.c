@@ -1,5 +1,6 @@
 #include "coop/engine_transition.h"
 #include "coop/bootstrap.h"
+#include "coop/runtime.h"
 #include "coop/campaign.h"
 #include "coop/engine_object.h"
 #include "game/map.h"
@@ -73,7 +74,7 @@ bool coop_engine_transition_save(void)
 {
     if (!coop_campaign_active()) return !tig_file_exists(path, NULL) || tig_file_remove(path) == 0;
     uint8_t bytes[BYTES] = { 0 };
-    if (active) memcpy(bytes, pending, sizeof(bytes));
+    if (active && !coop_runtime_pretravel_save()) memcpy(bytes, pending, sizeof(bytes));
     else memcpy(bytes, "ACTRANS1", 8);
     coop_object_write32(bytes + BYTES - 4, coop_snapshot_crc(bytes, BYTES - 4));
     TigFile* file = tig_file_fopen(path, "wb");

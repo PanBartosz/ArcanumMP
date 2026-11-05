@@ -30,6 +30,8 @@ int tf_level_get(void);
 void tf_ping(tig_timestamp_t timestamp);
 void tf_draw(GameDrawInfo* draw_info);
 void tf_add(int64_t obj, int type, const char* str);
+/* Local presentation without adding a second shared log event. */
+void tf_add_local(int64_t obj, int type, const char* str);
 bool tf_has_entries(int64_t obj);
 void tf_notify_moved(int64_t obj, int64_t loc, int offset_x, int offset_y);
 void tf_notify_killed(int64_t obj);

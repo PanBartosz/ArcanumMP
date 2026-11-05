@@ -118,14 +118,14 @@ unconsciousness still apply.
 | Shared quick save / propose quick load | F9 / F10 |
 | Named save or load | Native Save/Load menu or F12 → Save party / Load campaign |
 | Give a party member gold | F12 → Give gold; choose recipient and amount |
-| Automatic saves | F12 → Autosave (host configures) |
+| Autosave settings / newest automatic save | F12 → Autosave / Autosaves |
 | Propose rest or wait | S; gather the party first |
 | Map notes | N in the map |
 
 Rest, travel and loading require party agreement. Answer the vote in F12;
 any player can decline or stop a rest/journey. Opening a local menu does not
-pause everyone. Use the party **Pause** control; the host can **Resume all**.
-If controls appear frozen, check F12 for a vote, pause hold or missing owner.
+pause everyone. **Pause** changes turn-based/real-time timing (the host controls
+it in multiplayer). If controls appear frozen, check F12 for a vote or missing owner.
 
 **Give gold** transfers an exact amount from your purse. Stand within eight
 tiles of a connected, conscious party member, select them and type an amount
@@ -136,11 +136,28 @@ save, quick save, recovery or autosave from the host’s browser. Every player
 must agree; a refusal leaves the current campaign running.
 
 The host can set automatic saves to Off or every **2 / 5 / 10 / 15 / 30 minutes**,
-and toggle saving after map/world travel. The default is five minutes with
+and toggle saving before map/world travel. The default is five minutes with
 travel saves enabled. Three slots rotate; manual saves remain separate. Saves
 wait until the party is safe and actions have settled. Automatic files stay on
-the host and are available through **F12 → Load campaign**; manual shared saves
+the host. Choose **F12 → Autosaves** or the **Autosaves** button in the save
+browser to select the newest copy directly; manual shared saves
 retain a copy on each participant. Preferences persist across launches.
+
+Travel autosaves capture the departure location after actions have settled,
+before the old map is unloaded or world travel starts. Loading one returns to
+the departure map without automatically repeating the saved transition.
+
+In **B → Settings**, automatic turn-based triggers cover a spotted enemy,
+critical health, incapacitation and a broken weapon. Set their radius to
+**5–40 tiles** from a player character (default 20). In co-op the host sets this
+shared policy. These events enter the native turn sequence without freezing
+the session or opening the party window.
+
+Status gains and endings appear above affected characters using the original
+floating-text renderer, including conditions outside combat. Text is translated
+locally and expires normally. **Critical-hit screen shake** briefly moves only
+the world when your character receives a damaging critical hit. Turn it off in
+**B → Settings**; each player has their own saved choice.
 
 Plot world-map journeys using the original waypoint controls. Multiplayer keeps
 all plotted waypoints (up to 30), so routes around rivers and mountains follow

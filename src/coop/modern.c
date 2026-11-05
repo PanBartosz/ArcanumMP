@@ -4,6 +4,7 @@
 #include "coop/authority.h"
 #include "coop/campaign.h"
 #include "coop/display.h"
+#include "coop/play_feedback.h"
 #include "coop/party_ui.h"
 #include "coop/play_data.h"
 #include "coop/runtime.h"
@@ -29,19 +30,18 @@
 enum { HISTORY = COOP_PLAY_HISTORY, EVENT_BYTES = COOP_PLAY_EVENT_BYTES };
 static PlayEvent history[HISTORY];
 static uint32_t next = 1, first = 1;
-static bool prefs_loaded, solo_pause;
-static int prefs[PLAY_PREF_COUNT] = {100, 0, 1, 0, 1, 1, 0, 550, 0, 5, 1};
+static bool prefs_loaded;
+static int prefs[PLAY_PREF_COUNT] = {100, 0, 1, 0, 1, 1, 0, 550, 0, 5, 1, 20, 1};
 static tig_font_handle_t fonts[MM_COLOR_COUNT], chrome_fonts[MM_COLOR_COUNT];
 static CoopSession* network;
 static uint32_t network_epoch, cursors[4], sent_policy[4];
-static unsigned pause_policy;
+static unsigned pause_policy, turn_radius = 20;
 static unsigned autosave_minutes = 5;
 static bool autosave_travel = true;
 static bool valid_autosave_minutes(int value)
 {
     return value == 0 || value == 2 || value == 5 || value == 10 || value == 15 || value == 30;
 }
-static char pause_reason[192];
 static uint64_t ping_at[4];
 static bool map_ping_add(unsigned member,unsigned context,unsigned x,unsigned y);
 typedef struct Binding { const char* name; SDL_Scancode original, assigned; } Binding;
@@ -51,7 +51,7 @@ static Binding bindings[] = {
     {"Highlight interactables", SDL_SCANCODE_LALT, SDL_SCANCODE_LALT},
     {"Ping at pointer", SDL_SCANCODE_BACKSLASH, SDL_SCANCODE_BACKSLASH},
     {"Extra action bar", SDL_SCANCODE_GRAVE, SDL_SCANCODE_GRAVE},
-    {"Pause / resume", SDL_SCANCODE_PAUSE, SDL_SCANCODE_PAUSE},
+    {"Turn-based / real-time", SDL_SCANCODE_PAUSE, SDL_SCANCODE_PAUSE},
     {"Inventory", SDL_SCANCODE_I, SDL_SCANCODE_I},
     {"Character", SDL_SCANCODE_C, SDL_SCANCODE_C},
     {"Map", SDL_SCANCODE_W, SDL_SCANCODE_W},
@@ -104,7 +104,8 @@ static void prefs_load(void)
                 || (i==PLAY_PREF_TIP_DELAY && n>=0 && n<=1500)
                 || (i==PLAY_PREF_AUTOPAUSE && n>=0 && n<=15)
                 || (i==PLAY_PREF_AUTOSAVE_MINUTES && valid_autosave_minutes(n))
-                || (i!=PLAY_PREF_TEXT && i!=PLAY_PREF_TIP_DELAY && i!=PLAY_PREF_AUTOPAUSE && i!=PLAY_PREF_AUTOSAVE_MINUTES && (n==0 || n==1))) prefs[i]=n;
+                || (i==PLAY_PREF_TURN_RADIUS && n>=5 && n<=40 && n%5==0)
+                || (i!=PLAY_PREF_TEXT && i!=PLAY_PREF_TIP_DELAY && i!=PLAY_PREF_AUTOPAUSE && i!=PLAY_PREF_AUTOSAVE_MINUTES && i!=PLAY_PREF_TURN_RADIUS && (n==0 || n==1))) prefs[i]=n;
         } else if (sscanf(line,"key%u=%d",&i,&n)==2 && i<SDL_arraysize(bindings)
             && n>SDL_SCANCODE_UNKNOWN && n<SDL_SCANCODE_COUNT && n!=SDL_SCANCODE_ESCAPE) bindings[i].assigned=(SDL_Scancode)n;
     }
@@ -133,8 +134,9 @@ bool coop_play_pref_set(unsigned i, int value)
         || (i==PLAY_PREF_TIP_DELAY && (value<0 || value>1500))
         || (i==PLAY_PREF_AUTOPAUSE && (value<0 || value>15))
         || (i==PLAY_PREF_AUTOSAVE_MINUTES && !valid_autosave_minutes(value))
-        || (i!=PLAY_PREF_TEXT && i!=PLAY_PREF_TIP_DELAY && i!=PLAY_PREF_AUTOPAUSE && i!=PLAY_PREF_AUTOSAVE_MINUTES && value!=0 && value!=1)) return false;
-    if ((i==PLAY_PREF_AUTOPAUSE || i==PLAY_PREF_AUTOSAVE_MINUTES || i==PLAY_PREF_AUTOSAVE_TRAVEL)
+        || (i==PLAY_PREF_TURN_RADIUS && (value<5 || value>40 || value%5))
+        || (i!=PLAY_PREF_TEXT && i!=PLAY_PREF_TIP_DELAY && i!=PLAY_PREF_AUTOPAUSE && i!=PLAY_PREF_AUTOSAVE_MINUTES && i!=PLAY_PREF_TURN_RADIUS && value!=0 && value!=1)) return false;
+    if ((i==PLAY_PREF_AUTOPAUSE || i==PLAY_PREF_TURN_RADIUS || i==PLAY_PREF_AUTOSAVE_MINUTES || i==PLAY_PREF_AUTOSAVE_TRAVEL)
         && coop_campaign_active() && !coop_authority_can_simulate()) return false;
     int old=prefs[i]; prefs[i]=value;
     if (!prefs_save()) { prefs[i]=old; return false; }
@@ -143,6 +145,7 @@ bool coop_play_pref_set(unsigned i, int value)
         if (chrome_fonts[n]) tig_font_destroy(chrome_fonts[n]); chrome_fonts[n]=0;
     }
     if (i==PLAY_PREF_AUTOPAUSE) pause_policy=(unsigned)value;
+    if (i==PLAY_PREF_CRIT_SHAKE && !value) coop_view_effect_reset();
     if (i==PLAY_PREF_TEXT) tc_readability_changed();
     if (i==PLAY_PREF_TEXT || i==PLAY_PREF_CONTRAST) coop_hud_refresh();
     return true;
@@ -248,7 +251,6 @@ static void append(PlayEvent e)
     if (!e.sequence || e.sequence<next) return;
     if (e.sequence>next) first=next=e.sequence;
     history[e.sequence%HISTORY]=e;
-    if (e.kind==PLAY_NOTICE && !strncmp(e.summary,"Auto-pause: ",12)) snprintf(pause_reason,sizeof(pause_reason),"%s",e.summary+12);
     next=e.sequence+1;
     if (next-first>HISTORY) first=next-HISTORY;
 }
@@ -276,13 +278,14 @@ void coop_play_status_change(int64_t obj,int field,unsigned before,unsigned afte
     /* Moving/animating critters update flags frequently. Resolve a name only
      * for a change that can actually produce a visible status entry. */
     const unsigned critter_mask=OCF_STUNNED|OCF_PARALYZED|OCF_BLINDED|OCF_CRIPPLED_ARMS_ONE
-        |OCF_CRIPPLED_ARMS_BOTH|OCF_CRIPPLED_LEGS_BOTH|OCF_SLEEPING;
+        |OCF_CRIPPLED_ARMS_BOTH|OCF_CRIPPLED_LEGS_BOTH|OCF_SLEEPING
+        |OCF_IS_CONCEALED|OCF_MOVING_SILENTLY|OCF_FLEEING|OCF_MUTE|OCF_SURRENDERED|OCF_SPELL_FLEE;
     if (field!=OBJ_F_SPELL_FLAGS && !((before^after)&critter_mask)) return;
     static const char* spell_names[]={"Invisible","Floating","Body of Air","Body of Earth","Body of Fire","Body of Water","Detecting magic","Detecting alignment",
         "Detecting traps","Detecting invisibility","Shielded","Anti-magic shell","Bonds of Magic","Reflection","Summoned","Illusion","Petrified","Polymorphed",
         "Mirrored","Shrunk","Passwall","Water walking","Magnetic inversion","Charmed","Entangled","Spoken with dead","Tempus Fugit","Mind control","Drunk","Enshrouded","Familiar","Hardened Hands"};
-    static const unsigned critter_bits[]={OCF_STUNNED,OCF_PARALYZED,OCF_BLINDED,OCF_CRIPPLED_ARMS_ONE,OCF_CRIPPLED_ARMS_BOTH,OCF_CRIPPLED_LEGS_BOTH,OCF_SLEEPING};
-    static const char* critter_names[]={"Stunned","Paralyzed","Blinded","One arm crippled","Both arms crippled","Legs crippled","Sleeping"};
+    static const unsigned critter_bits[]={OCF_STUNNED,OCF_PARALYZED,OCF_BLINDED,OCF_CRIPPLED_ARMS_ONE,OCF_CRIPPLED_ARMS_BOTH,OCF_CRIPPLED_LEGS_BOTH,OCF_SLEEPING,OCF_IS_CONCEALED,OCF_MOVING_SILENTLY,OCF_FLEEING,OCF_MUTE,OCF_SURRENDERED,OCF_SPELL_FLEE};
+    static const char* critter_names[]={"Stunned","Paralyzed","Blinded","One arm crippled","Both arms crippled","Legs crippled","Sleeping","Concealed","Moving silently","Fleeing","Silenced","Surrendered","Magical fear"};
     char name[80]; canonical_name(obj,name,sizeof(name));
     unsigned count=field==OBJ_F_SPELL_FLAGS ? 32 : SDL_arraysize(critter_bits);
     for (unsigned i=0;i<count;i++) {
@@ -290,6 +293,7 @@ void coop_play_status_change(int64_t obj,int field,unsigned before,unsigned afte
         const char* status=field==OBJ_F_SPELL_FLAGS ? spell_names[i] : critter_names[i];
         if (!status || !((before^after)&bit)) continue;
         char line[192]; snprintf(line,sizeof(line),"%s: %s %s",name,status,after&bit ? "applied" : "ended");
+        coop_play_status_feedback(obj,status,(after&bit)!=0);
         coop_play_event(PLAY_EFFECT,obj,0,line,"Native status flags changed. Includes effects on enemies as well as party members.");
     }
 }
@@ -308,6 +312,7 @@ void coop_play_damage(int64_t actor,int64_t target,int hp,int fatigue,unsigned f
         effects&CDF_BLIND ? " blinded" : "",effects&(CDF_CRIPPLE_ARM|CDF_CRIPPLE_LEG) ? " crippled" : "",
         effects&CDF_DAMAGE_WEAPON ? " weapon damaged" : "",effects&CDF_DESTROY_WEAPON ? " weapon destroyed" : "");
     coop_play_event(PLAY_COMBAT,actor,target,line,detail);
+    if ((flags&CF_CRITICAL) && (hp>0 || fatigue>0)) coop_play_critical_feedback(target);
 }
 void coop_play_roll(int64_t actor,int64_t target,int skill,int effectiveness,int difficulty,int roll,int critical_roll,unsigned flags)
 {
@@ -339,6 +344,8 @@ static bool decode(const uint8_t* p,size_t size,PlayEvent* e)
 }
 unsigned coop_play_pause_policy(void)
 { return coop_campaign_active() && !coop_authority_can_simulate() ? pause_policy : (unsigned)coop_play_pref(PLAY_PREF_AUTOPAUSE); }
+unsigned coop_play_turn_radius(void)
+{ return coop_campaign_active() && !coop_authority_can_simulate() ? turn_radius : (unsigned)coop_play_pref(PLAY_PREF_TURN_RADIUS); }
 unsigned coop_play_autosave_minutes(void)
 { return coop_campaign_active() && !coop_authority_can_simulate() ? autosave_minutes : (unsigned)coop_play_pref(PLAY_PREF_AUTOSAVE_MINUTES); }
 bool coop_play_autosave_travel(void)
@@ -349,9 +356,10 @@ void coop_play_network_tick(CoopSession* s,uint32_t epoch,unsigned ready)
         network=s; network_epoch=epoch; memset(cursors,0,sizeof(cursors));
         for (unsigned i=0;i<4;i++) sent_policy[i]=UINT32_MAX;
     }
+    coop_feedback_network(s,epoch,ready);
     if (!coop_session_is_host(s)) return;
     pause_policy=coop_play_pause_policy();
-    unsigned policy=pause_policy | (coop_play_autosave_minutes()<<4) | (coop_play_autosave_travel() ? 1u<<10 : 0);
+    unsigned policy=pause_policy | (coop_play_autosave_minutes()<<4) | (coop_play_autosave_travel() ? 1u<<10 : 0) | (coop_play_turn_radius()<<11);
     for (unsigned i=1;i<4;i++) if (ready&(1u<<i)) {
         if (sent_policy[i]!=policy) {
             uint8_t p[8]; put32(p,epoch); put32(p+4,policy);
@@ -383,6 +391,7 @@ static bool ping_add(unsigned member,int64_t location)
 bool coop_play_network_message(CoopSession* s,uint32_t epoch,uint8_t sender,int member,uint8_t type,const uint8_t* p,size_t size)
 {
     if (size<4 || get32(p)!=epoch) return false;
+    if (type==COOP_PLAY_FEEDBACK) return !coop_session_is_host(s) && coop_feedback_receive(sender,p,size);
     if (type==COOP_PLAY_EVENT) {
         PlayEvent e;
         if (coop_session_is_host(s) || sender || !decode(p,size,&e)) return false;
@@ -396,9 +405,9 @@ bool coop_play_network_message(CoopSession* s,uint32_t epoch,uint8_t sender,int 
     }
     if (type==COOP_PLAY_POLICY) {
         if (coop_session_is_host(s) || sender || size!=8) return false;
-        unsigned policy=get32(p+4), minutes=(policy>>4)&63;
-        if ((policy&~2047u) || !valid_autosave_minutes((int)minutes)) return false;
-        pause_policy=policy&15; autosave_minutes=minutes; autosave_travel=(policy&(1u<<10))!=0; return true;
+        unsigned policy=get32(p+4), minutes=(policy>>4)&63, radius=(policy>>11)&63;
+        if ((policy&~131071u) || !valid_autosave_minutes((int)minutes) || radius<5 || radius>40 || radius%5) return false;
+        pause_policy=policy&15; turn_radius=radius; autosave_minutes=minutes; autosave_travel=(policy&(1u<<10))!=0; return true;
     }
     if (type==COOP_PLAY_PING) {
         if (!coop_session_is_host(s) || size!=16 || get32(p+4)!=(uint32_t)map_current_map()) return false;
@@ -442,18 +451,12 @@ bool coop_play_map_ping(unsigned context,unsigned x,unsigned y)
     uint8_t p[16]; put32(p,network_epoch); put32(p+4,context); put32(p+8,x); put32(p+12,y);
     return coop_session_send(network,0,COOP_PLAY_MAP_PING,p,sizeof(p));
 }
-bool coop_play_paused(void) { return solo_pause && !coop_campaign_active(); }
-const char* coop_play_pause_reason(void) { return pause_reason; }
-void coop_play_pause_announce(const char* reason)
-{
-    snprintf(pause_reason,sizeof(pause_reason),"%s",reason);
-    char line[192]; snprintf(line,sizeof(line),"Auto-pause: %.178s",reason);
-    coop_play_event(PLAY_NOTICE,player_get_local_pc_obj(),0,line,"Use Pause or click the pause banner to release your pause. The host chooses multiplayer auto-pause events.");
-}
 void coop_play_pause_toggle(void)
 {
-    if (coop_campaign_active()) coop_runtime_pause_toggle(); else solo_pause=!solo_pause;
-    if (!solo_pause && !coop_runtime_paused()) *pause_reason=0;
+    if (coop_campaign_active()) {
+        if (!coop_authority_can_simulate()) { intgame_message_window_display_str(-1, coop_tr("Only the host can change combat timing.")); return; }
+        coop_runtime_combat(COOP_COMBAT_POLICY, combat_is_turn_based() ? 0 : 1, 0);
+    } else sub_4B6C90(!combat_is_turn_based());
 }
 void coop_play_reset(void)
 {
@@ -461,7 +464,7 @@ void coop_play_reset(void)
     coop_play_ui_reset(); coop_play_world_reset();
     coop_play_data_reset();
     network=NULL; network_epoch=0; memset(ping_at,0,sizeof(ping_at));
-    solo_pause=false; *pause_reason=0;
+    coop_feedback_reset();
 }
 bool coop_play_save(void)
 {

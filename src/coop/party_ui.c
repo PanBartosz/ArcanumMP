@@ -333,12 +333,12 @@ static void hint_at(int x, int y, char out[512])
         if (!combat_turn_based_is_active()) {
             snprintf(out, 512, "%s", local_x >= turn_rect.width - 108
                 ? coop_tr("Host control [Space]: switch between real-time and turn-based combat. Works even when the host is dead.")
-                : local_x >= turn_rect.width - 216 ? coop_tr("Party [F12]: chat, pause, rest, saves and the host's per-character immortality switches.")
+                : local_x >= turn_rect.width - 216 ? coop_tr("Party [F12]: chat, combat timing, rest, gold, saves and the host's immortality switches.")
                 : coop_tr("Red portrait bar: health. Blue bar: fatigue. A gold name marks your own character. Select a spell, skill or item, then click a portrait to target an ally."));
             return;
         }
         if (local_x >= turn_rect.width - 108) snprintf(out, 512, "%s", local_y < 23
-            ? coop_tr("Party [F12]: chat, pause, rest, saves and the host's per-character immortality switches.")
+            ? coop_tr("Party [F12]: chat, combat timing, rest, gold, saves and the host's immortality switches.")
             : local_y < 46 ? coop_tr("End your current turn. Unspent action points are lost; the next character acts.")
             : coop_tr("Host control [Space]: switch between real-time and turn-based combat. Works even when the host is dead."));
         else {

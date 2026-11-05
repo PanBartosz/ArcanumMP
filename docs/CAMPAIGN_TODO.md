@@ -72,3 +72,17 @@ will follow reports from actual play. See [current status](STATUS.md),
   verified older save identities retained, actual gameplay fields still checked.
 
 [Controls and scoped checks](COORDINATION.md#focused-party-controls-check-in-030).
+
+
+## Corrected and added in 0.4.0
+
+- [x] Native floating status gains/endings on PCs and NPCs, translated locally.
+- [x] Repair F11 log chrome, separate F12 chat/actions and fix hidden click targets;
+  theme the lobby from the main menu.
+- [x] Replace custom automatic pause holds/popups with native turn-based combat,
+  using the host's 5–40-tile trigger radius from a player character.
+- [x] Autosave before map/world departure; loading returns to the old map without
+  repeating the transition. F12/save-browser Autosaves selects the newest copy.
+- [x] Personal, persistent switch for world-only shake on received critical hits.
+
+[Behavior and focused evidence](COORDINATION.md#playthrough-feedback-corrections-in-040).

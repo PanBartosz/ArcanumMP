@@ -1,4 +1,6 @@
+#include "coop/modern.h"
 #include "coop/localization.h"
+#include "coop/hud.h"
 #include "coop/saves_ui.h"
 #include "coop/runtime.h"
 #include "coop/engine_dialogue.h"
@@ -14,7 +16,8 @@ static TigRect bounds;
 static CoopSavesMode mode;
 static unsigned page, selection, confirm;
 static uint32_t displayed, roster;
-static bool editing, text_was_active, name_dirty;
+static bool editing, text_was_active, name_dirty, select_latest;
+static const TigRect shortcuts[]={{372,8,112,28},{492,8,126,28},{626,8,116,28}};
 static char name[COOP_CHECKPOINT_DESCRIPTION], feedback[180];
 static uint64_t drawn;
 static const TigRect buttons[] = { { 18, 350, 100, 30 }, { 126, 350, 100, 30 }, { 236, 350, 154, 30 },
@@ -57,6 +60,7 @@ static void request_page(unsigned wanted)
     if (wanted >= COOP_SAVE_PAGES) return;
     if (wanted != page) { name_dirty = false; selection = 0; }
     page = wanted; confirm = 0; editing = false; feedback[0] = 0;
+    select_latest = false;
     coop_save_catalog_request(coop_runtime_save_catalog(), page);
 }
 void coop_saves_ui_close(void)
@@ -99,11 +103,14 @@ static void remove_copy(void)
 static void draw(void)
 {
     TigRect whole = { 0, 0, bounds.width, bounds.height };
-    tig_window_fill(window, &whole, tig_color_make(36, 26, 18));
-    tig_window_box(window, &whole, tig_color_make(186, 141, 67));
+    coop_hud_frame(window,whole,true);
     const char* heading = mode == COOP_SAVES_SAVE ? coop_tr("SAVE PARTY CAMPAIGN") : mode == COOP_SAVES_LOAD ? coop_tr("LOAD PARTY CAMPAIGN") : coop_tr("RESUME PARTY CAMPAIGN");
-    text(heading, 18, 12, 450, MM_COLOR_GOLD);
-    text(coop_tr("Quick save"), 510, 12, 110, MM_COLOR_GOLD); text(coop_tr("Recovery"), 635, 12, 105, MM_COLOR_GOLD);
+    text(heading, 18, 12, 345, MM_COLOR_GOLD);
+    const char* jumps[]={coop_tr("Quick save"),coop_tr("Autosaves"),coop_tr("Recovery")};
+    for (unsigned i=0;i<SDL_arraysize(shortcuts);i++) {
+        coop_hud_surface(window,HUD_ART_BUTTON,shortcuts[i],false);
+        text(jumps[i],shortcuts[i].x+7,shortcuts[i].y+5,shortcuts[i].width-14,MM_COLOR_GOLD);
+    }
     char label[256];
     snprintf(label, sizeof(label), coop_tr("Saves for this party | Page %u/%u | %s"), page + 1, COOP_SAVE_PAGES,
         mode == COOP_SAVES_SAVE ? coop_tr("Choose a slot and name") : coop_tr("Loading requires every traveller's agreement"));
@@ -160,14 +167,14 @@ static bool input(TigMessage* message)
         SDL_Scancode key = message->data.keyboard.scancode;
         if (key == SDL_SCANCODE_ESCAPE) { if (confirm) { confirm = 0; feedback[0] = 0; } else coop_saves_ui_close(); }
         else if (key == SDL_SCANCODE_RETURN || key == SDL_SCANCODE_KP_ENTER) primary();
-        else if (key == SDL_SCANCODE_PAUSE) coop_runtime_pause_toggle();
+        else if (key == SDL_SCANCODE_PAUSE) coop_play_pause_toggle();
         else if (key == SDL_SCANCODE_TAB && mode == COOP_SAVES_SAVE) editing = !editing;
         else if (editing && key == SDL_SCANCODE_BACKSPACE) { size_t size = strlen(name); if (size) name[size - 1] = 0; name_dirty = true; confirm = 0; }
         else if (!editing) {
             if (key == SDL_SCANCODE_LEFT || key == SDL_SCANCODE_PAGEUP) { if (page) request_page(page - 1); }
             else if (key == SDL_SCANCODE_RIGHT || key == SDL_SCANCODE_PAGEDOWN) request_page(page + 1);
             else if (key == SDL_SCANCODE_HOME) request_page(0);
-            else if (key == SDL_SCANCODE_END) request_page(COOP_SAVE_PAGES - 1);
+            else if (key == SDL_SCANCODE_END) { request_page(COOP_SAVE_PAGES - 1); select_latest=true; }
             else if (key == SDL_SCANCODE_R) request_page(page);
             else if (key >= SDL_SCANCODE_1 && key <= SDL_SCANCODE_4) choose((unsigned)(key - SDL_SCANCODE_1));
         }
@@ -180,7 +187,9 @@ static bool input(TigMessage* message)
         int x = message->data.mouse.x - bounds.x, y = message->data.mouse.y - bounds.y;
         if (y >= 72 && y < 288 && x >= 18 && x < 742) choose((unsigned)(y - 72) / 54);
         else if (y >= 316 && y < 343 && x >= 18 && x < 742 && mode == COOP_SAVES_SAVE) { editing = true; confirm = 0; }
-        else if (y >= 8 && y < 35 && x >= 510) request_page(x < 625 ? 0 : COOP_SAVE_PAGES - 1);
+        else if (inside(&shortcuts[0],x,y)) request_page(0);
+        else if (inside(&shortcuts[1],x,y)) { request_page(COOP_SAVE_PAGES-1); select_latest=true; }
+        else if (inside(&shortcuts[2],x,y)) request_page(COOP_SAVE_PAGES-1);
         else for (unsigned i = 0; i < 6; i++) if (inside(&buttons[i], x, y)) {
             if (i == 0 && page) request_page(page - 1);
             else if (i == 1) request_page(page + 1);
@@ -215,6 +224,11 @@ bool coop_saves_ui_open(CoopSavesMode requested)
     displayed = page = selection = 0; name_dirty = false; roster = coop_session_revision(coop_runtime_session()); default_name(); request_page(0); draw();
     return true;
 }
+bool coop_saves_ui_open_autosaves(CoopSavesMode requested)
+{
+    if (!coop_saves_ui_open(requested)) return false;
+    request_page(COOP_SAVE_PAGES-1); select_latest=true; draw(); return true;
+}
 void coop_saves_ui_tick(void)
 {
     if (window == TIG_WINDOW_HANDLE_INVALID) return;
@@ -230,7 +244,17 @@ void coop_saves_ui_tick(void)
     const CoopSavePage* current = coop_save_catalog_current(coop_runtime_save_catalog());
     if (current && current->page == page && !coop_save_catalog_pending(coop_runtime_save_catalog()) && current->serial != displayed) {
         displayed = current->serial; confirm = 0;
-        if (!name_dirty) choose(selection < current->count ? selection : 0);
+        if (select_latest && !name_dirty) {
+            unsigned newest=0; uint64_t modified=0; bool found=false;
+            for (unsigned i=0;i<current->count;i++) {
+                const CoopSaveEntry* entry=&current->entries[i];
+                if (entry->slot>=COOP_SAVE_AUTOSAVE_FIRST && entry->status==COOP_CHECKPOINT_OK
+                    && (!found || entry->modified>=modified)) { newest=i; modified=entry->modified; found=true; }
+            }
+            choose(newest); select_latest=false;
+            if (!found) snprintf(feedback,sizeof(feedback),"%s",coop_tr("No autosave is available for this party yet."));
+            else snprintf(feedback,sizeof(feedback),"%s",coop_tr("Latest autosave selected. Choose Propose load to ask the party."));
+        } else if (!name_dirty) choose(selection < current->count ? selection : 0);
         draw();
     } else if (SDL_GetTicks() - drawn >= 250) draw();
 }

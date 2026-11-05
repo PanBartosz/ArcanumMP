@@ -5,11 +5,11 @@
 #include "game/context.h"
 #include "ui/mainmenu_ui.h"
 
-enum { COOP_PLAY_EVENT = 76, COOP_PLAY_PING = 77, COOP_PLAY_POLICY = 78, COOP_PLAY_MAP_PING = 79 };
+enum { COOP_PLAY_EVENT = 76, COOP_PLAY_PING = 77, COOP_PLAY_POLICY = 78, COOP_PLAY_MAP_PING = 79, COOP_PLAY_FEEDBACK = 80 };
 enum { PLAY_PAUSE_ENEMY = 1, PLAY_PAUSE_CRITICAL = 2, PLAY_PAUSE_DOWN = 4, PLAY_PAUSE_BREAK = 8 };
 enum { PLAY_PREF_TEXT, PLAY_PREF_CONTRAST, PLAY_PREF_LABELS, PLAY_PREF_EMPTY,
     PLAY_PREF_SYMBOLS, PLAY_PREF_PREVIEW, PLAY_PREF_BAR, PLAY_PREF_TIP_DELAY,
-    PLAY_PREF_AUTOPAUSE, PLAY_PREF_AUTOSAVE_MINUTES, PLAY_PREF_AUTOSAVE_TRAVEL, PLAY_PREF_COUNT };
+    PLAY_PREF_AUTOPAUSE, PLAY_PREF_AUTOSAVE_MINUTES, PLAY_PREF_AUTOSAVE_TRAVEL, PLAY_PREF_TURN_RADIUS, PLAY_PREF_CRIT_SHAKE, PLAY_PREF_COUNT };
 enum { PLAY_TAB_LOG, PLAY_TAB_INVENTORY, PLAY_TAB_ACTIONS, PLAY_TAB_QUESTS,
     PLAY_TAB_CRAFT, PLAY_TAB_SETTINGS, PLAY_TABS };
 
@@ -35,11 +35,12 @@ bool coop_play_network_message(CoopSession* session, uint32_t epoch, uint8_t sen
 bool coop_play_ping(int64_t location);
 bool coop_play_map_ping(unsigned context,unsigned x,unsigned y);
 unsigned coop_play_pause_policy(void);
+unsigned coop_play_turn_radius(void);
+bool coop_play_turn_trigger(int64_t actor, const char* reason);
+void coop_play_status_feedback(int64_t actor, const char* status, bool active);
+void coop_play_critical_feedback(int64_t target);
 unsigned coop_play_autosave_minutes(void);
 bool coop_play_autosave_travel(void);
-bool coop_play_paused(void);
-const char* coop_play_pause_reason(void);
-void coop_play_pause_announce(const char* reason);
 void coop_play_pause_toggle(void);
 void coop_play_tick(uint64_t now);
 void coop_play_reset(void);

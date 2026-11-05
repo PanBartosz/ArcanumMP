@@ -1,3 +1,5 @@
+#include "coop/hud.h"
+#include "game/combat.h"
 #include "coop/localization.h"
 #include "coop/lobby_ui.h"
 #include "coop/campaign.h"
@@ -117,10 +119,11 @@ static const TigRect buttons[] = {
     { 600, 382, 132, 26 },
     { 450, 382, 132, 26 },
     { 286, 382, 154, 26 },
-    { 24, 382, 120, 26 },
-    { 156, 382, 120, 26 },
+    { 24, 348, 120, 30 },
+    { 156, 348, 120, 30 },
+    { 288, 348, 148, 30 },
 };
-static const unsigned focus_order[] = { 0, 1, 2, 3, 4, 5, 20, 6, 7, 8, 12, 13, 14, 9, 11, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 10 };
+static const unsigned focus_order[] = { 0, 1, 2, 3, 4, 5, 20, 6, 7, 8, 12, 13, 14, 9, 11, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 10 };
 static bool manage_lobby(void)
 {
     CoopSession* active = visible_session();
@@ -553,8 +556,10 @@ static uint32_t enabled_buttons(void)
             || (i == 15 && online && (voting || (control && (control->phase == COOP_CONTROL_RESTING || control->phase == COOP_CONTROL_JOURNEY) && !coop_controls_pending(controls))));
         if (i==16) enabled=!connected && !loading && !failed;
         if (i == 17 || i == 18) enabled = choosing && (i == 17 || (local && local->custom));
+        if (i == 11) enabled=party_overlay && idle && coop_session_is_host(session);
+        if (i == 14) enabled=voting && !voted;
         if (i == 19) enabled = choosing && selected_player_valid();
-        if (i == 20 || i == 21) enabled = party_overlay && idle;
+        if (i == 20 || i == 21 || i == 22) enabled = party_overlay && idle;
         if (library_open || equipment_open) {
             enabled = (i == 2 && connected) || (i == 3 && !loading) || i == 5
                 || (choosing && (i == 4 || i == 8 || i == 9 || i == 10 || (i >= 11 && i <= 14) || (library_open && i == 15) || i == 17 || i == 18));
@@ -605,10 +610,9 @@ static void draw(void)
     if (!focus_enabled(focus)) advance_focus(false);
     CoopSession* session = visible_session();
     TigRect full = { 0, 0, bounds.width, bounds.height };
-    tig_window_fill(window, &full, tig_color_make(36, 26, 18));
-    tig_window_box(window, &full, tig_color_make(186, 141, 67));
+    coop_hud_frame(window,full,true);
     text(coop_tr("CAMPAIGN MULTIPLAYER"), 24, 16, 700, MM_COLOR_GOLD);
-    text(party_overlay ? coop_tr("Docs: F7 | Journal: F8 | Save: F9 | Load: F10 | Pause | Party: F12") : coop_tr("Four travellers. One shared story."), 24, 42, 700, MM_COLOR_GRAY);
+    text(party_overlay ? coop_tr("Docs: F7 | Journal: F8 | Save: F9 | Load: F10 | Party: F12") : coop_tr("Four travellers. One shared story."), 24, 42, 700, MM_COLOR_GRAY);
     text(coop_tr("Player name"), 24, 64, 210, MM_COLOR_GOLD);
     text(coop_tr("Host IPv4 address"), 250, 64, 300, MM_COLOR_GOLD);
     text(coop_tr("Port"), 566, 64, 166, MM_COLOR_GOLD);
@@ -632,10 +636,10 @@ static void draw(void)
     bool own_pause = control && local_slot < COOP_MAX_PLAYERS && (control->paused & (1u << local_slot));
     bool voting = online && coop_runtime_phase() != COOP_RUNTIME_FAILED && control && control->phase == COOP_CONTROL_VOTING && !coop_controls_pending(controls);
     const char* labels[] = { coop_tr("Host"), reconnecting ? coop_tr("Retry now") : coop_tr("Join"), coop_tr("Leave party"), party_overlay ? coop_tr("Return") : coop_tr("Back"), coop_tr("Pick preset >"), local && local->ready ? coop_tr("Not ready") : coop_tr("Ready"), coop_tr("Send"), coop_tr("Start campaign"), local && local->custom ? coop_tr("Edit character") : coop_tr("Create character"), coop_tr("New character"), coop_tr("Load saved"),
-        own_pause ? coop_tr("Resume mine") : coop_tr("Pause"), choosing ? coop_tr("Resume save") : coop_tr("Save party"), choosing ? coop_tr("Recover party") : coop_tr("Load campaign"), voting ? coop_tr("Agree") : coop_tr("Resume all"),
+        combat_is_turn_based() ? coop_tr("Real-time") : coop_tr("Turn-based"), choosing ? coop_tr("Resume save") : coop_tr("Save party"), choosing ? coop_tr("Recover party") : coop_tr("Load campaign"), coop_tr("Agree"),
         control && control->phase == COOP_CONTROL_RESTING ? coop_tr("Stop resting") : control && control->phase == COOP_CONTROL_JOURNEY ? coop_tr("Stop journey")
                                                                                                                                : coop_tr("Decline"),
-        browsing ? coop_tr("Close LAN") : coop_tr("Find LAN"), coop_tr("Characters"), coop_tr("Equipment"), remove_confirm_until > SDL_GetTicks() ? coop_tr("Confirm remove") : coop_tr("Remove player"), coop_tr("Give gold"), coop_tr("Autosave") };
+        browsing ? coop_tr("Close LAN") : coop_tr("Find LAN"), coop_tr("Characters"), coop_tr("Equipment"), remove_confirm_until > SDL_GetTicks() ? coop_tr("Confirm remove") : coop_tr("Remove player"), coop_tr("Give gold"), coop_tr("Autosave"), coop_tr("Autosaves") };
     if (failed) labels[3] = coop_tr("Back to title");
     if (pending_connect >= 0) labels[2] = coop_tr("Cancel");
     if (browsing) {
@@ -669,9 +673,12 @@ static void draw(void)
     }
     uint32_t enabled_mask = enabled_buttons();
     for (unsigned i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
-        if (i == 19 && !manage_lobby()) continue;
+        if (i == 19 && (!manage_lobby() || library_open || equipment_open)) continue;
+        if (i>=11 && i<=15 && !online && !library_open && !equipment_open) continue;
+        if ((i>=20 && !party_overlay) || (party_overlay && (i==4 || i==5 || i==7 || i==8 || i==9 || i==10 || i==16 || i==17 || i==18))) continue;
+        if (party_overlay && i==14 && !voting) continue;
         bool enabled = (enabled_mask & (1u << i)) != 0;
-        frame(&buttons[i], focus == i + 4);
+        coop_hud_surface(window,HUD_ART_BUTTON,buttons[i],focus==i+4);
         text(labels[i], buttons[i].x + 12, buttons[i].y + 7, buttons[i].width - 20, enabled ? MM_COLOR_GOLD : MM_COLOR_GRAY);
     }
     const char* state = coop_runtime_status();
@@ -695,7 +702,6 @@ static void draw(void)
         }
     } else if (control && control->phase == COOP_CONTROL_RESTING) snprintf(operation, sizeof(operation), coop_tr("Resting together: %u hour(s) passed. Anyone may stop."), control->completed);
     else if (control && control->phase == COOP_CONTROL_JOURNEY) snprintf(operation, sizeof(operation), coop_tr("Travelling together: %u hour(s) passed. Anyone may stop."), control->completed);
-    else if (control && control->paused && !loading) snprintf(operation, sizeof(operation), coop_tr("The party is paused. Each paused traveller can resume; the host can Resume all."));
     const char* status = coop_runtime_phase() == COOP_RUNTIME_FAILED || reconnecting ? state : operation[0] ? operation : feedback[0] && !loading ? feedback : state[0] ? state : character_pending ? coop_tr("Confirming your character...") : session ? coop_session_status(session)
                                                           : coop_tr("Host a party or join a friend's LAN address.");
     char preview[160];
@@ -818,7 +824,7 @@ static void draw(void)
     snprintf(caption, sizeof(caption), coop_tr("%d gold remaining | %s | %u/16 trades"), coop_starting_gold(equipment_shop), equipment_selling ? coop_tr("Sell equipment") : coop_tr("Buy equipment"), equipment_character.trades);
     text(library_open ? coop_tr("IMPORT / EXPORT FILE") : equipment_open ? caption
                                                                 : chat_live ? coop_tr("PARTY CHAT (PgUp/PgDn)") : coop_tr("CHAT HISTORY (End: latest)"),
-        24, 385, 400, MM_COLOR_GOLD);
+        24, 385, library_open || equipment_open ? 708 : 250, MM_COLOR_GOLD);
     if (library_open) {
         text(coop_tr("Eight named slots plus your last accepted build. Imports keep your own player profile."), 24, 414, 708, MM_COLOR_WHITE);
         text(coop_tr("Select: use a saved build. Save here: replace this slot with your current character."), 24, 437, 708, MM_COLOR_WHITE);
@@ -944,7 +950,10 @@ static void activate(unsigned button)
         load_character();
         break;
     case 11:
-        if (!coop_runtime_pause_toggle()) snprintf(feedback, sizeof(feedback), coop_tr("The party cannot change pause right now."));
+        coop_play_pause_toggle();
+        break;
+    case 22:
+        coop_saves_ui_open_autosaves(COOP_SAVES_LOAD);
         break;
     case 20:
         if (!coop_gold_ui_open()) snprintf(feedback, sizeof(feedback), "%s", coop_tr("Gold cannot be given during the current party action."));
@@ -1026,6 +1035,9 @@ static bool message_filter(TigMessage* message)
         for (unsigned i = 0; i < 4; i++)
             if (field_enabled(i) && contains(&fields[i], x, y)) focus = i;
         for (unsigned i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
+            /* Lobby-only controls share the campaign action row. An inactive
+             * hidden control must not consume a click meant for that row. */
+            if (!(enabled_buttons() & (1u << i))) continue;
             if (!contains(&buttons[i], x, y)) continue;
             focus = i + 4;
             activate(i);
@@ -1196,7 +1208,6 @@ void coop_lobby_tick(void)
         if (control->paused != previous_pauses) {
             previous_pauses = control->paused;
             intgame_message_window_display_str(-1, control->paused ? coop_tr("The party is paused. Paused travellers are listed in Party (F12).") : coop_tr("The party has resumed."));
-            if (control->paused && window == TIG_WINDOW_HANDLE_INVALID) { coop_lobby_open(); party_overlay = true; }
         }
         const char* errors[] = { "", coop_tr("That party operation is unavailable."), coop_tr("That character is not owned by this player."),
             coop_tr("The party is busy. Finish the current conversation or operation first."), coop_tr("The party declined the operation."), coop_tr("The party vote expired."),

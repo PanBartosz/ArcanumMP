@@ -1,3 +1,4 @@
+#include "coop/modern.h"
 #include "coop/localization.h"
 #include "ui/mainmenu_ui.h"
 
@@ -5013,7 +5014,7 @@ void mainmenu_ui_create_window_func(bool should_display)
         TigRect hint = { 10, 550, 780, 20 };
         tig_font_push(dword_64BC04[0]);
         tig_window_text_write(mainmenu_ui_window_handle,
-            coop_tr("Pause: pause/resume party. F12: party controls and chat."), &hint);
+            coop_tr("Pause: switch turn-based / real-time (host). F12: party controls and chat."), &hint);
         tig_font_pop();
     }
 
@@ -5443,7 +5444,7 @@ bool mainmenu_ui_message_filter(TigMessage* msg)
             if (key == SDL_SCANCODE_PAUSE || key == SDL_SCANCODE_F12
                 || key == SDL_SCANCODE_F9 || key == SDL_SCANCODE_F10) {
                 if (msg->data.keyboard.pressed) {
-                    if (key == SDL_SCANCODE_PAUSE) coop_runtime_pause_toggle();
+                    if (key == SDL_SCANCODE_PAUSE) coop_play_pause_toggle();
                     else if (key == SDL_SCANCODE_F12) coop_lobby_open();
                     else coop_runtime_control(key == SDL_SCANCODE_F9 ? COOP_CONTROL_SAVE : COOP_CONTROL_LOAD, 0, 0, 0);
                 }

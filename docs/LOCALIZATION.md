@@ -127,9 +127,16 @@ Polish personal catalogs override individual builtin entries; missing entries
 still use the current embedded Polish catalog. A game update therefore adds
 new UI translations without re-importing the language pack.
 
+## Combat feedback and party UI in 0.4.0
+
+Status floaters use each player's own language, including effect endings,
+stealth, fear and knockdown. Combat timing/radius, personal critical-hit shake,
+before-travel saves and direct autosave navigation have embedded Polish labels.
+Existing language packs do not require another import.
+
 ## Party controls in 0.3.0
 
-The catalog now has 959 entries. Gold transfer, recipient/amount feedback,
+Version 0.3.0 expanded the catalog to 959 entries. Gold transfer, recipient/amount feedback,
 host autosave preferences and automatic-save/load notices are translated.
 No language-pack re-import is needed.
 

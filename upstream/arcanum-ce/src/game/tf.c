@@ -1,3 +1,4 @@
+#include "game/obj_pool.h"
 #include "game/tf.h"
 #include "coop/modern.h"
 
@@ -23,6 +24,8 @@ typedef struct TextFloaterEntry {
     /* 0008 */ TigRect rect;
     /* 0018 */ uint8_t opacity;
     /* 001C */ struct TextFloaterEntry* next;
+    uint64_t created;
+    char text[128];
 } TextFloaterEntry;
 
 /**
@@ -527,6 +530,11 @@ bool tf_has_entries(int64_t obj)
 void tf_add(int64_t obj, int type, const char* str)
 {
     coop_play_float(obj,str);
+    tf_add_local(obj, type, str);
+}
+void tf_add_local(int64_t obj, int type, const char* str)
+{
+    if (!obj || !obj_handle_is_valid(obj) || type < 0 || type >= TF_TYPE_COUNT || !str || !*str) return;
     TextFloaterList* list;
     TextFloaterList* prev_list;
     TextFloaterEntry* entry;
@@ -555,6 +563,14 @@ void tf_add(int64_t obj, int type, const char* str)
         tf_list_head = list;
     }
 
+    /* Native combat may announce the same status immediately after the new
+     * general status hook. Keep one line; numeric damage feedback stays intact. */
+    bool words_only = true;
+    for (const unsigned char* p = (const unsigned char*)str; *p; p++)
+        if (*p >= '0' && *p <= '9') { words_only = false; break; }
+    if (words_only) for (TextFloaterEntry* previous = list->head; previous; previous = previous->next)
+        if (SDL_GetTicks() - previous->created < 150 && strcmp(previous->text, str) == 0) return;
+
     // Find the last entry in the list.
     prev_entry = NULL;
     entry = list->head;
@@ -565,6 +581,8 @@ void tf_add(int64_t obj, int type, const char* str)
 
     // Create a new entry and position it at the bottom of the list.
     entry = tf_entry_create();
+    entry->created = SDL_GetTicks();
+    SDL_strlcpy(entry->text, str, sizeof(entry->text));
     entry->offset = 4 * tf_line_height;
 
     if (prev_entry != NULL) {

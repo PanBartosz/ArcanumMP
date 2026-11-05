@@ -81,11 +81,12 @@ extra action bar. Text changes apply immediately, including native speech and
 single-player dialogue choices. Existing whole-UI scaling and widescreen
 settings remain under Options → Video.
 
-Automatic pause can be enabled for a newly spotted enemy, critical health,
-incapacitation or a broken weapon. The banner shows the reason. **Pause** or the
-banner releases your own pause; another player's pause remains until they
-release it. The host chooses the shared multiplayer policy. In single-player,
-the same controls manage a personal pause.
+Current behavior (0.4.0): a spotted enemy, critical health, incapacitation or a
+broken weapon can enter native turn-based combat. The host selects events and
+a 5–40-tile radius from a human PC; single-player uses personal settings. These
+triggers do not create pause holds or open F12. Pause changes combat timing.
+Settings also include personal critical-hit screen shake; native status floaters
+expire above characters in each player's language.
 
 Select a control binding in Settings and press its replacement key. A conflict
 swaps assignments; Escape cancels. **Reset key bindings** restores defaults.

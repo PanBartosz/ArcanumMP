@@ -1,15 +1,16 @@
 # Current status
 
-Updated 2026-11-02. ArcanumMP implements four-player LAN co-op for the original
+Updated 2026-11-05. ArcanumMP implements four-player LAN co-op for the original
 campaign, with Linux/Windows cross-play and modern single-/multiplayer UI tools.
 
 | Item | State |
 | --- | --- |
-| Compatibility | Version 0.3.0, protocol 61; update all players together; existing campaign saves/settings remain readable |
+| Compatibility | Version 0.4.0, protocol 62; update all players together; existing campaign saves/settings remain readable |
 | File checks | Exclude native screenshots and generated/personal files; normalize unused prototype-ID bytes, retaining actual gameplay checks and proven older save identities; [details](FILE_COMPATIBILITY.md) |
-| Party controls | F12 gold transfer, in-session load votes, host periodic/travel autosaves without client reload; [guide](PLAYER_GUIDE.md) |
+| Party controls | F12 gold transfer, in-session load votes, host periodic/pre-travel autosaves, direct latest-autosave access; [guide](PLAYER_GUIDE.md) |
 | Latest gameplay build | Optimized Linux and Windows drop-ins; source revision recorded in each package |
-| Interface | Saved layouts/transparency, themed art, portrait targeting and [compact UI polish](UI_POLISH.md) |
+| Combat feedback | Native status floaters, personal critical shake, automatic native turns with host radius and no pause popup |
+| Interface | Saved layouts/transparency, themed main-menu lobby, repaired chat/log chrome, portrait targeting and [compact UI polish](UI_POLISH.md) |
 | Playability | Shared log, searchable inventory/actions, previews, labels, text/controls, extra rows, quests, recipes and pings |
 | Languages and loot | Personal English/Polish selection, presentation-only Eselter 1.7 support, translated added UI and Empty/Pusto labels; [setup and scoped verification](LOCALIZATION.md) |
 | Polish interface | 123 additional translations for connection states, synchronization, errors, map notes and character development; older personal catalogs inherit new builtin entries |
@@ -35,4 +36,3 @@ Use [the active TODO](CAMPAIGN_TODO.md) for demonstrated remaining work,
 [features](FEATURES.md) for implementation mapping and [the player guide](PLAYER_GUIDE.md)
 for controls. [Release preparation](RELEASING.md#local-artifacts) explains the local
 artifact catalog; [showcase notes](SHOWCASE.md) record video provenance.
-

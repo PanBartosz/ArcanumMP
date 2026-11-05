@@ -38,6 +38,7 @@
 #include "game/timeevent.h"
 #include "game/tech.h"
 #include "ui/schematic_ui.h"
+#include "game/tf.h"
 #include "game/tile.h"
 #include "game/teleport.h"
 #include "game/trap.h"
@@ -57,7 +58,7 @@
 #include <string.h>
 enum { CONTROL_PHASES = 18, ITEM_TAG = 187700, FOLLOWER_TAG = 187701 };
 static CoopSession* held;
-static bool tools_mode, qol_mode;
+static bool tools_mode, qol_mode, feedback_mode;
 static int bound_members[4] = { -1, -1, -1, -1 };
 void coop_controls_probe_cleanup(void)
 {
@@ -367,11 +368,12 @@ bool coop_controls_probe(int argc, char** argv)
         if (!strcmp(argv[i], "--coop-engine-probe=runtime-preferences")) preferences = true;
         if (!strcmp(argv[i], "--coop-engine-probe=runtime-native-tools")) tools_mode = true;
         if (!strcmp(argv[i], "--coop-engine-probe=runtime-party-qol")) qol_mode = true;
+        if (!strcmp(argv[i], "--coop-engine-probe=runtime-play-feedback")) feedback_mode = qol_mode = true;
         if (!strncmp(argv[i], "--coop-probe-port=", 18)) port = (unsigned)atoi(argv[i] + 18);
         if (!strncmp(argv[i], "--coop-probe-player=", 20)) player = (unsigned)atoi(argv[i] + 20);
     }
     if (!port || port > 65535 || player >= 4 || host != (player == 0)) return false;
-    unsigned last_phase = qol_mode ? 9u : tools_mode ? 10u : preferences ? 4u : recovery ? 1u : CONTROL_PHASES;
+    unsigned last_phase = feedback_mode ? 15u : qol_mode ? 9u : tools_mode ? 10u : preferences ? 4u : recovery ? 1u : CONTROL_PHASES;
     CoopConfig config = { 0 }; snprintf(config.name, sizeof(config.name), "Control player %u", player);
     if (!content(config.content_id) || !coop_identity_load_or_create("arcmp-player.id", config.identity)) return false;
     held = coop_session_create(&config); if (!held) return false;
@@ -486,7 +488,7 @@ bool coop_controls_probe(int argc, char** argv)
                     if (host && !sent) { script_global_var_set(0, 52002); sent = coop_runtime_item(COOP_ITEM_GOLD, 0, (uint8_t)coop_campaign_slot_for_object(pc_slot(held, 2)), 100); }
                     ready &= script_global_var_get(0) == 52002 && item_gold_get(pc_slot(held, 0)) == 1037
                         && item_gold_get(pc_slot(held, 2)) == 1102 && coop_items_settled(coop_gameplay_items(game));
-                } else {
+                } else if (phase<=9) {
                     if (phase < 9 && slot == 3 && live && browser_step < 7) {
                         if (!browser_step) { coop_lobby_open(); browser_step = 1; browser_next = now + 350; }
                         else if (browser_step == 1 && now >= browser_next) {
@@ -513,6 +515,74 @@ bool coop_controls_probe(int argc, char** argv)
                     ready &= item_gold_get(pc_slot(held, 0)) == (phase == 7 ? 1037 : 1137)
                         && item_gold_get(pc_slot(held, 1)) == 864 && qol_pistol(held);
                     if (ready) good &= image(400 + phase, framebuffer);
+                } else if (phase==10) {
+                    if (host && !sent && live) {
+                        script_global_var_set(0,52003);
+                        TeleportData trip={.obj=actor,.map=79,.loc=location_make(2087,2018),.flags=TELEPORT_COOP_PARTY};
+                        sent=teleport_do(&trip); good &= sent;
+                    }
+                    ready &= coop_runtime_epoch()==baseline_epoch+1 && map_current_map()==79;
+                    if (ready && host) {
+                        CoopSaveSet party; CoopSaveEntry entry;
+                        good &= coop_runtime_save_set(&party); coop_save_inspect(&party,COOP_SAVE_AUTOSAVE_FIRST+1,&entry);
+                        good &= entry.status==COOP_CHECKPOINT_OK && entry.info.map==1
+                            && !strncmp(entry.info.description,"Before travel autosave",sizeof("Before travel autosave")-1);
+                    }
+                } else if (phase==11) {
+                    if (host && !sent && live) {
+                        CoopSaveSet party; CoopSaveEntry entry;
+                        good &= coop_runtime_save_set(&party); coop_save_inspect(&party,COOP_SAVE_AUTOSAVE_FIRST+1,&entry);
+                        sent=coop_runtime_checkpoint_request(COOP_CONTROL_LOAD,&entry,NULL); good &= sent;
+                    }
+                    if (slot && !voted && v->phase==COOP_CONTROL_VOTING) voted=coop_runtime_control(COOP_CONTROL_VOTE,1,v->proposal,0);
+                    ready &= coop_runtime_epoch()==baseline_epoch+1 && map_current_map()==1 && script_global_var_get(0)==52003;
+                } else if (phase==12) {
+                    if (host && !sent && live) {
+                        good &= coop_play_pref_set(PLAY_PREF_TURN_RADIUS,5) && coop_play_pref_set(PLAY_PREF_AUTOPAUSE,PLAY_PAUSE_ENEMY);
+                        int64_t follower=tagged(true),origin=obj_field_int64_get(actor,OBJ_F_LOCATION);
+                        sub_43E770(follower,location_make(location_get_x(origin)+30,location_get_y(origin)),0,0);
+                        good &= !coop_play_turn_trigger(follower,"Enemy spotted") && !combat_turn_based_is_active() && !coop_runtime_paused();
+                        sub_43E770(follower,location_make(location_get_x(origin)+2,location_get_y(origin)),0,0);
+                        good &= coop_play_turn_trigger(follower,"Enemy spotted"); sent=true;
+                    }
+                    ready &= combat_turn_based_is_active() && !v->paused && !coop_lobby_is_open() && coop_play_turn_radius()==5;
+                    if (ready) good &= image(412,framebuffer);
+                } else if (phase==13) {
+                    if (host && !sent && live) {
+                        good &= sub_4B6C90(false) && coop_play_pref_set(PLAY_PREF_AUTOPAUSE,0);
+                        for (unsigned i=0;i<4;i++) {
+                            int64_t target=pc_slot(held,i);
+                            obj_field_int32_set(target,OBJ_F_CRITTER_FLAGS,obj_field_int32_get(target,OBJ_F_CRITTER_FLAGS)|OCF_STUNNED);
+                            stat_base_set(target,STAT_POISON_LEVEL,15);
+                        }
+                        int64_t npc=tagged(true);
+                        obj_field_int32_set(npc,OBJ_F_SPELL_FLAGS,obj_field_int32_get(npc,OBJ_F_SPELL_FLAGS)|OSF_INVISIBLE);
+                        sent=true;
+                    }
+                    ready &= !combat_is_turn_based() && !v->paused && !coop_lobby_is_open();
+                    for (unsigned i=0;i<4;i++) ready &= (obj_field_int32_get(pc_slot(held,i),OBJ_F_CRITTER_FLAGS)&OCF_STUNNED) && tf_has_entries(pc_slot(held,i));
+                    ready &= tf_has_entries(tagged(true));
+                    if (ready) { good &= coop_play_pref_set(PLAY_PREF_CRIT_SHAKE,slot==1); good &= image(413,framebuffer); }
+                } else if (phase==14) {
+                    if (host && !sent && live) {
+                        for (unsigned i=0;i<4;i++) {
+                            int64_t target=pc_slot(held,i);
+                            obj_field_int32_set(target,OBJ_F_CRITTER_FLAGS,obj_field_int32_get(target,OBJ_F_CRITTER_FLAGS)&~OCF_STUNNED);
+                            stat_base_set(target,STAT_POISON_LEVEL,0);
+                            CombatContext hit={.flags=CF_HIT|CF_CRITICAL,.target_obj=target,.dam_flags=CDF_HAVE_DAMAGE|CDF_IGNORE_RESISTANCE};
+                            hit.dam[DAMAGE_TYPE_NORMAL]=1; combat_dmg(&hit);
+                        }
+                        sent=true;
+                    }
+                    if (coop_view_shaking()) picker_clicked=true;
+                    ready &= !(obj_field_int32_get(actor,OBJ_F_CRITTER_FLAGS)&OCF_STUNNED) && coop_items_settled(coop_gameplay_items(game));
+                    ready &= slot==1 ? picker_clicked : !coop_view_shaking();
+                    if (ready) good &= image(414,framebuffer);
+                } else if (phase==15) {
+                    if (!sent) { coop_lobby_open(); sent=true; }
+                    if (!picker_clicked && now-at>800) { click(340,370); picker_clicked=true; }
+                    if (!cancelled && now-at>1200) { good &= coop_saves_ui_active() && image(415,framebuffer); key(SDL_SCANCODE_ESCAPE,SDLK_ESCAPE); cancelled=true; }
+                    ready &= cancelled && !coop_saves_ui_active() && !coop_view_shaking() && map_current_map()==1;
                 }
             } else if (tools_mode) {
                 ready = game && coop_runtime_phase() == COOP_RUNTIME_PLAYING && v
@@ -804,7 +874,7 @@ bool coop_controls_probe(int argc, char** argv)
     }
     CoopGameplay* game = coop_runtime_gameplay();
     good = good && game && coop_gameplay_finished(game) && completed == last_phase
-        && coop_controls_executed(coop_runtime_controls()) == (host && !recovery ? qol_mode ? 3u : preferences || tools_mode ? 2u : 5u : 0u);
+        && coop_controls_executed(coop_runtime_controls()) == (host && !recovery ? feedback_mode ? 4u : qol_mode ? 3u : preferences || tools_mode ? 2u : 5u : 0u);
     FILE* report = fopen("arcmp-controls-result.json", "wb"); if (!report) good = false;
     if (report) {
         unsigned first = tail ? 8 : 1;

@@ -43,7 +43,7 @@ static void text_input(bool active)
 static void refresh(void);
 static bool input(TigMessage* msg);
 static int row_height(void) { return compact ? coop_play_line_height()*2+4 : coop_play_line_height()+8; }
-static int list_top(void) { return compact ? coop_play_line_height()+24 : tab==PLAY_TAB_SETTINGS ? 82 : 112; }
+static int list_top(void) { return compact ? 40 : tab==PLAY_TAB_SETTINGS ? 82 : 112; }
 static int list_bottom(void) { return bounds.height-(compact ? coop_play_line_height()+20 : 68); }
 static unsigned visible(void) { int n=(list_bottom()-list_top())/row_height(); return n>0 ? (unsigned)n : 1; }
 static int compact_log_width(void) { return SDL_clamp((hrp_iso_window_width_get()-224)/2,320,420); }
@@ -187,14 +187,20 @@ static void settings_rows(void)
     snprintf(autosave.detail, sizeof(autosave.detail), "%s", coop_tr("The host chooses Off, 2, 5, 10, 15 or 30 minutes. Saves rotate through three autosave slots and wait until the party is safe and idle. Manual saves are kept. Only the host can change this setting."));
     rows[count++] = autosave;
     autosave.id = PLAY_PREF_AUTOSAVE_TRAVEL;
-    snprintf(autosave.name, sizeof(autosave.name), coop_tr("Autosave after travel: %s"), coop_play_autosave_travel() ? coop_tr("On") : coop_tr("Off"));
-    snprintf(autosave.detail, sizeof(autosave.detail), "%s", coop_tr("Create a rotating autosave after changing maps or completing a world journey. Saving waits for a safe moment after arrival. Only the host can change this setting; every player sees the same choice."));
+    snprintf(autosave.name, sizeof(autosave.name), coop_tr("Autosave before travel: %s"), coop_play_autosave_travel() ? coop_tr("On") : coop_tr("Off"));
+    snprintf(autosave.detail, sizeof(autosave.detail), "%s", coop_tr("Create a rotating autosave before leaving the current map or starting a world journey. Loading it returns to the departure map without automatically repeating the trip. Only the host can change this setting."));
     rows[count++] = autosave;
+    PlayRow radius={.id=PLAY_PREF_TURN_RADIUS,.available=host};
+    snprintf(radius.name,sizeof(radius.name),coop_tr("Automatic turn-based radius: %u tiles"),coop_play_turn_radius());
+    snprintf(radius.detail,sizeof(radius.detail),"%s",coop_tr("Only events within this distance of a player character trigger turn-based combat. Choose 5 to 40 tiles. The host selects the shared value; distant followers and enemies do not stop the party.")); rows[count++]=radius;
+    PlayRow shake={.id=PLAY_PREF_CRIT_SHAKE,.available=true};
+    snprintf(shake.name,sizeof(shake.name),coop_tr("Critical-hit screen shake: %s"),coop_play_pref(PLAY_PREF_CRIT_SHAKE) ? coop_tr("On") : coop_tr("Off"));
+    snprintf(shake.detail,sizeof(shake.detail),"%s",coop_tr("Briefly shake the world view when your own character receives a damaging critical hit. The interface stays still. This personal setting is saved and never changes another player's screen.")); rows[count++]=shake;
     const char* reasons[]={coop_tr("Enemy spotted"),coop_tr("Critical health"),coop_tr("Party member down"),coop_tr("Weapon broken")};
     for (unsigned i=0;i<4;i++) {
-        PlayRow row={.id=100+(int)i,.available=true};
-        snprintf(row.name,sizeof(row.name),coop_tr("Auto-pause: %s [%s]"),reasons[i],coop_play_pause_policy()&(1u<<i) ? coop_tr("On") : coop_tr("Off"));
-        snprintf(row.detail,sizeof(row.detail),coop_tr("Pause automatically: %s.\n\nMultiplayer: the host selects the session policy and all clients see it. Ask the host before enabling automatic pauses. Each player can release their own pause using Pause or the visible banner.\n\nIn single-player this is a personal setting."),reasons[i]); rows[count++]=row;
+        PlayRow row={.id=100+(int)i,.available=host};
+        snprintf(row.name,sizeof(row.name),coop_tr("Automatic turn-based: %s [%s]"),reasons[i],coop_play_pause_policy()&(1u<<i) ? coop_tr("On") : coop_tr("Off"));
+        snprintf(row.detail,sizeof(row.detail),coop_tr("Switch to turn-based combat: %s. No pause hold and no party-window popup. The configured radius is measured from a player character. In multiplayer the host chooses the triggers; in single-player these are your own settings."),reasons[i]); rows[count++]=row;
     }
     PlayRow layout={.id=400,.available=true};
     snprintf(layout.name,sizeof(layout.name),coop_tr("Edit HUD layout: %s"),coop_hud_editing() ? coop_tr("On") : coop_tr("Off"));
@@ -205,6 +211,7 @@ static void settings_rows(void)
     snprintf(layout.name,sizeof(layout.name),coop_tr("Language: %s (restart required)"),coop_tr(coop_language_name(coop_language_pending())));
     snprintf(layout.detail,sizeof(layout.detail),"%s",coop_tr("Language is personal. Each player can use a different translation in the same campaign. Restart the game after changing it."));rows[count++]=layout;
     for (unsigned i=0;i<HUD_COUNT;i++) {
+        if (i==HUD_PAUSE) continue;
         PlayRow row={.id=300+(int)i,.available=true};
         snprintf(row.name,sizeof(row.name),coop_tr("%s: %d%% transparent"),coop_hud_name(i),100-coop_hud_opacity(i));
         snprintf(row.detail,sizeof(row.detail),coop_tr("Individual transparency for %s. Click to cycle 0%%, 25%%, 50%% or 75%% transparency. Saved across game launches. Combat logs also have a percentage button in their title bar."),coop_hud_name(i)); rows[count++]=row;
@@ -255,7 +262,10 @@ static void refresh(void)
     box(window,(TigRect){0,0,bounds.width,bounds.height},false); button_count=0;
     const char* titles[]={coop_tr("Combat log"),coop_tr("Inventory"),coop_tr("Abilities"),coop_tr("Quest notes"),coop_tr("Workshop"),coop_tr("Settings")};
     int title_width=bounds.width-(compact ? 144 : 180);
-    text(titles[tab],30,8,title_width-34,MM_COLOR_GOLD);
+    char heading[96]; snprintf(heading,sizeof(heading),"%s",titles[tab]);
+    coop_hud_text_fit(heading,sizeof(heading),title_width-38,coop_play_chrome_font(MM_COLOR_GOLD));
+    tig_font_push(coop_play_chrome_font(MM_COLOR_GOLD));
+    TigRect heading_rect={30,9,title_width-38,20}; tig_window_text_write(window,heading,&heading_rect); tig_font_pop();
     button(10,"",bounds.width-(compact ? 138 : 174),4,26);
     if (!compact) button(11,"",bounds.width-138,4,26);
     char opacity[32]; snprintf(opacity,sizeof(opacity),"%d%%",coop_hud_opacity(window_element));
@@ -311,7 +321,11 @@ static void refresh(void)
         const char* status=*feedback ? feedback : tab==PLAY_TAB_INVENTORY && *coop_play_bulk_status() ? coop_play_bulk_status()
             : compact ? coop_tr("Wheel: history  |  Click: full entry") : coop_tr("Wheel / arrows: browse  |  [F11] / [B] / Esc: close");
         char bound[512]; coop_play_shortcuts(status,bound,sizeof(bound));
-        text(bound,12,bounds.height-30,bounds.width-38,MM_COLOR_GRAY);
+        if (compact) {
+            coop_hud_text_fit(bound,sizeof(bound),bounds.width-42,coop_play_chrome_font(MM_COLOR_GRAY));
+            tig_font_push(coop_play_chrome_font(MM_COLOR_GRAY));
+            TigRect footer={12,bounds.height-25,bounds.width-42,18}; tig_window_text_write(window,bound,&footer); tig_font_pop();
+        } else text(bound,12,bounds.height-30,bounds.width-38,MM_COLOR_GRAY);
     }
     coop_hud_handles(window_element,window,&bounds,title_width,true);
     refreshed=SDL_GetTicks();
@@ -340,6 +354,7 @@ static void change_setting(void)
         int value=coop_play_pref((unsigned)id);
         if (id==PLAY_PREF_TEXT) value=value==150 ? 100 : value+25;
         else if (id==PLAY_PREF_TIP_DELAY) value=value==0 ? 300 : value==300 ? 550 : value==550 ? 1000 : 0;
+        else if (id==PLAY_PREF_TURN_RADIUS) value=value==40 ? 5 : value+5;
         else if (id==PLAY_PREF_AUTOSAVE_MINUTES) {
             const int intervals[] = { 0, 2, 5, 10, 15, 30 };
             for (unsigned i = 0; i < SDL_arraysize(intervals); i++) if (value == intervals[i]) { value = intervals[(i + 1) % SDL_arraysize(intervals)]; break; }

@@ -1,16 +1,16 @@
-# Party pause, rest and checkpoints
+# Party timing, rest and checkpoints
 
-Protocol 21 adds a runtime-lifetime party controller beside the per-map gameplay
-controller. Pause, rest, save and load share its ordered requests and receipts.
+The runtime-lifetime party controller coordinates rest, save, load and travel
+beside the per-map gameplay controller. Requests and receipts remain ordered.
 An operation never reports success merely because its input was queued.
 
 ## Controls and consent
 
-- **Pause** toggles your own pause hold, including while the native in-game
-  menu or Options screen is open. Other travellers retain their holds when you
-  resume. The host can select **Resume all** in Party (F12). Opening a local menu
-  keeps the campaign clock running; its footer identifies Pause and F12. Party
-  chat and F9/F10 shared save/load shortcuts also work from that menu.
+- **Pause** changes native turn-based/real-time combat timing. Multiplayer
+  timing belongs to the host. Automatic triggers use this same native combat
+  state, with a configurable 5–40-tile radius from a player. They never create
+  a session pause hold or force the Party window open. Local menus keep the
+  campaign running; F12 still opens party chat, voting, saves and gold.
 - **S** opens the native rest/wait picker. Clicking a bed approaches it and
   opens that picker. The chosen duration proposes a group operation.
 - **F9** creates the shared quick save; **F10** proposes loading that exact save.
@@ -35,9 +35,9 @@ An operation never reports success merely because its input was queued.
   epoch and while native rest/journey work is active.
   Save requires the connected party's synchronization acknowledgments.
 
-Transport, chat, state replication and acknowledgments continue during pause.
-Gameplay action clocks and native simulation stop. Queued native work remains
-pending until resume. Native confirmation dialogs also poll transport and
+Transport, chat and state replication continue during native turn-based play.
+The earlier player-facing custom pause/banner has been removed. The controller
+retains internal pause fields for ordered barriers and legacy protocol fixtures. Native confirmation dialogs also poll transport and
 simulation; a shared vote or transition dismisses them so it can proceed. Operation barriers can drain work and resynchronize while
 preserving each traveller's pause hold for the resulting campaign.
 
@@ -87,7 +87,7 @@ native archive before replacing the campaign. Every participant stores the same
 selected slot and description before acknowledging the shared save.
 
 The host selects periodic autosaves (Off or 2/5/10/15/30 minutes) and saving
-following map/world travel in F12 → Autosave or B → Settings. Defaults are five
+before map/world travel in F12 → Autosave or B → Settings. Defaults are five
 minutes and travel saving enabled. The authoritative host policy is shown to
 every player; client attempts to change it are refused. Preferences are local
 to the host and persist across launches.
@@ -96,7 +96,10 @@ Three party-specific automatic copies rotate, selecting an empty or the oldest
 valid slot. Autosave waits through combat, conversations, arrivals, character
 allocation, service/actions, local native panels and other party operations.
 Pauses, movies, loading and disconnected time do not count toward the interval.
-The host captures the settled native world synchronously and writes the archive
+Before travel, the host captures the drained departure map before native
+teleport/route setup. The pending transition is omitted only from this snapshot,
+so loading does not repeat it; the running transition is retained. The host
+captures the settled native world synchronously and writes the archive
 without a shared reload or epoch change. Clients retain their open interfaces.
 Automatic copies live on the host and appear in its shared save catalog; loading
 uses the ordinary unanimous vote. Manual and quick saves remain separate.
@@ -203,3 +206,16 @@ the lens is released and the native render lock is balanced. This does not
 reproduce the player's intermittent black map; that exact case remains open
 in the active TODO. Native hover text, skill and spell descriptions also survive
 12 passive refreshes, release on pointer movement and yield to explicit feedback.
+
+
+## Playthrough feedback corrections in 0.4.0
+
+The focused controller scenario extends to 15 stages on two Linux and two
+Windows/Wine engines. It additionally checks departure-map autosave, a stable
+return to that map on load, rejection of a trigger 30 tiles away at radius 5,
+native turn-based activation nearby without a pause hold/F12 popup, status
+floaters on PCs and an NPC, damaging native critical hits with one peer enabling
+shake and the other three disabling it, and direct F12 access to autosaves.
+Native visual captures cover the initial menu lobby, compact/expanded log at
+150% text, Polish floaters, and world-only shake at 100/150% zoom. The interface
+pixels stay fixed and the restored world matches the pre-shake frame exactly.

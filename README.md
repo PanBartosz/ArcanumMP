@@ -7,8 +7,8 @@ their own character while the host runs the shared campaign. The new
 playability tools also support single-player use.
 
 [Website & trailer](https://panbartosz.github.io/ArcanumMP/) ·
-[Download for Windows](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.3.0/ArcanumMP-v0.3.0-Windows-x86_64.zip) ·
-[Download for Linux](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.3.0/ArcanumMP-v0.3.0-Linux-x86_64.tar.gz)
+[Download for Windows](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.4.0/ArcanumMP-v0.4.0-Windows-x86_64.zip) ·
+[Download for Linux](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.4.0/ArcanumMP-v0.4.0-Linux-x86_64.tar.gz)
 
 ![ArcanumMP: four connected game instances](site/assets/images/poster.jpg)
 
@@ -32,9 +32,10 @@ playability tools also support single-player use.
   personal notes, crafting help, interaction labels, previews and party pings.
 - **Display and controls:** mouse-wheel zoom, middle-button camera panning,
   widescreen/classic presentation, UI/text sizing, remappable commands,
-  auto-pause choices and configurable walk/run approaches.
+  automatic turn-based triggers and configurable walk/run approaches.
 - **Keep your campaign:** named saves, loading by party vote during play,
   configurable periodic/travel autosaves, recovery and reserved player ownership.
+- **Read the fight:** native floating status text and personal critical-hit screen shake.
 - **Share supplies:** transfer an exact amount of gold through the party panel.
 - **Play in your own language:** independent English/Polish selection, including
   mixed-language parties. [Polish setup without Python](docs/LOCALIZATION.md#simple-setup--no-python).
@@ -68,7 +69,7 @@ These are defaults; playability commands can be rebound in **B → Settings**.
 
 | Action | Control |
 | --- | --- |
-| Party chat, votes, pause and shared controls | F12 |
+| Party chat, votes and shared controls | F12 |
 | Combat log | F11 or the journal-and-sword button |
 | Items, actions, quests, crafting and settings | B |
 | Move/resize custom panels | UI button beside the log toggle |
@@ -85,7 +86,7 @@ Widescreen and UI-size changes apply after restart. See
 
 ## Compatibility
 
-**Latest release: v0.3.0.** All players should use matching mod builds
+**Latest release: v0.4.0.** All players should use matching mod builds
 and game data. Keep your saves, player identity and settings when updating.
 The prebuilt Linux executable requires glibc 2.44 or newer; older distributions
 can use the [source build](docs/BUILDING.md). Both bundles target x86-64.

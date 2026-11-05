@@ -842,7 +842,7 @@ void timeevent_ping(tig_timestamp_t timestamp)
     TimeEventNode offending_node_candidate;
 
     if (!coop_authority_can_simulate()) return;
-    if (coop_runtime_blocks_simulation() || coop_play_paused()) { dword_5E8610 = timestamp; return; }
+    if (coop_runtime_blocks_simulation()) { dword_5E8610 = timestamp; return; }
 
     delta = tig_timer_between(dword_5E8610, timestamp);
     if (delta < 5) {

@@ -1879,7 +1879,7 @@ bool sub_54B5D0(TigMessage* msg)
             coop_dialogue_ui_browse();
             return true;
         }
-        if (msg->data.keyboard.scancode == SDL_SCANCODE_PAUSE) { coop_runtime_pause_toggle(); return true; }
+        if (msg->data.keyboard.scancode == SDL_SCANCODE_PAUSE) { coop_play_pause_toggle(); return true; }
         if (msg->data.keyboard.scancode == SDL_SCANCODE_F9) { coop_runtime_control(COOP_CONTROL_SAVE, 0, 0, 0); return true; }
         if (msg->data.keyboard.scancode == SDL_SCANCODE_F10) { coop_runtime_control(COOP_CONTROL_LOAD, 0, 0, 0); return true; }
     }

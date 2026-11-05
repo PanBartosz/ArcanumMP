@@ -1,4 +1,5 @@
 #include "coop/display.h"
+#include "coop/modern.h"
 #include "game/gamelib.h"
 #include "game/hrp.h"
 #include "game/location.h"
@@ -54,6 +55,39 @@ static TigRect world_rect;
 static int zoom = 100;
 static bool resize_failed;
 static int pan_remainder_x, pan_remainder_y;
+static uint64_t shake_started;
+static int shake_x, shake_y;
+static bool shake_was_active;
+static TigVideoBuffer* shake_buffer;
+static int shake_width, shake_height;
+void coop_view_effect_reset(void)
+{
+    bool dirty=shake_started || shake_was_active;
+    shake_started=0; shake_x=shake_y=0; shake_was_active=false;
+    if (dirty && screen_window!=TIG_WINDOW_HANDLE_INVALID) gamelib_invalidate_rect(NULL);
+}
+bool coop_view_shaking(void)
+{ return shake_started && SDL_GetTicks()-shake_started<300 && coop_play_pref(PLAY_PREF_CRIT_SHAKE); }
+void coop_view_critical_shake(void)
+{
+    if (!coop_play_pref(PLAY_PREF_CRIT_SHAKE) || screen_window==TIG_WINDOW_HANDLE_INVALID) return;
+    shake_started=SDL_GetTicks(); shake_was_active=true;
+    gamelib_invalidate_rect(NULL);
+}
+void coop_view_effect_tick(uint64_t now)
+{
+    bool active=shake_started && now>=shake_started && now-shake_started<300 && coop_play_pref(PLAY_PREF_CRIT_SHAKE);
+    if (active || shake_was_active) gamelib_invalidate_rect(NULL);
+    shake_x=shake_y=0;
+    if (active) {
+        static const int pattern[][2]={{-1,1},{1,0},{0,-1},{-1,0},{1,1},{0,1},{1,-1},{-1,-1}};
+        unsigned elapsed=(unsigned)(now-shake_started),phase=(elapsed/24)%SDL_arraysize(pattern);
+        int strength=1+(int)(4*(300-elapsed)/300);
+        shake_x=pattern[phase][0]*strength; shake_y=pattern[phase][1]*strength;
+    } else shake_started=0;
+    shake_was_active=active;
+}
+
 
 void coop_view_init(tig_window_handle_t window)
 {
@@ -66,6 +100,9 @@ void coop_view_init(tig_window_handle_t window)
 }
 void coop_view_exit(void)
 {
+    coop_view_effect_reset();
+    if (shake_buffer) tig_video_buffer_destroy(shake_buffer);
+    shake_buffer=NULL; shake_width=shake_height=0;
     if (world_window != TIG_WINDOW_HANDLE_INVALID) tig_window_destroy(world_window);
     world_window = screen_window = TIG_WINDOW_HANDLE_INVALID;
     zoom = 100;
@@ -96,22 +133,42 @@ bool coop_view_resize(const GameResizeInfo* screen, GameResizeInfo* world)
 }
 void coop_view_present(void)
 {
-    if (world_window == TIG_WINDOW_HANDLE_INVALID) return;
-    TigWindowBlitInfo blit = { .type=TIG_WINDOW_BLIT_WINDOW_TO_WINDOW,
-        .src_window_handle=world_window, .src_rect=&world_rect,
-        .dst_window_handle=screen_window, .dst_rect=&screen_view.content_rect,
-        .vb_blit_flags=TIG_VIDEO_BUFFER_BLIT_SCALE_LINEAR };
+    TigRect target=screen_view.content_rect;
+    target.x+=shake_x; target.y+=shake_y;
+    TigWindowBlitInfo blit={.dst_window_handle=screen_window,.dst_rect=&target};
+    if (world_window!=TIG_WINDOW_HANDLE_INVALID) {
+        blit.type=TIG_WINDOW_BLIT_WINDOW_TO_WINDOW; blit.src_window_handle=world_window;
+        blit.src_rect=&world_rect; blit.vb_blit_flags=TIG_VIDEO_BUFFER_BLIT_SCALE_LINEAR;
+    } else if (shake_x || shake_y) {
+        if (shake_buffer && (shake_width!=target.width || shake_height!=target.height)) {
+            tig_video_buffer_destroy(shake_buffer); shake_buffer=NULL;
+        }
+        if (!shake_buffer) {
+            TigVideoBufferCreateInfo info={.flags=TIG_VIDEO_BUFFER_CREATE_SYSTEM_MEMORY,.width=target.width,.height=target.height};
+            if (tig_video_buffer_create(&info,&shake_buffer)!=TIG_OK) { shake_buffer=NULL; return; }
+            shake_width=target.width; shake_height=target.height;
+        }
+        TigRect copy={0,0,target.width,target.height};
+        if (tig_window_copy_to_vbuffer(screen_window,&screen_view.content_rect,shake_buffer,&copy)!=TIG_OK) return;
+        blit.type=TIG_WINDOW_BLIT_VIDEO_BUFFER_TO_WINDOW; blit.src_video_buffer=shake_buffer;
+        blit.src_rect=&copy;
+        /* Finish this blit while the stack-local source rectangle is alive. */
+        tig_window_fill(screen_window,&screen_view.content_rect,tig_color_make(0,0,0));
+        tig_window_blit(&blit); return;
+    } else return;
+    if (shake_x || shake_y) tig_window_fill(screen_window,&screen_view.content_rect,tig_color_make(0,0,0));
     tig_window_blit(&blit);
 }
 void coop_view_point(int* x, int* y)
 {
+    *x-=shake_x; *y-=shake_y;
     if (world_window == TIG_WINDOW_HANDLE_INVALID) return;
     *x = (*x-screen_view.content_rect.x)*world_rect.width/screen_view.content_rect.width;
     *y = (*y-screen_view.content_rect.y)*world_rect.height/screen_view.content_rect.height;
 }
 void coop_view_screen_point(int* x, int* y)
 {
-    if (world_window == TIG_WINDOW_HANDLE_INVALID) return;
+    if (world_window == TIG_WINDOW_HANDLE_INVALID) { *x+=shake_x; *y+=shake_y; return; }
     *x = screen_view.content_rect.x + *x*screen_view.content_rect.width/world_rect.width;
     *y = screen_view.content_rect.y + *y*screen_view.content_rect.height/world_rect.height;
 }

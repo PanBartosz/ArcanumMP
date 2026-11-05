@@ -35,6 +35,7 @@ bool coop_runtime_checkpoint_request(CoopControlAction action, const CoopSaveEnt
 bool coop_runtime_resume_slot(const CoopSaveEntry* entry);
 CoopCheckpointStatus coop_runtime_remove_slot(const CoopSaveEntry* entry);
 bool coop_runtime_native_save_allowed(void);
+bool coop_runtime_pretravel_save(void);
 bool coop_runtime_native_load_allowed(void);
 CoopControls* coop_runtime_controls(void);
 CoopSession* coop_runtime_session(void);

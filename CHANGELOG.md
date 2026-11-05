@@ -2,9 +2,28 @@
 
 Published player releases and earlier engineering milestones are listed below.
 All players should use matching executables and game data. Current compatibility is
-**protocol 61**.
+**protocol 62**.
 
 ## Unreleased
+
+### v0.4.0 — combat feedback and corrected party tools
+
+- Show native, locally translated status floaters above PCs and NPCs as effects
+  apply/end, including poison, fatigue and encumbrance outside combat.
+- Replace automatic custom pauses with native turn-based combat. The host
+  chooses triggers and a 5–40-tile radius from a player character. These events
+  neither freeze the session nor open F12. Pause changes combat timing.
+- Add a personal, persistent switch for brief world-only screen shake when the
+  local character receives a damaging critical hit. UI placement stays fixed.
+- Save before map/world departures. The departure snapshot omits its pending
+  transition, so loading returns to the old map without repeating the trip.
+- Add F12 Autosaves and visible save-browser shortcuts; select the newest
+  automatic save directly while preserving the ordinary unanimous load vote.
+- Theme the lobby from the main menu. Separate campaign actions from the chat
+  heading, fix overlapping hidden hit areas, and size/clip log chrome independently
+  of 150% body text. Existing layouts and preferences remain usable.
+- Polish translations for all new controls and feedback; update every player
+  together. Existing saves, profiles and language packs are retained.
 
 ### v0.3.0 — party gold, autosave and in-session loading
 

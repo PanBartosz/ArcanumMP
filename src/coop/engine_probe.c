@@ -2399,7 +2399,7 @@ int coop_engine_probe(int argc, char** argv)
         good = coop_continuity_probe(argc, argv);
     } else if (!strcmp(mode, "runtime-story") || !strcmp(mode, "runtime-story-tail") || !strcmp(mode, "runtime-journey") || !strcmp(mode, "runtime-ending") || !strcmp(mode, "runtime-defeat")) {
         good = coop_story_probe(argc, argv);
-    } else if (!strcmp(mode, "runtime-party-qol") || !strcmp(mode, "runtime-native-tools") || !strcmp(mode, "runtime-preferences") || !strcmp(mode, "runtime-controls") || !strcmp(mode, "runtime-controls-tail") || !strcmp(mode, "runtime-controls-ui") || !strcmp(mode, "runtime-recover") || !strcmp(mode, "runtime-recover-ui")) {
+    } else if (!strcmp(mode, "runtime-play-feedback") || !strcmp(mode, "runtime-party-qol") || !strcmp(mode, "runtime-native-tools") || !strcmp(mode, "runtime-preferences") || !strcmp(mode, "runtime-controls") || !strcmp(mode, "runtime-controls-tail") || !strcmp(mode, "runtime-controls-ui") || !strcmp(mode, "runtime-recover") || !strcmp(mode, "runtime-recover-ui")) {
         good = coop_controls_probe(argc, argv);
     } else if (!strcmp(mode, "runtime-callbacks") || !strcmp(mode, "runtime-service-recovery") || !strcmp(mode, "runtime-services") || !strcmp(mode, "runtime-commerce") || !strcmp(mode, "runtime-followers")) {
         good = coop_services_probe(argc, argv);
@@ -2527,7 +2527,7 @@ int coop_engine_probe(int argc, char** argv)
     if (!strncmp(mode, "runtime-combat", 14) || !strcmp(mode, "runtime-weapons") || !strcmp(mode, "runtime-magic") || !strcmp(mode, "runtime-use") || !strcmp(mode, "runtime-skills") || !strcmp(mode, "runtime-progression")) coop_battle_probe_cleanup();
     if (!strcmp(mode, "runtime-encounter")) coop_encounter_probe_cleanup();
     if (!strcmp(mode, "runtime-callbacks") || !strcmp(mode, "runtime-service-recovery") || !strcmp(mode, "runtime-services") || !strcmp(mode, "runtime-commerce") || !strcmp(mode, "runtime-followers")) coop_services_probe_cleanup();
-    if (!strcmp(mode, "runtime-party-qol") || !strcmp(mode, "runtime-native-tools") || !strcmp(mode, "runtime-preferences") || !strcmp(mode, "runtime-controls") || !strcmp(mode, "runtime-controls-tail") || !strcmp(mode, "runtime-controls-ui") || !strcmp(mode, "runtime-recover") || !strcmp(mode, "runtime-recover-ui")) coop_controls_probe_cleanup();
+    if (!strcmp(mode, "runtime-play-feedback") || !strcmp(mode, "runtime-party-qol") || !strcmp(mode, "runtime-native-tools") || !strcmp(mode, "runtime-preferences") || !strcmp(mode, "runtime-controls") || !strcmp(mode, "runtime-controls-tail") || !strcmp(mode, "runtime-controls-ui") || !strcmp(mode, "runtime-recover") || !strcmp(mode, "runtime-recover-ui")) coop_controls_probe_cleanup();
     if (!strcmp(mode, "runtime-story") || !strcmp(mode, "runtime-story-tail") || !strcmp(mode, "runtime-journey") || !strcmp(mode, "runtime-ending") || !strcmp(mode, "runtime-defeat")) coop_story_probe_cleanup();
     if (!strcmp(mode, "runtime-continuity") || !strcmp(mode, "runtime-companion-ui")) coop_continuity_probe_cleanup();
     if (!strcmp(mode, "runtime-environment") || !strcmp(mode, "runtime-environment-ui")) coop_environment_probe_cleanup();
