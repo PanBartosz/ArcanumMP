@@ -202,6 +202,10 @@ void coop_play_draw_begin(void)
     label_count=0;
     collect_labels=labels_on && in_world() && !coop_play_ui_blocking();
     collect_enemies=in_world() && coop_authority_can_simulate() && (coop_play_pause_policy()&PLAY_PAUSE_ENEMY);
+    coop_play_before_scroll();
+}
+void coop_play_before_scroll(void)
+{
     for (unsigned i=0;i<erase_count;i++) {
         TigRect r=erase[i]; r.x-=2; r.y-=2;
         int x=r.x+r.width+4,y=r.y+r.height+4;
@@ -327,7 +331,7 @@ static void preview(tig_window_handle_t window)
     if (!coop_play_pref(PLAY_PREF_PREVIEW) || !combat_turn_based_is_active()) return;
     int64_t pc=player_get_local_pc_obj(); TigMouseState mouse;
     const char* waiting=coop_tr("Waiting for your turn. Your portrait will be highlighted when you can act.");
-    if (combat_turn_based_whos_turn_get()!=pc) { preview_show(waiting); return; }
+    if (combat_turn_based_whos_turn_get()!=pc) { preview_close(); return; }
     if (tig_mouse_get_state(&mouse)!=TIG_OK) return;
     tig_window_handle_t top;
     if (tig_window_get_at_position(mouse.x,mouse.y,&top)!=TIG_OK || top!=window) {
@@ -450,6 +454,7 @@ void coop_play_draw(tig_window_handle_t window)
         }
     }
     int64_t pc=player_get_local_pc_obj();
+    TigRect directions[4]; unsigned direction_count=0;
     for (unsigned i=coop_campaign_next_slot(0);i<4;i=coop_campaign_next_slot(i+1)) {
         int64_t actor=coop_campaign_object(i); if (!actor || actor==pc) continue;
         int x,y; point(obj_field_int64_get(actor,OBJ_F_LOCATION),&x,&y);
@@ -457,7 +462,17 @@ void coop_play_draw(tig_window_handle_t window)
         if (x<90 || x>width-90 || y<115 || y>height-175) {
             int cx=SDL_clamp(x,95,width-200),cy=SDL_clamp(y,120,height-195); char name[80],text[128]; coop_play_name(actor,name,sizeof(name));
             snprintf(text,sizeof(text),"%s %s %.65s (%lld)",x<90 ? "<" : x>width-90 ? ">" : "",y<115 ? "^" : y>height-175 ? "v" : "",name,(long long)object_dist(pc,actor));
-            draw_text(window,text,(TigRect){cx,cy,190,coop_play_line_height()},MM_COLOR_GREEN);
+            TigRect hint={cx,cy,190,coop_play_line_height()+2};
+            for (unsigned attempt=0;attempt<8;attempt++) {
+                int offset=(int)((attempt+1)/2)*(hint.height+3)*(attempt%2 ? 1 : -1);
+                hint.y=SDL_clamp(cy+offset,120,height-195);
+                bool overlaps=false; TigRect intersection;
+                for (unsigned n=0;n<direction_count;n++) if (tig_rect_intersection(&hint,&directions[n],&intersection)==TIG_OK) overlaps=true;
+                if (!overlaps) break;
+            }
+            directions[direction_count++]=hint;
+            coop_hud_text_fit(text,sizeof(text),hint.width,coop_play_font(MM_COLOR_GREEN));
+            draw_text(window,text,hint,MM_COLOR_GREEN);
         }
     }
     int64_t hover=object_hover_obj_get();

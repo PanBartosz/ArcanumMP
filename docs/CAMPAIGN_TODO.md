@@ -97,3 +97,19 @@ will follow reports from actual play. See [current status](STATUS.md),
 Earlier campaign saves remain a standing compatibility requirement for future
 releases. Preserve saves, player profiles and verified content migrations.
 [Behavior and focused checks](QOL_BENCHMARKS.md#spell-loop-audio-controls-in-041).
+
+
+## Completed in 0.5.0
+
+- [x] Persistent Auto/Latest log following with stable history browsing.
+- [x] Native HP/fatigue inspection during another actor's turn.
+- [x] Host-selected Current map / 8 tiles for shared keys and story items;
+  hand-ins and consumption resolve the real item holder without copies.
+- [x] Shared companion dialogue, normal healing and free equipment access;
+  retain one physical leader and leader-only follow/dismissal orders.
+- [x] Periodic-save due time survives internal recovery/travel writes; expose
+  the next/last save, deferral reasons and write failures.
+- [x] Remove reproduced green direction-label trails during camera scrolling.
+- [x] Preserve older-save readers and verify five retained 0.3.0/0.4.0 saves.
+
+[Mechanics and scoped validation](COORDINATION.md#shared-party-access-and-playthrough-corrections-in-050).

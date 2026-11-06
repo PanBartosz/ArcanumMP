@@ -2,9 +2,31 @@
 
 Published player releases and earlier engineering milestones are listed below.
 All players should use matching executables and game data. Current compatibility is
-**protocol 62**.
+**protocol 63**.
 
 ## Unreleased
+
+### v0.5.0 — shared party access and playthrough corrections
+
+- Add persistent **Auto** controls to both combat-log views, a visible suspended
+  state and **Latest / +N** feedback. Browsing history preserves its position.
+- Inspect native target HP/fatigue during another actor's turn without enabling
+  actions or dispatching scripted examine effects.
+- Let the host choose **Shared keys and story items: Current map / 8 tiles** in
+  **B → Settings**. Replicate the policy to clients. Eligible story conditions,
+  hand-ins and consumption resolve the real item holder without copying items;
+  ordinary supplies, crafting, equipment and money stay personal.
+- Open recruited companions' dialogue, normal healing and free inventory access
+  to the party. Preserve their physical leader; reserve follow/dismiss orders
+  to that leader. Virgil no longer routes other players through his opening.
+- Keep periodic autosave due time across internal recovery and travel saves.
+  Show the next save, last automatic save and why a due save is waiting. Retain
+  settled-action safety and report write failures without deleting prior saves.
+- Remove green distant-player label trails during camera scrolling; fit labels
+  within their bounds and separate overlapping direction hints.
+- Polish translations for added controls/status. Network protocol is 63;
+  update every participant together. Save formats and older-save readers remain
+  unchanged; existing profiles, campaigns, languages and layouts stay usable.
 
 ### v0.4.1 — personal spell-loop audio controls
 

@@ -1,5 +1,6 @@
 #include "coop/engine_followers.h"
 #include "coop/authority.h"
+#include "coop/engine_script.h"
 #include "coop/campaign.h"
 #include "coop/engine_dialogue.h"
 #include "coop/engine_object.h"
@@ -31,7 +32,8 @@ unsigned coop_engine_follower_order(int64_t actor, const CoopFollowerRequest* r)
     int64_t npc = obj_pool_perm_lookup(coop_object_id_to_engine(r->follower));
     if (!npc || obj_field_int32_get(npc, OBJ_F_TYPE) != OBJ_TYPE_NPC || !critter_is_active(npc)
         || (obj_field_int32_get(npc, OBJ_F_FLAGS) & (OF_OFF | OF_DESTROYED | OF_EXTINCT))) return COOP_FOLLOW_INVALID;
-    if (critter_pc_leader_get(npc) != actor) return COOP_FOLLOW_OWNER;
+    if (critter_pc_leader_get(npc) != actor
+        && (r->order != COOP_FOLLOW_INVENTORY || !coop_engine_party_companion(npc,actor))) return COOP_FOLLOW_OWNER;
     if (object_dist(actor, npc) > 10) return COOP_FOLLOW_DISTANCE;
     if (r->order == COOP_FOLLOW_INVENTORY) {
         if (!coop_engine_dialogue_can_start(actor)) return COOP_FOLLOW_BUSY;

@@ -5,13 +5,13 @@ campaign, with Linux/Windows cross-play and modern single-/multiplayer UI tools.
 
 | Item | State |
 | --- | --- |
-| Compatibility | Version 0.4.1, protocol 62; preserve older saves, profiles and verified content migrations |
+| Compatibility | Version 0.5.0, protocol 63; preserve older saves, profiles and verified content migrations |
 | File checks | Exclude native screenshots and generated/personal files; normalize unused prototype-ID bytes, retaining actual gameplay checks and proven older save identities; [details](FILE_COMPATIBILITY.md) |
-| Party controls | F12 gold transfer, in-session load votes, host periodic/pre-travel autosaves, direct latest-autosave access; [guide](PLAYER_GUIDE.md) |
+| Party controls | Shared key/story-item scope (map/8 tiles), companion dialogue/healing/EQ, gold transfer, load votes and visible periodic/pre-travel autosaves; [guide](PLAYER_GUIDE.md) |
 | Latest gameplay build | Optimized Linux and Windows drop-ins; source revision recorded in each package |
 | Combat feedback | Native status floaters, personal critical shake, automatic native turns with host radius and no pause popup |
 | Spell audio | Personal live mute for repeating spells, elemental buffs, Tempus Fugit and familiar fidget; [scope and checks](QOL_BENCHMARKS.md#spell-loop-audio-controls-in-041) |
-| Interface | Saved layouts/transparency, themed main-menu lobby, repaired chat/log chrome, portrait targeting and [compact UI polish](UI_POLISH.md) |
+| Interface | Persistent Auto/Latest log controls, off-turn HP/fatigue inspection, scrolling-label cleanup, saved layouts/transparency and portrait targeting and [compact UI polish](UI_POLISH.md) |
 | Playability | Shared log, searchable inventory/actions, previews, labels, text/controls, extra rows, quests, recipes and pings |
 | Languages and loot | Personal English/Polish selection, presentation-only Eselter 1.7 support, translated added UI and Empty/Pusto labels; [setup and scoped verification](LOCALIZATION.md) |
 | Polish interface | 123 additional translations for connection states, synchronization, errors, map notes and character development; older personal catalogs inherit new builtin entries |
@@ -32,8 +32,15 @@ Known limits: names/chat use printable ASCII; a running world does not migrate
 automatically to a new host. The reported black client map after crafting remains under observation; targeted
 native cave and Windows/Wine original-crafting checks have not reproduced it.
 
+The 0.5.0 playthrough corrections include host-selected map/8-tile possession
+sharing and companion services for all party members, preserving the physical
+leader and actual item instances. Focused four-peer Linux/Windows-Wine checks,
+a real periodic timer, original Virgil dialogue, retained older saves and
+scrolling comparisons are recorded in [coordination evidence](COORDINATION.md#shared-party-access-and-playthrough-corrections-in-050).
+
 Use [the active TODO](CAMPAIGN_TODO.md) for demonstrated remaining work,
 [readiness evidence](FINAL_READINESS.md) for retained results/qualifications,
 [features](FEATURES.md) for implementation mapping and [the player guide](PLAYER_GUIDE.md)
 for controls. [Release preparation](RELEASING.md#local-artifacts) explains the local
 artifact catalog; [showcase notes](SHOWCASE.md) record video provenance.
+

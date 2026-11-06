@@ -1,3 +1,4 @@
+#include "coop/engine_script.h"
 #include "coop/engine_service.h"
 #include "coop/authority.h"
 #include "coop/runtime.h"
@@ -43,8 +44,8 @@ CoopServiceStatus coop_engine_service_quote_quantity(int64_t pc, int64_t npc, in
     if (mode == 3) {
         int type = obj_field_int32_get(item, OBJ_F_TYPE);
         int64_t leader = critter_leader_get(npc);
-        q->follower = leader == pc;
-        if (leader && obj_field_int32_get(leader, OBJ_F_TYPE) == OBJ_TYPE_PC && leader != pc) return COOP_SERVICE_OWNERSHIP;
+        q->follower = coop_engine_party_companion(npc, pc);
+        if (leader && obj_field_int32_get(leader, OBJ_F_TYPE) == OBJ_TYPE_PC && !q->follower) return COOP_SERVICE_OWNERSHIP;
         if ((type == OBJ_TYPE_GOLD && (!q->follower || quantity > (unsigned)item_gold_get(item)))
             || (type != OBJ_TYPE_AMMO && type != OBJ_TYPE_GOLD && quantity != 1)
             || (type == OBJ_TYPE_AMMO && quantity > (unsigned)obj_field_int32_get(item, OBJ_F_AMMO_QUANTITY))) return COOP_SERVICE_TARGET;

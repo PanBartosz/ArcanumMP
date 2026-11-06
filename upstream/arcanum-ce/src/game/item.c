@@ -1,3 +1,4 @@
+#include "coop/engine_script.h"
 #include "game/item.h"
 #include "coop/authority.h"
 #include "coop/campaign.h"
@@ -1890,20 +1891,17 @@ bool sub_463370(int64_t obj, int key_id)
         return true;
     }
 
-    /* Cooperative humans keep their own inventories. Nearby members can
-     * nevertheless unlock the same campaign door using a companion's key,
-     * including keys already collected into a native key ring. Distant or
-     * incapacitated holders cannot lend a key while the party is separated. */
+    /* The host selects whole-map or eight-tile lending, including native key
+     * rings. Keep the actual key in its holder's inventory. */
     if (coop_campaign_active() && coop_campaign_slot_for_object(leader_obj) >= 0) {
         for (unsigned member = coop_campaign_next_slot(0); member < COOP_MAX_PLAYERS; member = coop_campaign_next_slot(member + 1)) {
             int64_t human = coop_campaign_object(member);
             if (!human || human == leader_obj) continue;
-            if (critter_is_active(human) && object_dist(obj, human) <= 8 && sub_463240(human, key_id)) return true;
+            if (coop_engine_party_lend(leader_obj,human) && sub_463240(human, key_id)) return true;
             object_list_all_followers(human, &objects);
             bool found = false;
             for (ObjectNode* follower = objects.head; follower; follower = follower->next) {
-                if (critter_pc_leader_get(follower->obj) == human && critter_is_active(follower->obj)
-                    && object_dist(obj, follower->obj) <= 8 && sub_463240(follower->obj, key_id)) { found = true; break; }
+                if (critter_pc_leader_get(follower->obj) == human && coop_engine_party_lend(leader_obj,follower->obj) && sub_463240(follower->obj, key_id)) { found = true; break; }
             }
             object_list_destroy(&objects);
             if (found) return true;

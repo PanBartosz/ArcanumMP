@@ -899,7 +899,7 @@ int script_execute_condition(ScriptCondition* condition, int line, ScriptState* 
         name = script_get_value(condition->op_type[1], condition->op_value[1], state);
         matched = 0;
         for (index = 0; index < cnt; index++) {
-            if (item_find_by_name(objs[index], name) != OBJ_HANDLE_NULL) {
+            if (coop_engine_story_item(objs[index], name) != OBJ_HANDLE_NULL) {
                 matched++;
             }
         }
@@ -916,7 +916,7 @@ int script_execute_condition(ScriptCondition* condition, int line, ScriptState* 
 
         objs[0] = script_get_obj(condition->op_type[0], condition->op_value[0], state);
         objs[1] = script_get_obj(condition->op_type[1], condition->op_value[1], state);
-        if (critter_leader_get(objs[0]) == objs[1]) {
+        if (critter_leader_get(objs[0]) == objs[1] || coop_engine_party_companion(objs[0],objs[1])) {
             rc = script_execute_action(&(condition->action), line, state);
         } else {
             rc = script_execute_action(&(condition->els), line, state);
@@ -1901,7 +1901,7 @@ int script_execute_action(ScriptAction* action, int line, ScriptState* state)
         int name = script_get_value(action->op_type[0], action->op_value[0], state);
         int64_t from_obj = script_get_obj(action->op_type[1], action->op_value[1], state);
         int64_t to_obj = script_get_obj(action->op_type[2], action->op_value[2], state);
-        int64_t item_obj = item_find_by_name(from_obj, name);
+        int64_t item_obj = coop_engine_story_item(from_obj, name);
         if (item_obj != OBJ_HANDLE_NULL) {
             item_transfer(item_obj, to_obj);
         }
@@ -2710,7 +2710,7 @@ int script_execute_action(ScriptAction* action, int line, ScriptState* state)
     case SAT_DESTROY_ITEM_NAMED: {
         int name = script_get_value(action->op_type[0], action->op_value[0], state);
         int64_t obj = script_get_obj(action->op_type[1], action->op_value[1], state);
-        int64_t item_obj = item_find_by_name(obj, name);
+        int64_t item_obj = coop_engine_story_item(obj, name);
         if (item_obj != OBJ_HANDLE_NULL) {
             object_destroy(item_obj);
         }

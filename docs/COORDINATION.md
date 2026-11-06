@@ -219,3 +219,88 @@ shake and the other three disabling it, and direct F12 access to autosaves.
 Native visual captures cover the initial menu lobby, compact/expanded log at
 150% text, Polish floaters, and world-only shake at 100/150% zoom. The interface
 pixels stay fixed and the restored world matches the pre-shake frame exactly.
+
+
+## Shared party access and playthrough corrections in 0.5.0
+
+Protocol 63 adds the host's **Shared keys and story items** policy: Current map
+(default) or 8 tiles. It occupies bit 17 of the existing play-policy word and
+is read-only on replicas. Preferences append indices 14 (personal log following)
+and 15 (host sharing scope); previous preference indices and save formats do
+not change.
+
+Possession checks share native keys/key rings and classified script-visible
+story-item names. Chooser inventory wins, then their followers, then other
+eligible active humans/companions in stable team order. Script checks,
+transfers/destruction and chooser dialogue IN/NI/item actions resolve the same
+actual native instance. There is no global replacement of `item_find_by_name`,
+no synthetic inventory and no shared purse or ordinary crafting supply pool.
+NPC/container checks and equipped/disguise checks retain their native scope.
+A particular mod's extra quest-item names may need an explicit classification.
+
+A separate companion relation gives campaign members access to recruited NPCs'
+dialogue, normal spell/skill healing and free inventory services. It does not
+replace the physical leader getter. Summons, illusions, familiars and controlled
+NPCs do not acquire shared rights. Only the physical leader may issue follower
+orders other than opening inventory; dialogue command options are filtered and
+revalidated as well. Native distance and shared-interaction admission remain.
+The original Virgil script now recognizes a non-leader as a companion speaker
+without changing that speaker, recruitment ownership or personal quest checks.
+
+Log Auto follows new entries and persists personally. Manual browsing suspends
+following visibly while retaining both selected-event and top-visible-event
+anchors; Latest resumes. Off-turn inspection handles mouse motion/pings only,
+shows the native HP/fatigue card and avoids scripted examine requests. It leaves
+action/AP admission in the existing turn gate.
+
+Internal recovery writes and pre-travel automatic saves no longer reset periodic
+elapsed time. A successful manual save or periodic save does. Due requests wait
+for settled actions and safe native modes; F12 and the settings detail expose
+the next/last save or the reason for waiting. Failed writes retain prior files,
+report a notice and retry. The three automatic slots and archive formats remain.
+
+Screen-anchored direction/ally hints were copied with the world surface during
+scrolling and later erased at stale screen coordinates. Their recorded regions
+are now invalidated before the native pre-scroll draw/copy, without forcing a
+full-world redraw each frame. Direction labels also fit their bounds and avoid
+one another vertically.
+
+### Scoped validation
+
+- A connected 12-stage scenario passes on two Linux and two Windows/Wine engines
+  with mixed English/Polish presentation. It covers gold, original client
+  crafting, named/automatic loads, policy replication and rejected client policy
+  edits. A non-leader opens native companion inventory and receives the real
+  item for zero gold; another non-leader's dismissal is rejected. The physical
+  leader is preserved. Earlier accepted campaign prefixes were not replayed.
+- A separate real two-minute timer runs on the same four-engine party. An actual
+  interim travel save at 60 seconds does not postpone the periodic due time.
+  An open settings menu defers the due save with a visible reason; closing it
+  allows the periodic write at 127 seconds. No timer/elapsed injection is used.
+- The retained three-player Steam save loads in an isolated runtime. Original
+  Virgil script 1324 offers companion page 385 to a different speaker; follow/
+  dismissal command execution is rejected for that speaker. Native healing
+  choices route through the normal minor-healing action with no gold charge;
+  immediate HP gain was not established by that snapshot. Original native
+  key-ring checks, dialogue IN/NI and hand-in, and script item destruction verify
+  actual-holder behavior, whole-map/8-tile choice and personal generic supplies.
+- Native screenshots show the off-turn HP/fatigue card. Hover selects the target;
+  a click does not change the other actor's turn or 12 AP. Log checks retain
+  selection/history across new events and resume at Latest.
+- Continuous diagonal panning with a character 40 tiles away reproduces green
+  label trails in 0.4.1 (2,578–7,383 differing pixels against a clean redraw).
+  The corrected sequence has no green residuals in 20 comparisons at
+  75/100/150/200% zoom; all-frame differences are 0–10 pixels. The supplied
+  player's crop cannot identify each individual label beyond this reproduced
+  failure class. Rendering validation here uses the native Linux engine;
+  Windows executable runtime evidence is Wine.
+- All 34 portable checks pass. Five retained named/automatic saves from 0.3.0
+  and 0.4.0 load through normal verified content migration/native restore,
+  retaining owner IDs, local-character binding, map, balances and world marker.
+  The original eleven Steam save/config/identity files remain byte-identical.
+
+Private evidence: `build/localization/party-access-050/`,
+`build/localization/periodic-timer-050/` and `build/localization/party-050/`.
+Original game assets, player saves and private diagnostic files are not included
+in public source or releases. The separate black map after original crafting
+remains unreproduced and open in the campaign TODO.

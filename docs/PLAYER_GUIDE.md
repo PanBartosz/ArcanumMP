@@ -14,6 +14,13 @@ Quests, Craft and Settings. Tap Left Alt for interaction labels, Backslash for
 a multiplayer ping, and Grave/backtick for the extra action bar. The native
 Options menu also links to the new settings. [Full controls](PROTOCOL57_FEATURES.md).
 
+**Combat-log following:** **Auto** in the log header remembers whether new
+entries should stay in view. Scrolling or selecting older entries suspends it
+and shows **Paused**. **Latest** (with a new-entry count when needed) returns to
+the newest entry and resumes automatic following. **Auto: Off** leaves history
+in place until you choose to follow again. Compact and expanded views share
+this personal setting.
+
 **HUD and portrait controls:** the journal-and-sword button shows/hides the log; **UI** beside it
 enables move/resize handles. Saved layouts and individual transparency are in
 B → Settings. Enemy turn-order portraits accept attacks and targeted abilities;
@@ -99,7 +106,9 @@ with that character. Display settings are personal and stored in
 original minimum layout and the engine's maximum view span.
 
 In turn-based combat, the upper panel shows the round, current actor (**NOW**),
-remaining action points and upcoming turns. Scroll over it to see more entries;
+remaining action points and upcoming turns. Hover over world characters during
+another actor's turn to inspect their native HP/fatigue card; attack, movement
+and ability restrictions still apply. Scroll over it to see more entries;
 click one to center the view. **End turn** advances your turn. The host can use
 **Space** or **Real time** to leave turn-based combat even after the host dies.
 
@@ -127,6 +136,20 @@ any player can decline or stop a rest/journey. Opening a local menu does not
 pause everyone. **Pause** changes turn-based/real-time timing (the host controls
 it in multiplayer). If controls appear frozen, check F12 for a vote or missing owner.
 
+**Shared keys and story items:** the host chooses **Current map** or **8 tiles**
+in **B → Settings**. Current map is the default; eight tiles requires the holder
+to be nearby. Keys (including native key rings) and eligible story-item checks
+use that policy. Handing over or consuming a shared item removes the actual
+instance from its holder; it does not create a copy. Ordinary gear checks,
+crafting ingredients, merchant stock and purses stay personal. Clients see the
+host's choice but cannot change it.
+
+All party members can speak to a recruited companion, request their normal
+healing and open their equipment within the normal interaction distance.
+Healing retains the original spell/skill restrictions. The companion keeps one
+physical leader; only that person can change follow/wait orders or dismiss them.
+Conversations and equipment access use the existing shared interaction lock.
+
 **Give gold** transfers an exact amount from your purse. Stand within eight
 tiles of a connected, conscious party member, select them and type an amount
 or use 25 / 100 / All. The host validates both balances before applying it.
@@ -142,6 +165,14 @@ wait until the party is safe and actions have settled. Automatic files stay on
 the host. Choose **F12 → Autosaves** or the **Autosaves** button in the save
 browser to select the newest copy directly; manual shared saves
 retain a copy on each participant. Preferences persist across launches.
+
+F12's status and **B → Settings → Automatic-save status** show the next
+periodic save and the last automatic-save time. If a save is due, they explain
+whether a menu, conversation, combat or synchronizing action is delaying it.
+Close menus and let actions settle to allow the pending save. Time counts during
+active connected play; internal recovery writes and travel autosaves do not
+restart the periodic timer. A successful manual save does. A failed write keeps
+previous saves and reports a retry.
 
 Travel autosaves capture the departure location after actions have settled,
 before the old map is unloaded or world travel starts. Loading one returns to

@@ -9,7 +9,8 @@ enum { COOP_PLAY_EVENT = 76, COOP_PLAY_PING = 77, COOP_PLAY_POLICY = 78, COOP_PL
 enum { PLAY_PAUSE_ENEMY = 1, PLAY_PAUSE_CRITICAL = 2, PLAY_PAUSE_DOWN = 4, PLAY_PAUSE_BREAK = 8 };
 enum { PLAY_PREF_TEXT, PLAY_PREF_CONTRAST, PLAY_PREF_LABELS, PLAY_PREF_EMPTY,
     PLAY_PREF_SYMBOLS, PLAY_PREF_PREVIEW, PLAY_PREF_BAR, PLAY_PREF_TIP_DELAY,
-    PLAY_PREF_AUTOPAUSE, PLAY_PREF_AUTOSAVE_MINUTES, PLAY_PREF_AUTOSAVE_TRAVEL, PLAY_PREF_TURN_RADIUS, PLAY_PREF_CRIT_SHAKE, PLAY_PREF_MUTE_SPELL_LOOPS, PLAY_PREF_COUNT };
+    PLAY_PREF_AUTOPAUSE, PLAY_PREF_AUTOSAVE_MINUTES, PLAY_PREF_AUTOSAVE_TRAVEL, PLAY_PREF_TURN_RADIUS, PLAY_PREF_CRIT_SHAKE, PLAY_PREF_MUTE_SPELL_LOOPS,
+    PLAY_PREF_LOG_FOLLOW, PLAY_PREF_SHARED_NEARBY, PLAY_PREF_COUNT };
 enum { PLAY_TAB_LOG, PLAY_TAB_INVENTORY, PLAY_TAB_ACTIONS, PLAY_TAB_QUESTS,
     PLAY_TAB_CRAFT, PLAY_TAB_SETTINGS, PLAY_TABS };
 
@@ -42,12 +43,16 @@ void coop_play_status_feedback(int64_t actor, const char* status, bool active);
 void coop_play_critical_feedback(int64_t target);
 unsigned coop_play_autosave_minutes(void);
 bool coop_play_autosave_travel(void);
+/* Zero means the current map; otherwise the host-selected lending distance. */
+unsigned coop_play_shared_radius(void);
 void coop_play_pause_toggle(void);
 void coop_play_tick(uint64_t now);
 void coop_play_reset(void);
 bool coop_play_save(void);
 bool coop_play_load(void);
 void coop_play_draw_begin(void);
+/* Erase screen-anchored overlays before native scrolling copies the world. */
+void coop_play_before_scroll(void);
 void coop_play_label_object(int64_t obj, const TigRect* rect);
 /* Read-only query of replicated inventory; never runs loot or item scripts. */
 bool coop_play_loot_empty(int64_t obj);

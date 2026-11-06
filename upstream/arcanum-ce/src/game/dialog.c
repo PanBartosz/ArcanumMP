@@ -1,3 +1,4 @@
+#include "coop/engine_script.h"
 #include "game/dialog.h"
 #include "coop/localization.h"
 #include "coop/social.h"
@@ -175,6 +176,21 @@ typedef struct DialogFile {
     /* 0114 */ int entries_capacity;
     /* 0118 */ DialogFileEntry* entries;
 } DialogFile;
+
+static bool companion_actions_allowed(DialogState* state, const char* actions)
+{
+    if (!actions || !coop_engine_party_companion(state->npc_obj,state->pc_obj)
+        || critter_pc_leader_get(state->npc_obj)==state->pc_obj) return true;
+    for (const char* p=actions; *p;) {
+        while (*p && SDL_isspace(*p)) p++;
+        const char* commands[]={"wa","lv","sc","so","uw","jo"};
+        for (unsigned i=0;i<sizeof(commands)/sizeof(*commands);i++)
+            if (SDL_strncasecmp(p,commands[i],2)==0 && (!p[2] || p[2]==',' || SDL_isspace(p[2]))) return false;
+        while (*p && *p!=',') p++;
+        if (*p) p++;
+    }
+    return true;
+}
 
 static void dialog_state_init(int64_t npc_obj, int64_t pc_obj, DialogState* state);
 static void sub_414810(int a1, int a2, int a3, int a4, DialogState* a5);
@@ -566,7 +582,7 @@ void sub_4132A0(int64_t npc_obj, int64_t pc_obj, char* buffer)
 
     if (ai_can_speak(npc_obj, pc_obj, false) == AI_SPEAK_OK) {
         dialog_state_init(npc_obj, pc_obj, &state);
-        if (critter_pc_leader_get(npc_obj) == pc_obj) {
+        if (coop_engine_party_companion(npc_obj, pc_obj)) {
             sub_419260(&state, "1 0, 2 0, 3 0, 4 0, 5 0, 6 0, 7 0, 8 0");
         } else {
             sub_419260(&state, NULL);
@@ -1537,7 +1553,7 @@ bool dialog_conditions_match(DialogState* a1, char* a2)
                     }
                 }
             } else {
-                if (!item_find_by_name(a1->pc_obj, value)) {
+                if (!coop_engine_story_item(a1->pc_obj, value)) {
                     object_list_followers(a1->pc_obj, &followers);
                     node = followers.head;
                     while (node != NULL) {
@@ -1646,11 +1662,11 @@ bool dialog_conditions_match(DialogState* a1, char* a2)
             break;
         case DIALOG_COND_FO:
             if (value == 0) {
-                if (critter_leader_get(a1->npc_obj) != a1->pc_obj) {
+                if (!coop_engine_party_companion(a1->npc_obj, a1->pc_obj)) {
                     return false;
                 }
             } else if (value == 1) {
-                if (critter_leader_get(a1->npc_obj) == a1->pc_obj) {
+                if (coop_engine_party_companion(a1->npc_obj, a1->pc_obj)) {
                     return false;
                 }
             }
@@ -1696,7 +1712,7 @@ bool dialog_conditions_match(DialogState* a1, char* a2)
                     }
                 }
             } else {
-                if (item_find_by_name(a1->pc_obj, value)) {
+                if (coop_engine_story_item(a1->pc_obj, value)) {
                     return false;
                 }
 
@@ -1978,6 +1994,7 @@ bool dialog_campaign_semantics_probe(int64_t pc, int64_t npc)
 // 0x415BA0
 bool dialog_execute_actions(DialogState* a1, char* a2, int a3)
 {
+    if (!companion_actions_allowed(a1,a2)) return false;
     if (!coop_authority_can_simulate()) return false;
     char* pch;
     int act;
@@ -2109,7 +2126,7 @@ bool dialog_execute_actions(DialogState* a1, char* a2, int a3)
                     dialog_give_item(item_obj, a1->pc_obj, true);
                 }
             } else {
-                item_obj = item_find_by_name(a1->pc_obj, value);
+                item_obj = coop_engine_story_item(a1->pc_obj, value);
                 if (item_obj == OBJ_HANDLE_NULL) {
                     object_list_followers(a1->pc_obj, &followers);
                     node = followers.head;
@@ -2489,12 +2506,13 @@ bool sub_416C10(int a1, int a2, DialogState* a3)
 
     entry.num = a1;
     dialog_search(a3->dlg, &entry);
+    if (!companion_actions_allowed(a3,entry.actions)) return false;
 
     if (SDL_strcasecmp(entry.str, "a:") == 0) {
         dialog_copy_pc_class_specific_msg(a3->options[a2], a3, 1000);
         sub_417590(entry.response_val, &(a3->field_17F0[a2]), &(a3->field_1804[a2]));
     } else if (SDL_strcasecmp(entry.str, "b:") == 0) {
-        if (critter_leader_get(a3->npc_obj) == a3->pc_obj) {
+        if (coop_engine_party_companion(a3->npc_obj, a3->pc_obj)) {
             dialog_copy_pc_generic_msg(a3->options[a2], a3, 1600, 1699);
         } else {
             dialog_copy_pc_generic_msg(a3->options[a2], a3, 300, 399);
@@ -3966,7 +3984,7 @@ void dialog_ask_money_for_skill(int skill, int response_val, DialogState* state)
     int amt;
 
     sub_417590(response_val, &v1, &v2);
-    if (critter_leader_get(state->npc_obj) == state->pc_obj) {
+    if (coop_engine_party_companion(state->npc_obj, state->pc_obj)) {
         dialog_use_skill(skill, v1, v2, state);
     } else {
         if (IS_TECH_SKILL(skill)) {
@@ -3990,7 +4008,7 @@ void dialog_ask_money_for_spell(int spell, int response_val, DialogState* state)
     int amt;
 
     sub_417590(response_val, &v1, &v2);
-    if (critter_leader_get(state->npc_obj) == state->pc_obj) {
+    if (coop_engine_party_companion(state->npc_obj, state->pc_obj)) {
         dialog_use_spell(spell, v1, v2, state);
     } else {
         amt = spell_money(spell);
@@ -4092,7 +4110,7 @@ void dialog_offer_directions(const char* str, int response_val, int offset, bool
         dialog_copy_npc_generic_msg(state->reply, state, 100, 199);
     }
 
-    if (critter_leader_get(state->npc_obj) == state->pc_obj) {
+    if (coop_engine_party_companion(state->npc_obj, state->pc_obj)) {
         state->field_17EC = 0;
     } else {
         state->field_17EC = cost;

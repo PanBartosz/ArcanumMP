@@ -32,13 +32,14 @@ enum { HISTORY = COOP_PLAY_HISTORY, EVENT_BYTES = COOP_PLAY_EVENT_BYTES };
 static PlayEvent history[HISTORY];
 static uint32_t next = 1, first = 1;
 static bool prefs_loaded;
-static int prefs[PLAY_PREF_COUNT] = {100, 0, 1, 0, 1, 1, 0, 550, 0, 5, 1, 20, 1, 0};
+static int prefs[PLAY_PREF_COUNT] = {100, 0, 1, 0, 1, 1, 0, 550, 0, 5, 1, 20, 1, 0, 1, 0};
 static tig_font_handle_t fonts[MM_COLOR_COUNT], chrome_fonts[MM_COLOR_COUNT];
 static CoopSession* network;
 static uint32_t network_epoch, cursors[4], sent_policy[4];
 static unsigned pause_policy, turn_radius = 20;
 static unsigned autosave_minutes = 5;
 static bool autosave_travel = true;
+static bool shared_nearby;
 static bool valid_autosave_minutes(int value)
 {
     return value == 0 || value == 2 || value == 5 || value == 10 || value == 15 || value == 30;
@@ -139,7 +140,7 @@ bool coop_play_pref_set(unsigned i, int value)
         || (i==PLAY_PREF_AUTOSAVE_MINUTES && !valid_autosave_minutes(value))
         || (i==PLAY_PREF_TURN_RADIUS && (value<5 || value>40 || value%5))
         || (i!=PLAY_PREF_TEXT && i!=PLAY_PREF_TIP_DELAY && i!=PLAY_PREF_AUTOPAUSE && i!=PLAY_PREF_AUTOSAVE_MINUTES && i!=PLAY_PREF_TURN_RADIUS && value!=0 && value!=1)) return false;
-    if ((i==PLAY_PREF_AUTOPAUSE || i==PLAY_PREF_TURN_RADIUS || i==PLAY_PREF_AUTOSAVE_MINUTES || i==PLAY_PREF_AUTOSAVE_TRAVEL)
+    if ((i==PLAY_PREF_AUTOPAUSE || i==PLAY_PREF_TURN_RADIUS || i==PLAY_PREF_AUTOSAVE_MINUTES || i==PLAY_PREF_AUTOSAVE_TRAVEL || i==PLAY_PREF_SHARED_NEARBY)
         && coop_campaign_active() && !coop_authority_can_simulate()) return false;
     int old=prefs[i]; prefs[i]=value;
     if (!prefs_save()) { prefs[i]=old; return false; }
@@ -354,6 +355,8 @@ unsigned coop_play_autosave_minutes(void)
 { return coop_campaign_active() && !coop_authority_can_simulate() ? autosave_minutes : (unsigned)coop_play_pref(PLAY_PREF_AUTOSAVE_MINUTES); }
 bool coop_play_autosave_travel(void)
 { return coop_campaign_active() && !coop_authority_can_simulate() ? autosave_travel : coop_play_pref(PLAY_PREF_AUTOSAVE_TRAVEL) != 0; }
+unsigned coop_play_shared_radius(void)
+{ return (coop_campaign_active() && !coop_authority_can_simulate() ? shared_nearby : coop_play_pref(PLAY_PREF_SHARED_NEARBY)) ? 8 : 0; }
 void coop_play_network_tick(CoopSession* s,uint32_t epoch,unsigned ready)
 {
     if (network!=s || network_epoch!=epoch) {
@@ -363,7 +366,8 @@ void coop_play_network_tick(CoopSession* s,uint32_t epoch,unsigned ready)
     coop_feedback_network(s,epoch,ready);
     if (!coop_session_is_host(s)) return;
     pause_policy=coop_play_pause_policy();
-    unsigned policy=pause_policy | (coop_play_autosave_minutes()<<4) | (coop_play_autosave_travel() ? 1u<<10 : 0) | (coop_play_turn_radius()<<11);
+    unsigned policy=pause_policy | (coop_play_autosave_minutes()<<4) | (coop_play_autosave_travel() ? 1u<<10 : 0) | (coop_play_turn_radius()<<11)
+        | (coop_play_shared_radius() ? 1u<<17 : 0);
     for (unsigned i=1;i<4;i++) if (ready&(1u<<i)) {
         if (sent_policy[i]!=policy) {
             uint8_t p[8]; put32(p,epoch); put32(p+4,policy);
@@ -410,8 +414,9 @@ bool coop_play_network_message(CoopSession* s,uint32_t epoch,uint8_t sender,int 
     if (type==COOP_PLAY_POLICY) {
         if (coop_session_is_host(s) || sender || size!=8) return false;
         unsigned policy=get32(p+4), minutes=(policy>>4)&63, radius=(policy>>11)&63;
-        if ((policy&~131071u) || !valid_autosave_minutes((int)minutes) || radius<5 || radius>40 || radius%5) return false;
-        pause_policy=policy&15; turn_radius=radius; autosave_minutes=minutes; autosave_travel=(policy&(1u<<10))!=0; return true;
+        if ((policy&~262143u) || !valid_autosave_minutes((int)minutes) || radius<5 || radius>40 || radius%5) return false;
+        pause_policy=policy&15; turn_radius=radius; autosave_minutes=minutes; autosave_travel=(policy&(1u<<10))!=0;
+        shared_nearby=(policy&(1u<<17))!=0; return true;
     }
     if (type==COOP_PLAY_PING) {
         if (!coop_session_is_host(s) || size!=16 || get32(p+4)!=(uint32_t)map_current_map()) return false;

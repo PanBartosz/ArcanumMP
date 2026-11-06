@@ -1,4 +1,4 @@
-# Campaign feature inventory — 2026-10-29
+# Campaign feature inventory — 2026-11-06
 
 The planned families below have source implementations and retained scoped
 runtime evidence. This is an implementation inventory, not proof that every
@@ -19,7 +19,7 @@ backlog; technical guides retain detailed controls and evidence qualifications.
 | Dialogue and NPC services | Initiator choices/observers, training, barter, identification, repair and crafting; [dialogue](DIALOGUE.md), [training](TRAINING.md), [commerce](COMMERCE.md) | All-four-owner service matrix and all seven restored panel types pass; original main-quest conversations/acquisition now connect |
 | Scripted dialogue continuity | Saved page/response, queued callbacks and ordered arrivals; [dialogue](DIALOGUE.md), [campaign issues](CAMPAIGN_TODO.md) | Both-host recovery preserves choices, queues and journals; conversations and hints survive rest/controller handoff; in-flight hint capture retains undelivered messages across reconnect |
 | Journals, social state and advancement | Shared rewards/quests/social policy, conversation/document history and owned point spending; [story](STORY.md), [progression](PROGRESSION.md), [documents](DOCUMENTS.md) | Native controls, earned point spending and original main-quest rewards/progression pass through story22 and the ending |
-| Followers and party AI | Owned orders/inventory/assistance, cross-human healing/defense, nested strength and idle companion yield; [continuity](CONTINUITY.md) | Native orders/healing and controlled allegiance/AI checks pass; strengthened main-quest run does not establish normal-party balance |
+| Followers and party AI | Leader-owned orders, shared companion dialogue/healing/inventory, cross-human defense, nested strength and idle companion yield; [continuity](CONTINUITY.md) | Native orders/healing and controlled allegiance/AI checks pass; strengthened main-quest run does not establish normal-party balance |
 | Maps and travel | Exploration/notes/quest pins, original exits, journey consent and caster-owned Teleport; [cartography](CARTOGRAPHY.md), [travel](TRAVEL.md) | Both-host notes/conflicts/Teleport persistence pass; original acquisition, world voyages and native passages now connect to the Device ending |
 | Rest, clocks and options | Native combat timing, shared rest/Stop, native time, host difficulty/timing and per-human preferences; [coordination](COORDINATION.md), [time](TIME.md) | Native preferences/save and rest/Stop recovery pass; rest interrupts for retained story dialogue/travel in both-host native controls flow |
 | Campaign saves | Atomic all-owner archives, 63 named slots, F12 load votes, configurable host periodic/pre-travel autosaves and direct latest selection, native cache staging; [campaign](CAMPAIGN.md), [coordination](COORDINATION.md) | Native Save/Load, cache/case controls and sparse path restoration pass; wider interrupted persistence remains a practical risk |
@@ -27,7 +27,7 @@ backlog; technical guides retain detailed controls and evidence qualifications.
 | Disconnect and host loss | Reserved owners, frozen authority, retry/resync, acknowledged terminal failure and durable recovery; [reconnect](RECONNECT.md) | Both-host native recovery and host/guest failure propagation with preserved checkpoints and usable exit pass; ten-minute separated play completed seven recovery stages, with one fixture movement-threshold failure retained |
 | Shared media and endings | Movies/slides/fades, skip votes, native continuation and menu return; [media](MEDIA.md) | Connected original Device ending completes five synchronized slides and native menu return on all four engines; prepared peaceful/combat/alliance checks are reused |
 | Documentation and delivery | Reproducible builds, runtime preparation, controls, architecture and license notices; [installation](INSTALL.md), [architecture](ARCHITECTURE.md) | Matched Linux/Windows drop-ins and required libraries; guides record connected main-quest evidence and limits; installers and real-Windows testing are excluded |
-| Modern playability tools | Shared combat log, inventory search/comparisons/junk sales, labels/previews, text settings, automatic native turns/radius, status floaters, personal critical shake, bindings/extra actions, personal quests, crafting help and pings; [controls](PROTOCOL57_FEATURES.md) | Native panel/save/load and commerce/crafting checks; four-engine TCP combat, identical event histories, all-owner world/map pings and host turn-trigger policy; Windows guests use Wine |
+| Modern playability tools | Shared combat log with saved Auto/Latest controls, off-turn HP/fatigue inspection, inventory search/comparisons/junk sales, labels/previews, text settings, automatic native turns/radius, status floaters, personal critical shake, bindings/extra actions, personal quests, crafting help and pings; [controls](PROTOCOL57_FEATURES.md) | Native panel/save/load and commerce/crafting checks; four-engine TCP combat, identical event histories, all-owner world/map pings and host turn-trigger policy; Windows guests use Wine |
 | Custom HUD layout and presentation | Saved move/resize/visibility and per-panel opacity; visible log toggle; themed panels, portrait targeting and native bubble colors; [controls](PROTOCOL58_FEATURES.md) | Native mouse events, fresh-process layout restore at800×600, alpha/bubble pixel checks, spell/skill/item routes, off-turn guard and all-owner TCP attack paths; scoped before/after render timings |
 
 The source audit checked runtime APIs, native authority gates, campaign save/load
@@ -37,7 +37,7 @@ connect using retained checkpoints. Record future reproducible playthrough bugs
 in the campaign TODO; scoped coverage limits are not new feature requirements.
 
 Scoped evidence remains reusable after unrelated changes. Current source uses
-protocol58, with [HUD layout, targeting and rendering corrections](PROTOCOL58_FEATURES.md),
+protocol63. The [0.5.0 party corrections](COORDINATION.md#shared-party-access-and-playthrough-corrections-in-050) add shared story possessions/companion services, off-turn inspection, visible log follow and periodic-save scheduling. Earlier work includes [HUD layout, targeting and rendering corrections](PROTOCOL58_FEATURES.md),
 [combat log and modern playability tools](PROTOCOL57_FEATURES.md),
 [zoom, widescreen, UI sizing, status badges and interaction preferences](PROTOCOL56_FEATURES.md),
 [dense-area and experience-gauge fixes](PROTOCOL55_FIXES.md),

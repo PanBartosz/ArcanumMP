@@ -1,3 +1,4 @@
+#include "coop/engine_script.h"
 #include "coop/localization.h"
 #include "ui/inven_ui.h"
 #include "coop/runtime.h"
@@ -491,7 +492,7 @@ bool inven_ui_open(int64_t pc_obj, int64_t target_obj, int mode)
         if (pc_obj != player_get_local_pc_obj() || coop_runtime_phase() != COOP_RUNTIME_PLAYING) return false;
         if (target_obj && mode == INVEN_UI_MODE_LOOT) return coop_runtime_item(COOP_LOOT_OPEN, target_obj, 0, -1);
         if (target_obj && mode == INVEN_UI_MODE_STEAL) return coop_runtime_item(COOP_STEAL_OPEN, target_obj, 0, -1);
-        if (target_obj && mode == INVEN_UI_MODE_BARTER && critter_pc_leader_get(target_obj) == pc_obj)
+        if (target_obj && mode == INVEN_UI_MODE_BARTER && coop_engine_party_companion(target_obj, pc_obj))
             return coop_runtime_follower_order(target_obj, COOP_FOLLOW_INVENTORY, 0, 0, false);
         if (target_obj || mode != INVEN_UI_MODE_INVENTORY) return false;
     }
@@ -1026,7 +1027,7 @@ bool inven_ui_create(int64_t pc_obj, int64_t target_obj, int mode)
     dword_681440 = -1;
 
     if (inven_ui_mode == INVEN_UI_MODE_BARTER
-        && critter_leader_get(qword_682C78) == pc_obj) {
+        && coop_engine_party_companion(qword_682C78, pc_obj)) {
         dword_6810FC = 1;
         if (!coop_runtime_gameplay() && critter_follower_next(qword_682C78) != qword_682C78) {
             button_data.flags = TIG_BUTTON_MOMENTARY;

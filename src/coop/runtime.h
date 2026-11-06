@@ -73,6 +73,7 @@ bool coop_runtime_detach(void);
 void coop_runtime_before_reset(void);
 CoopRuntimePhase coop_runtime_phase(void);
 const char* coop_runtime_status(void);
+const char* coop_runtime_autosave_status(void);
 /* A native map replacement cannot safely continue after its cache fails.
  * Freeze the active campaign and retain its last durable recovery checkpoint. */
 void coop_runtime_native_failure(const char* message);

@@ -2724,6 +2724,23 @@ void intgame_process_event(TigMessage* msg)
 
     if (combat_turn_based_is_active()) {
         if (combat_turn_based_whos_turn_get() != pc_obj) {
+            /* Inspection is presentation, not an action. Do not dispatch
+             * SAP_EXAMINE, AP checks or clicks while another actor owns turn. */
+            if ((msg->type==TIG_MESSAGE_MOUSE && msg->data.mouse.event==TIG_MESSAGE_MOUSE_MOVE)
+                || msg->type==TIG_MESSAGE_PING) {
+                if (tig_mouse_get_state(&mouse_state)==TIG_OK) {
+                    TigMessage hover={.type=TIG_MESSAGE_MOUSE};
+                    hover.data.mouse.x=mouse_state.x; hover.data.mouse.y=mouse_state.y;
+                    if (sub_5517A0(&hover) && !map_is_clearing_objects()
+                        && target_pick_at_screen_xy_ex(mouse_state.x,mouse_state.y,&td,qword_5C7280,intgame_fullscreen)
+                        && !td.is_loc && obj_handle_is_valid(td.obj)) {
+                        char description[2000];
+                        object_examine(td.obj,pc_obj,description);
+                        object_hover_obj_set(td.obj);
+                        intgame_examine_object(pc_obj,td.obj,description);
+                    }
+                }
+            }
             return;
         }
     }

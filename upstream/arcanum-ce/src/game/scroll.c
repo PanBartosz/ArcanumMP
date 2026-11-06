@@ -1,4 +1,5 @@
 #include "game/scroll.h"
+#include "coop/modern.h"
 
 #include "game/gamelib.h"
 #include "game/gsound.h"
@@ -467,6 +468,10 @@ void scroll_by(int64_t dx, int64_t dy)
     int64_t new_origin_y;
     TigRect rect;
 
+    /* Screen-anchored party labels and previews must be erased before copying
+     * this surface. After a copy their pixels no longer lie in the recorded
+     * erase rectangles and leave text trails on diagonal camera movement. */
+    coop_play_before_scroll();
     // Redraw the view to prepare for scrolling.
     scroll_init_info.draw_func();
 

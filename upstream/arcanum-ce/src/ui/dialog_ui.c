@@ -1,3 +1,4 @@
+#include "coop/engine_script.h"
 #include "coop/localization.h"
 #include "coop/language_engine.h"
 #include "ui/dialog_ui.h"
@@ -606,7 +607,7 @@ bool dialog_ui_coop_choose(unsigned option)
 bool dialog_ui_coop_companion_inventory(int64_t pc, int64_t npc)
 {
     if (!coop_engine_dialogue_bound() || !coop_authority_can_simulate() || !coop_engine_dialogue_can_start(pc)
-        || !pc || !npc || critter_pc_leader_get(npc) != pc || !critter_is_active(pc) || !critter_is_active(npc)
+        || !pc || !npc || !coop_engine_party_companion(npc, pc) || !critter_is_active(pc) || !critter_is_active(npc)
         || object_dist(pc, npc) > 10) return false;
     bool combat = combat_critter_is_combat_mode_active(pc);
     bool native = inven_ui_can_open_inven(pc, npc);

@@ -280,7 +280,7 @@ bool sub_57CD60(int64_t source_obj, int64_t target_obj, char* buffer)
     if (coop_runtime_gameplay()) {
         Script script = { 0 };
         obj_arrayfield_script_get(target_obj, OBJ_F_SCRIPTS_IDX, SAP_EXAMINE, &script);
-        if (script.num) coop_runtime_world_examine(target_obj);
+        if (script.num && (!combat_turn_based_is_active() || combat_turn_based_whos_turn_get()==source_obj)) coop_runtime_world_examine(target_obj);
         object_examine(target_obj, source_obj, buffer);
         return true;
     }

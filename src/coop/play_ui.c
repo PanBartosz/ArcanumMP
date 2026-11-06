@@ -35,7 +35,7 @@ static PlayRow rows[PLAY_ROWS];
 static uint64_t refreshed,aux_refreshed;
 static int detail_scroll;
 static bool log_follow=true;
-static uint32_t refreshed_log_end;
+static uint32_t refreshed_log_end, log_read_end;
 typedef struct Button { unsigned id; TigRect rect; } Button;
 static Button buttons[16]; static unsigned button_count;
 static void text_input(bool active)
@@ -89,7 +89,13 @@ static void box(tig_window_handle_t w,TigRect rect,bool active)
 }
 static void button(unsigned id,const char* label,int x,int y,int width)
 {
-    TigRect r={x,y,width,id>=10 && id<=13 ? 26 : coop_play_line_height()+8}; coop_hud_surface(window,HUD_ART_BUTTON,r,false);
+    TigRect r={x,y,width,id>=10 && id<=15 ? 26 : coop_play_line_height()+8}; coop_hud_surface(window,HUD_ART_BUTTON,r,id==14 && log_follow);
+    if (id==14 || id==15) {
+        char caption[64]; snprintf(caption,sizeof(caption),"%s",label);
+        coop_hud_text_fit(caption,sizeof(caption),width-8,coop_play_chrome_font(MM_COLOR_GOLD));
+        tig_font_push(coop_play_chrome_font(MM_COLOR_GOLD));
+        TigRect text_rect={x+4,y+4,width-8,18}; tig_window_text_write(window,caption,&text_rect); tig_font_pop();
+    } else
     if (id>=10 && id<=13) {
         unsigned art=id==10 ? compact ? HUD_ART_EXPAND : HUD_ART_COMPACT
             : id==11 ? HUD_ART_WIDE : id==12 ? HUD_ART_CLOSE : HUD_ART_OPACITY;
@@ -153,7 +159,8 @@ bool coop_play_ui_open(unsigned requested)
 {
     if (requested>=PLAY_TABS || (!player_get_local_pc_obj() && requested!=PLAY_TAB_SETTINGS)) return false;
     if (window!=TIG_WINDOW_HANDLE_INVALID && tab==requested) { coop_play_ui_close(); return true; }
-    coop_play_ui_close(); tab=requested; first=selected=filter=0; detail_scroll=0; log_follow=true;
+    coop_play_ui_close(); tab=requested; first=selected=filter=0; detail_scroll=0; log_follow=coop_play_pref(PLAY_PREF_LOG_FOLLOW)!=0;
+    log_read_end=coop_play_event_end();
     compact=requested==PLAY_TAB_LOG && coop_hud_log_compact(); *query=0; *feedback=0; count=0;
     coop_play_data_bind(); snprintf(note_edit,sizeof(note_edit),"%s",coop_play_note());
     if (!create_window()) return false;
@@ -186,6 +193,9 @@ static void settings_rows(void)
     else snprintf(autosave.name, sizeof(autosave.name), "%s", coop_tr("Periodic autosave: Off"));
     snprintf(autosave.detail, sizeof(autosave.detail), "%s", coop_tr("The host chooses Off, 2, 5, 10, 15 or 30 minutes. Saves rotate through three autosave slots and wait until the party is safe and idle. Manual saves are kept. Only the host can change this setting."));
     rows[count++] = autosave;
+    PlayRow save_status={.id=503,.available=false};
+    snprintf(save_status.name,sizeof(save_status.name),"%s",coop_tr("Automatic-save status"));
+    snprintf(save_status.detail,sizeof(save_status.detail),"%s",coop_runtime_autosave_status()); rows[count++]=save_status;
     autosave.id = PLAY_PREF_AUTOSAVE_TRAVEL;
     snprintf(autosave.name, sizeof(autosave.name), coop_tr("Autosave before travel: %s"), coop_play_autosave_travel() ? coop_tr("On") : coop_tr("Off"));
     snprintf(autosave.detail, sizeof(autosave.detail), "%s", coop_tr("Create a rotating autosave before leaving the current map or starting a world journey. Loading it returns to the departure map without automatically repeating the trip. Only the host can change this setting."));
@@ -199,6 +209,9 @@ static void settings_rows(void)
     PlayRow sound={.id=PLAY_PREF_MUTE_SPELL_LOOPS,.available=true};
     snprintf(sound.name,sizeof(sound.name),coop_tr("Mute looping spell sounds: %s"),coop_play_pref(PLAY_PREF_MUTE_SPELL_LOOPS) ? coop_tr("On") : coop_tr("Off"));
     snprintf(sound.detail,sizeof(sound.detail),"%s",coop_tr("Silence sustained spell loops, elemental stat buffs, Tempus Fugit and the familiar's repeated wing sound. Casting, impacts, other creature sounds, ambience, dialogue and music stay audible. Changes apply immediately, including to active sounds. This personal choice is saved and does not affect other players.")); rows[count++]=sound;
+    PlayRow sharing={.id=PLAY_PREF_SHARED_NEARBY,.available=host};
+    snprintf(sharing.name,sizeof(sharing.name),coop_tr("Shared keys and story items: %s"),coop_play_shared_radius() ? coop_tr("8 tiles") : coop_tr("Current map"));
+    snprintf(sharing.detail,sizeof(sharing.detail),"%s",coop_tr("The host chooses the current map or an 8-tile lending radius. Keys and story-item checks use the same rule. A hand-in transfers the original item from its actual holder, without copies. Money, ordinary equipment, trading and crafting stay personal.")); rows[count++]=sharing;
     const char* reasons[]={coop_tr("Enemy spotted"),coop_tr("Critical health"),coop_tr("Party member down"),coop_tr("Weapon broken")};
     for (unsigned i=0;i<4;i++) {
         PlayRow row={.id=100+(int)i,.available=host};
@@ -236,6 +249,7 @@ bool coop_play_autosave_settings_open(void)
 static void log_rows(void)
 {
     int anchor=!log_follow && count && selected<count ? rows[selected].id : 0;
+    int top_anchor=!log_follow && count && first<count ? rows[first].id : 0;
     count=0; int64_t pc=player_get_local_pc_obj(); unsigned mine=coop_play_members(pc);
     for (uint32_t n=coop_play_event_end();n>coop_play_event_first() && count<PLAY_ROWS;n--) {
         const PlayEvent* e=coop_play_event_at(n-1); if (!e) continue;
@@ -246,7 +260,8 @@ static void log_rows(void)
         snprintf(row.detail,sizeof(row.detail),coop_tr("%s\n\n%s\n\nEvent %u | Map %u"),coop_tr_rendered(e->summary),coop_tr_rendered(e->details),e->sequence,e->map); rows[count++]=row;
     }
     if (anchor) for (unsigned i=0;i<count;i++) if (rows[i].id==anchor) { selected=i; break; }
-    if (log_follow) first=selected=0;
+    if (top_anchor) for (unsigned i=0;i<count;i++) if (rows[i].id==top_anchor) { first=i; break; }
+    if (log_follow) { first=selected=0; log_read_end=coop_play_event_end(); }
 }
 static void refresh(void)
 {
@@ -264,7 +279,7 @@ static void refresh(void)
     if (selected>=first+visible()) first=selected-visible()+1;
     box(window,(TigRect){0,0,bounds.width,bounds.height},false); button_count=0;
     const char* titles[]={coop_tr("Combat log"),coop_tr("Inventory"),coop_tr("Abilities"),coop_tr("Quest notes"),coop_tr("Workshop"),coop_tr("Settings")};
-    int title_width=bounds.width-(compact ? 144 : 180);
+    int title_width=bounds.width-(compact ? 144 : 180)-(tab==PLAY_TAB_LOG ? 74 : 0);
     char heading[96]; snprintf(heading,sizeof(heading),"%s",titles[tab]);
     coop_hud_text_fit(heading,sizeof(heading),title_width-38,coop_play_chrome_font(MM_COLOR_GOLD));
     tig_font_push(coop_play_chrome_font(MM_COLOR_GOLD));
@@ -273,6 +288,7 @@ static void refresh(void)
     if (!compact) button(11,"",bounds.width-138,4,26);
     char opacity[32]; snprintf(opacity,sizeof(opacity),"%d%%",coop_hud_opacity(window_element));
     button(13,opacity,bounds.width-100,4,64); button(12,"X",bounds.width-32,4,26);
+    if (tab==PLAY_TAB_LOG) button(14,log_follow ? coop_tr("Auto: On") : coop_play_pref(PLAY_PREF_LOG_FOLLOW) ? coop_tr("Paused") : coop_tr("Auto: Off"),bounds.width-(compact ? 212 : 248),4,70);
     const char* tabs[]={coop_tr("Log"),coop_tr("Items"),coop_tr("Actions"),coop_tr("Quests"),coop_tr("Craft"),coop_tr("Settings")};
     if (!compact) {
         for (unsigned i=0;i<PLAY_TABS;i++) { int width=(bounds.width-24)/PLAY_TABS; int x=12+(int)i*width;
@@ -325,9 +341,12 @@ static void refresh(void)
             : compact ? coop_tr("Wheel: history  |  Click: full entry") : coop_tr("Wheel / arrows: browse  |  [F11] / [B] / Esc: close");
         char bound[512]; coop_play_shortcuts(status,bound,sizeof(bound));
         if (compact) {
-            coop_hud_text_fit(bound,sizeof(bound),bounds.width-42,coop_play_chrome_font(MM_COLOR_GRAY));
+            uint32_t unseen=coop_play_event_end()>log_read_end ? coop_play_event_end()-log_read_end : 0;
+            char latest[64]; if (unseen) snprintf(latest,sizeof(latest),coop_tr("Latest +%u"),unseen); else snprintf(latest,sizeof(latest),"%s",coop_tr("Latest"));
+            button(15,latest,bounds.width-118,bounds.height-29,96);
+            coop_hud_text_fit(bound,sizeof(bound),bounds.width-144,coop_play_chrome_font(MM_COLOR_GRAY));
             tig_font_push(coop_play_chrome_font(MM_COLOR_GRAY));
-            TigRect footer={12,bounds.height-25,bounds.width-42,18}; tig_window_text_write(window,bound,&footer); tig_font_pop();
+            TigRect footer={12,bounds.height-25,bounds.width-144,18}; tig_window_text_write(window,bound,&footer); tig_font_pop();
         } else text(bound,12,bounds.height-30,bounds.width-38,MM_COLOR_GRAY);
     }
     coop_hud_handles(window_element,window,&bounds,title_width,true);
@@ -336,7 +355,7 @@ static void refresh(void)
 }
 static void change_setting(void)
 {
-    if (!count) return; int id=rows[selected].id;
+    if (!count || !rows[selected].available) return; int id=rows[selected].id;
     if(id==402) {
         unsigned next=(coop_language_pending()+1)%coop_language_count();
         if(!coop_language_available(next)){snprintf(feedback,sizeof(feedback),"%s",coop_tr("Install the selected language pack before choosing it."));return;}
@@ -378,6 +397,11 @@ static void export_log(void)
 }
 static void activate(unsigned id)
 {
+    if (tab==PLAY_TAB_LOG && (id==14 || id==15)) {
+        bool follow=id==15 || !log_follow;
+        if (coop_play_pref_set(PLAY_PREF_LOG_FOLLOW,follow)) { log_follow=follow; if (follow) first=selected=0; }
+        refresh(); return;
+    }
     if (id==12) { coop_play_ui_close(); return; }
     if (id==13) { int opacity=coop_hud_opacity(window_element); coop_hud_opacity_set(window_element,opacity==25 ? 100 : opacity-25); refresh(); return; }
     if (id==10 || id==11) {
@@ -395,7 +419,7 @@ static void activate(unsigned id)
     } else if (tab==PLAY_TAB_SETTINGS) {
         if (id==2) change_setting(); if (id==3) coop_play_binding_reset();
     } else if (tab==PLAY_TAB_LOG) {
-        if (id==2) { first=selected=0; log_follow=true; } if (id==3) export_log();
+        if (id==2) { first=selected=0; log_follow=true; coop_play_pref_set(PLAY_PREF_LOG_FOLLOW,1); } if (id==3) export_log();
     } else if (tab==PLAY_TAB_INVENTORY) {
         if (id==2 && count) coop_play_junk(rows[selected].object,true);
         if (id==3) coop_play_bulk_start();
@@ -427,7 +451,7 @@ static void activate(unsigned id)
 }
 static bool input(TigMessage* msg)
 {
-    if (coop_hud_input(window_element,window,&bounds,msg,bounds.width-(compact ? 144 : 180),compact ? 320 : 760,compact ? 2*coop_play_line_height()+44+row_height() : 320,true)) {
+    if (coop_hud_input(window_element,window,&bounds,msg,bounds.width-(compact ? 144 : 180)-(tab==PLAY_TAB_LOG ? 74 : 0),compact ? 320 : 760,compact ? 2*coop_play_line_height()+44+row_height() : 320,true)) {
         if (coop_hud_changed(window_element)) refresh(); return true;
     }
     if (msg->type==TIG_MESSAGE_KEYBOARD) {
@@ -525,6 +549,8 @@ bool coop_play_control_hint(int x,int y,char* text,size_t size)
             const char* hint=buttons[i].id==10 ? coop_tr("Combat log view\nSwitch between the compact log and expanded tools.")
                 : buttons[i].id==11 ? coop_tr("Panel width\nChoose the wide or narrow preset. Drag the corner for a custom size.")
                 : buttons[i].id==12 ? coop_tr("Close panel\n[F11], [B] or Escape also closes it.")
+                : buttons[i].id==14 ? coop_tr("Follow new events\nToggle automatic scrolling. Browsing history pauses it; Latest resumes it. Your choice is saved.")
+                : buttons[i].id==15 ? coop_tr("Latest events\nShow the newest entries and resume automatic scrolling.")
                 : coop_tr("Transparency\nCycle this panel's opacity. 100% is solid; each panel remembers its own setting.");
             snprintf(text,size,"%s",hint); return true;
         }
