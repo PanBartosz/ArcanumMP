@@ -32,7 +32,8 @@ static Skin skins[HUD_ART_COUNT] = {
     SKIN(control_resize,48,48,0),
     SKIN(turn_card,256,112,18), SKIN(turn_card_active,256,112,18),
     SKIN(action_slot,256,96,14), SKIN(portrait_bezel,256,256,22),
-    SKIN(button_face,256,96,14)
+    SKIN(button_face,256,96,14),
+    SKIN(quick_save,48,48,0), SKIN(quick_load,48,48,0)
 };
 #undef SKIN
 static TigVideoBuffer* decode(Skin* skin)

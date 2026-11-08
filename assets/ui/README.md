@@ -41,3 +41,15 @@ Use case: stylized-concept. Asset type: one production-ready reusable nine-slice
 ## Icon prompt
 
 Use case: stylized-concept. Asset type: one production-ready game HUD button icon, square. Input image 1 is a STYLE REFERENCE ONLY: original Arcanum toolbar, scratched silver metal, blackened iron, muted antique brass, warm bone paper. Create a NEW single combat journal toggle icon fitting that original UI aesthetic. Front-on embossed antique open ledger with two parchment pages and a small diagonally laid steel sword; the silhouette must remain very legible at 32x32 pixels. Center within a small square aged metal button plate with a thin brass bevel, dark black-brown background. Restrained Victorian industrial fantasy, hand-painted pre-rendered 2001 PC RPG asset with crisp strong edges; not modern flat art, not cartoon, not glossy polished gold. One icon only, no text or lettering, no other buttons, no scene, no people, no watermark, opaque full square image.
+
+## Quick-save and quick-load controls — 2026-11-08
+
+`quick-save.png` uses a closed leather journal and quill; `quick-load.png` uses
+an open ledger and a backward arrow. Both were generated separately with the
+built-in imagegen tool to match the existing journal/control references.
+[Exact prompts](quick-save-load-prompts.md) and source PNGs are retained. Their
+48×48 BMPs are embedded and replace shortcut lettering on the two controls
+beside the combat-log button; F9/F10 appear only in hover help.
+
+Prepare only these derivatives with
+`python3 tools/prepare_ui_art.py quick-save quick-load`.

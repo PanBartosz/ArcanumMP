@@ -30,7 +30,8 @@ struct CoopServices {
     uint32_t epoch, map, submitted, last_result, revision, token, received_token, quote_conversation, quote_page;
     unsigned status, executed, rejected, quantity; int price, received_price;
     uint64_t now, submitted_at, hover_at;
-    bool host, pending, received, close_requested, close_sent, quote_attempted;
+    bool host, pending, received, close_requested, close_sent, quote_attempted, buy_requested;
+    uint32_t buy_conversation, buy_page;
     CoopObjectId wanted;
     CoopServiceRequest submitted_request;
 };
@@ -140,7 +141,9 @@ void coop_services_hover(CoopServices* s, int64_t item)
 }
 void coop_services_hover_quantity(CoopServices* s, int64_t item, unsigned quantity)
 {
-    if (!s || !quantity || quantity > 1000000) return;
+    /* Hover is presentation. It cannot cancel a confirmed purchase while its
+     * authoritative quote/result is in flight (especially over quantity OK). */
+    if (!s || s->buy_requested || !quantity || quantity > 1000000) return;
     CoopObjectId id = { 0 };
     if (item && !coop_object_id_from_engine(obj_get_id(item), &id)) return;
     if (!memcmp(id.bytes, s->wanted.bytes, 17) && quantity == s->quantity) return;
@@ -153,15 +156,17 @@ bool coop_services_buy(CoopServices* s, int64_t item)
 }
 bool coop_services_buy_quantity(CoopServices* s, int64_t item, unsigned quantity)
 {
-    if (!s || !item || !quantity || quantity > 1000000) return false;
+    if (!s || !item || !quantity || quantity > 1000000 || s->buy_requested) return false;
     CoopObjectId id; if (!coop_object_id_from_engine(obj_get_id(item), &id)) return false;
     const CoopDialogueView* v = coop_dialogue_current(s->dialogue);
-    if (!s->pending && s->token && quantity == s->quantity && !memcmp(s->wanted.bytes, id.bytes, 17) && s->quote_conversation == v->conversation && s->quote_page == v->revision)
-        return local(s, COOP_SERVICE_BUY, id, s->token);
+    if (!v->active || v->chooser!=coop_session_local_slot(s->session) || s->close_requested
+        || (v->mode!=3 && v->mode!=8 && v->mode!=9)) return false;
     coop_services_hover_quantity(s, item, quantity);
-    if (!s->pending) s->quote_attempted = false;
-    inven_ui_coop_service_feedback(COOP_SERVICE_UNAVAILABLE, 0, false);
-    return false;
+    s->buy_requested=true; s->buy_conversation=v->conversation; s->buy_page=v->revision;
+    if (!s->pending && s->token && s->quote_conversation==v->conversation && s->quote_page==v->revision)
+        return local(s, COOP_SERVICE_BUY, id, s->token);
+    if (!s->pending) s->quote_attempted=false;
+    return true;
 }
 bool coop_services_craft(CoopServices* s, int64_t crafter, unsigned recipe)
 {
@@ -179,7 +184,7 @@ bool coop_services_craft(CoopServices* s, int64_t crafter, unsigned recipe)
 }
 void coop_services_close(CoopServices* s)
 {
-    if (s) { s->close_requested = true; s->close_sent = false; s->wanted = (CoopObjectId) { 0 }; s->token = 0; }
+    if (s) { s->close_requested = true; s->close_sent = false; s->wanted = (CoopObjectId) { 0 }; s->token = 0; s->buy_requested=false; }
 }
 bool coop_services_poll(CoopServices* s, uint64_t now, bool accepting)
 {
@@ -212,6 +217,7 @@ bool coop_services_poll(CoopServices* s, uint64_t now, bool accepting)
             && r->quantity == s->quantity && !memcmp(s->wanted.bytes, r->item.bytes, 17)) {
             s->token = s->received_token; s->price = s->received_price; s->quote_conversation = v->conversation; s->quote_page = v->revision;
             inven_ui_coop_service_feedback(s->status, s->price, r->operation == COOP_SERVICE_BUY);
+            if (s->status || r->operation==COOP_SERVICE_BUY) s->buy_requested=false;
             if (r->operation == COOP_SERVICE_BUY) { s->wanted = (CoopObjectId) { 0 }; s->quote_attempted = false; }
         }
     }
@@ -219,11 +225,15 @@ bool coop_services_poll(CoopServices* s, uint64_t now, bool accepting)
         s->close_requested = s->close_sent = false;
         s->wanted = (CoopObjectId) { 0 };
         s->token = 0;
+        s->buy_requested=false;
     }
     /* Closing an existing panel must remain possible while arrival events wait
      * for that conversation. New service mutations still require admission. */
     if (s->close_requested && !s->close_sent && !s->pending) s->close_sent = coop_engine_dialogue_submit(COOP_DIALOGUE_CANCEL);
     if (s->token && (s->quote_conversation != v->conversation || s->quote_page != v->revision)) { s->token = 0; s->quote_attempted = false; }
+    if (s->buy_requested && (s->buy_conversation!=v->conversation || s->buy_page!=v->revision)) s->buy_requested=false;
+    if (accepting && s->buy_requested && !s->pending && s->token && !s->close_requested)
+        local(s,COOP_SERVICE_BUY,s->wanted,s->token);
     if (accepting && !s->pending && !s->close_requested && s->wanted.bytes[0] && !s->token && !s->quote_attempted && s->now - s->hover_at >= 200) {
         /* Failed quotes remain until a new hover/click instead of retrying at
          * the world cadence. A different wanted item gets its own quote. */

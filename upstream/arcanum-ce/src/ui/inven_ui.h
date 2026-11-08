@@ -52,7 +52,8 @@ void inven_ui_coop_service_feedback(unsigned status, int price, bool bought);
 /* Quantity presentation keeps all object flags and inventory changes on host. */
 bool inven_ui_coop_quantity_active(void);
 int inven_ui_coop_quantity_limit(int available);
-bool inven_ui_coop_quantity_submit(int amount);
+/* -1: keep the chooser open, 0: native path, 1: accepted/cancelled. */
+int inven_ui_coop_quantity_submit(int amount);
 void inven_ui_coop_quantity_cancel(void);
 
 #endif /* ARCANUM_UI_INVEN_UI_H_ */

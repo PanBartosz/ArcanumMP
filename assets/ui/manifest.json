@@ -163,6 +163,24 @@
         256,
         96
       ]
+    },
+    {
+      "name": "quick-save",
+      "size": [
+        48,
+        48
+      ],
+      "generated": "2026-11-08",
+      "prompt_file": "quick-save-load-prompts.md"
+    },
+    {
+      "name": "quick-load",
+      "size": [
+        48,
+        48
+      ],
+      "generated": "2026-11-08",
+      "prompt_file": "quick-save-load-prompts.md"
     }
   ]
 }

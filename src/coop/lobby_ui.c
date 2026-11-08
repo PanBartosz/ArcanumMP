@@ -695,6 +695,7 @@ static void draw(void)
             char target[24];
             if (!control->value) strcpy(target, coop_tr("Quick save"));
             else if (control->value == COOP_SAVE_RECOVERY) strcpy(target, coop_tr("Recovery"));
+            else if (control->value >= COOP_SAVE_QUICK_HISTORY_FIRST) snprintf(target,sizeof(target),coop_tr("Quick save %u"),control->value-COOP_SAVE_QUICK_HISTORY_FIRST+2);
             else if (control->value >= COOP_SAVE_AUTOSAVE_FIRST) snprintf(target, sizeof(target), coop_tr("Autosave %u"), control->value - COOP_SAVE_AUTOSAVE_FIRST + 1);
             else snprintf(target, sizeof(target), coop_tr("slot %02u"), control->value);
             snprintf(operation, sizeof(operation), coop_tr("Load %s: %s (%us)"), target,

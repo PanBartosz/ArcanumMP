@@ -1,4 +1,6 @@
 #include "coop/services_probe.h"
+#include "coop/hud.h"
+#include "coop/saves_ui.h"
 #include "coop/bootstrap.h"
 #include "coop/engine_traps.h"
 #include "game/anim.h"
@@ -21,6 +23,7 @@
 #include "game/combat.h"
 #include "game/descriptions.h"
 #include "game/gamelib.h"
+#include "game/hrp.h"
 #include "game/item.h"
 #include "game/map.h"
 #include "game/obj.h"
@@ -46,7 +49,7 @@
 #include <string.h>
 enum { STEPS = 38, PHASES = STEPS * 4, NPC_TAG = 187600, ITEM_TAG = 187601, AMMO_TAG = 187620 };
 static unsigned first_step = 1, last_step = STEPS, first_owner, probe_owners = 4;
-static bool recovery, callbacks_only;
+static bool recovery, callbacks_only, stack_mode;
 static unsigned first_phase = 1;
 static unsigned callback_checks, device_credit, device_reported;
 static int device_damage[2];
@@ -245,7 +248,8 @@ static bool callback_prepare(int64_t npc)
         if (result || (live && !(obj_field_int32_get(live, OBJ_F_FLAGS) & (OF_DESTROYED | OF_EXTINCT)))
             || before != (test ? item_ammo_quantity_get(npc, 0) : item_gold_get(npc))) return false;
         if (test) {
-            int64_t ammo = item_ammo_create(100, 0, obj_field_int64_get(pc, OBJ_F_LOCATION));
+            if (stack_mode && item_ammo_quantity_get(pc,1) && !item_ammo_transfer(pc,0,item_ammo_quantity_get(pc,1),1,0)) return false;
+        int64_t ammo = item_ammo_create(100, stack_mode ? 1 : 0, obj_field_int64_get(pc, OBJ_F_LOCATION));
             if (!ammo || !item_transfer(ammo, pc)) return false;
             obj_field_int32_set(obj_field_handle_get(pc, OBJ_F_CRITTER_ARROWS), OBJ_F_ITEM_WORTH, AMMO_TAG + 2);
         } else if (!item_gold_transfer(OBJ_HANDLE_NULL, pc, 1000000, OBJ_HANDLE_NULL)) return false;
@@ -371,6 +375,7 @@ static bool prepare(void)
     stat_base_set(npc, STAT_INTELLIGENCE, 20);
     /* A nonzero replicated counter catches reporting after authority teardown. */
     if (!sub_4B6C90(true) || !sub_4B6C90(false) || !combat_turn_generation_get()) return false;
+    if (stack_mode && item_gold_get(npc) && !item_gold_transfer(npc,0,item_gold_get(npc),0)) return false;
     if (!item_gold_transfer(OBJ_HANDLE_NULL, npc, 1000000, 0) || tech_degree_inc(npc, TECH_HERBOLOGY) != 1) { fprintf(stderr, "ARCMP service prepare failed line=%d\n", __LINE__); return false; }
     if (tech_skill_points_set(npc, TECH_SKILL_REPAIR, 5) != 5) { fprintf(stderr, "ARCMP service prepare failed line=%d\n", __LINE__); return false; }
     for (int tier = TRAINING_APPRENTICE; tier <= TRAINING_MASTER; tier++) if (tech_skill_training_set(npc, TECH_SKILL_REPAIR, tier) != tier) { fprintf(stderr, "ARCMP service prepare failed line=%d\n", __LINE__); return false; }
@@ -392,10 +397,19 @@ static bool prepare(void)
         obj_field_int32_set(item, OBJ_F_ITEM_MAGIC_TECH_COMPLEXITY, 50);
         item_flags_unset(item, OIF_IDENTIFIED); object_hp_damage_set(item, 5);
         if (first_step > 12) { item_flags_set(item, OIF_IDENTIFIED); object_hp_damage_set(item, 0); }
-        int64_t ammo = item_ammo_create(100, 0, obj_field_int64_get(pc, OBJ_F_LOCATION));
+        int64_t ammo = item_ammo_create(100, stack_mode ? 1 : 0, obj_field_int64_get(pc, OBJ_F_LOCATION));
         if (!ammo || !item_transfer(ammo, pc)) { fprintf(stderr, "ARCMP service prepare failed line=%d\n", __LINE__); return false; }
-        ammo = obj_field_handle_get(pc, OBJ_F_CRITTER_ARROWS); obj_field_int32_set(ammo, OBJ_F_ITEM_WORTH, AMMO_TAG + (int)i);
+        ammo = sub_462540(pc,sub_4685A0(stack_mode ? BP_BULLET : BP_ARROW),0); obj_field_int32_set(ammo, OBJ_F_ITEM_WORTH, AMMO_TAG + (int)i);
         if (!component(pc, 10061) || !component(pc, 10062)) { fprintf(stderr, "ARCMP service prepare failed line=%d\n", __LINE__); return false; }
+    }
+    if (stack_mode) {
+        int64_t pc=coop_campaign_object(1),loc=obj_field_int64_get(pc,OBJ_F_LOCATION),chest=0;
+        int64_t ammo=item_ammo_create(50,1,loc);
+        if (!ammo || !item_transfer(ammo,npc) || !object_create(sub_4685A0(BP_WOOD_CHEST_1),location_make(location_get_x(loc)+1,location_get_y(loc)),&chest)) return false;
+        obj_field_int32_set(chest,OBJ_F_CONTAINER_PAD_I_1,187630);
+        obj_field_int32_set(chest,OBJ_F_CONTAINER_INVENTORY_SOURCE,0); obj_field_int32_set(chest,OBJ_F_CONTAINER_FLAGS,0);
+        ammo=item_ammo_create(37,1,loc); int64_t coins=item_gold_create(100,loc);
+        if (!ammo || !coins || !item_transfer(ammo,chest) || !item_transfer(coins,chest)) return false;
     }
     return !recovery || callback_prepare(npc);
 }
@@ -447,7 +461,7 @@ static bool placed_trap(void)
 static bool announce(CoopSession* session, unsigned phase)
 {
     unsigned step = phase_step(phase), member = phase_owner(phase);
-    if (panel_step(step)) {
+    if (panel_step(step) && (!stack_mode || step==13)) {
         int64_t pc = coop_campaign_object(member), npc = tagged(true, 0);
         if (!pc || !npc) return false;
         int64_t origin = obj_field_int64_get(npc, OBJ_F_LOCATION);
@@ -468,6 +482,8 @@ static bool announce(CoopSession* session, unsigned phase)
         if (device_target(1)) object_destroy(device_target(1));
         for (unsigned i = 0; i < 4; i++) if (combat_critter_is_combat_mode_active(coop_campaign_object(i))) combat_critter_deactivate_combat_mode(coop_campaign_object(i));
     }
+    if (stack_mode && step>=27 && step<=31) script_global_var_set(0,step<=30 ? 60000+(int)step : 99999);
+    if (stack_mode && step==33) script_global_var_set(0,99933);
     char message[64]; snprintf(message, sizeof(message), "service-phase:%u", phase);
     return coop_session_chat(session, message);
 }
@@ -542,6 +558,7 @@ bool coop_services_probe(int argc, char** argv)
         if (!strcmp(argv[i], "--coop-engine-probe=runtime-service-recovery")) { recovery = true; first_owner = 2; probe_owners = 1; last_step = 68; }
         if (!strncmp(argv[i], "--coop-service-first=", 21)) first_phase = (unsigned)atoi(argv[i] + 21);
         if (!strcmp(argv[i], "--coop-engine-probe=runtime-callbacks")) { recovery = callbacks_only = true; }
+        if (!strcmp(argv[i], "--coop-probe-stack-confirm")) { stack_mode=true; first_step=13; last_step=33; first_owner=1; probe_owners=1; }
         if (!strcmp(argv[i], "--coop-probe-host")) host = true;
         if (!strcmp(argv[i], "--coop-probe-framebuffer")) framebuffer = true;
         if (!strncmp(argv[i], "--coop-probe-port=", 18)) port = (unsigned)atoi(argv[i] + 18);
@@ -552,18 +569,19 @@ bool coop_services_probe(int argc, char** argv)
     if (!content(config.content_id) || !coop_identity_load_or_create("arcmp-player.id", config.identity)) return false;
     CoopSession* session = coop_session_create(&config); if (!session) return false;
     held_service_session = session;
+    if (stack_mode) coop_runtime_probe_enable();
     if (recovery) { coop_runtime_probe_enable(); if (host) combat_damage_observer_set(damage_observed); }
     uint64_t start = SDL_GetTicks(), playing = 0, at = 0, chats = 0, quiet = 0, ended = 0;
     bool good = (host ? coop_session_host(session, (uint16_t)port, start) : coop_session_join(session, "127.0.0.1", (uint16_t)port, start)) && coop_runtime_attach(session, config.identity);
     fprintf(stderr, "ARCMP bootstrap connection host=%d port=%u\n", host, port); fflush(stderr);
     bool selected = false, initialized = false, sent = false, done = false, finishing = false, replayed = false, guarded = false, quantity_input = false;
-    unsigned phase = 0, completed = 0, ack[4] = { 0 }, replays = 0, denials = 0;
+    unsigned phase = 0, completed = 0, ack[4] = { 0 }, replays = 0, denials = 0, stack_services=0, stack_items=0;
     int member = -1, gold = 0, fee = 0, npc_gold = 0, ammo_before = 0, other_before = 0, product_before = 0, component1 = 0, component2 = 0;
     uint32_t expected = 0, item_expected = 0; CoopServiceRequest request = { 0 };
     unsigned baseline_epoch = 0, recoveries = 0, drops = 0, panel_pages = 0, conflicts = 0;
     uint32_t crc = 0, note_expected = 0, original_note = 0;
     uint64_t panel_seen = 0;
-    bool dropped = false, voted = false, panel_verified = false;
+    bool dropped = false, voted = false, panel_verified = false, quick_layout=false;
     while (good && SDL_GetTicks() - start < 360000) {
         uint64_t now = SDL_GetTicks(); tig_ping(); coop_session_poll(session, now); if (recovery) coop_lobby_tick(); else coop_runtime_tick(now);
         if (coop_runtime_phase() == COOP_RUNTIME_FAILED) { fprintf(stderr, "ARCMP service probe runtime: %s\n", coop_runtime_status()); good = false; break; }
@@ -578,6 +596,9 @@ bool coop_services_probe(int argc, char** argv)
             CoopServices* service = coop_gameplay_services(game); CoopDialogue* dialogue = coop_gameplay_dialogue(game);
             const CoopDialogueView* view = coop_dialogue_current(dialogue);
             if (!playing) { playing = now; member = coop_campaign_slot_for_owner(config.identity); }
+            if (stack_mode && !quick_layout) {
+                TigRect rect={600,340,156,44}; good &= coop_hud_store(HUD_LOG_BUTTON,&rect); quick_layout=true;
+            }
             if (!initialized && host && (first_phase == 40 || !view->active) && now - playing > 1300) {
                 initialized = true; good = first_phase > 1 || prepare();
                 if (good) { if (callbacks_only) { good = coop_gameplay_finish(game); finishing = true; } else good = announce(session, first_phase); }
@@ -612,7 +633,7 @@ bool coop_services_probe(int argc, char** argv)
                 guarded = true;
             }
             if (!phase && view->active && view->chooser == coop_session_local_slot(session)) coop_engine_dialogue_submit(COOP_DIALOGUE_CANCEL);
-            if (phase && step <= 42 && !done && now - at > 500 && pc && item) {
+            if (phase && step <= 42 && !done && now - at > 500 && pc && item && (!stack_mode || step<18)) {
                 unsigned wanted = step == 4 ? COOP_SERVICE_IDENTIFIED : step == 5 || step == 6 || step == 25 ? COOP_SERVICE_OWNERSHIP
                     : step == 11 ? COOP_SERVICE_UNDAMAGED : step == 23 ? COOP_SERVICE_COMPONENTS : step == 24 ? COOP_SERVICE_KNOWLEDGE
                     : step == 29 ? COOP_ITEM_TARGET : 0;
@@ -853,6 +874,117 @@ bool coop_services_probe(int argc, char** argv)
                     good &= coop_session_chat(session, text); done = true; completed = phase;
                 }
             }
+            if (stack_mode && phase && step>=18 && !done && now-at>500) {
+                bool ready=false;
+                int64_t npc=tagged(true,0),chest=0,obj; int iterator;
+                if (obj_inst_first(&obj,&iterator)) do {
+                    if (obj_field_int32_get(obj,OBJ_F_TYPE)==OBJ_TYPE_CONTAINER && obj_field_int32_get(obj,OBJ_F_CONTAINER_PAD_I_1)==187630) { chest=obj; break; }
+                } while (obj_inst_next(&obj,&iterator));
+                if (!chest || !npc) { good=false; break; }
+                CoopItems* items=coop_gameplay_items(game);
+                const CoopControlView* control=coop_controls_current(coop_runtime_controls());
+                if (!sent) {
+                    gold=item_gold_get(pc); npc_gold=item_gold_get(npc); ammo_before=item_ammo_quantity_get(pc,1);
+                    other_before=step==23 ? item_ammo_quantity_get(chest,1) : item_gold_get(chest);
+                    if (own) {
+                        if (step==18 || step==19) {
+                            int64_t ammo=sub_462540(step==18 ? pc : npc,sub_4685A0(BP_BULLET),0);
+                            good &= ammo && item_click(ammo,true);
+                        } else if (step==20 || step==26) inven_ui_destroy();
+                        else if (step==21) good &= coop_runtime_item(COOP_LOOT_OPEN,chest,0,-1);
+                        else if (step>=22 && step<=25) {
+                            int64_t selected=step==23 ? sub_462540(chest,sub_4685A0(BP_BULLET),0) : sub_462540(step==24 ? pc : chest,sub_4685A0(BP_GOLD),0);
+                            if (!selected) { good=false; break; }
+                            int slot=item_inventory_location_get(selected); bool mine=step==24;
+                            TigMessage mouse={.type=TIG_MESSAGE_MOUSE};
+                            mouse.data.mouse.x=(mine ? 368 : 8)+(slot%10)*32+8; mouse.data.mouse.y=(mine ? 49 : 177)+(slot/10)*32+8;
+                            mouse.data.mouse.event=TIG_MESSAGE_MOUSE_RIGHT_BUTTON_UP; tig_message_enqueue(&mouse);
+                        } else if (step<=30) {
+                            TigMessage mouse={.type=TIG_MESSAGE_MOUSE}; mouse.data.mouse.x=678; mouse.data.mouse.y=358;
+                            mouse.data.mouse.event=TIG_MESSAGE_MOUSE_LEFT_BUTTON_DOWN; tig_message_enqueue(&mouse);
+                            mouse.data.mouse.event=TIG_MESSAGE_MOUSE_LEFT_BUTTON_UP; tig_message_enqueue(&mouse);
+                        }
+                        else if (step==31 || step==33) {
+                            if (step==31) {
+                                CoopSaveSet party; char path[COOP_SAVE_PATH];
+                                good &= coop_runtime_save_set(&party) && coop_save_path(&party,0,path);
+                                if (good && rename(path,"probe-hidden-quick.acsave")) good=false;
+                            }
+                            TigMessage mouse={.type=TIG_MESSAGE_MOUSE}; mouse.data.mouse.x=714; mouse.data.mouse.y=358;
+                            mouse.data.mouse.event=TIG_MESSAGE_MOUSE_LEFT_BUTTON_DOWN; tig_message_enqueue(&mouse);
+                            mouse.data.mouse.event=TIG_MESSAGE_MOUSE_LEFT_BUTTON_UP; tig_message_enqueue(&mouse);
+                        } else if (step==32) {
+                            CoopSaveSet party; CoopSaveEntry newest={0}; bool found=false;
+                            good &= coop_runtime_save_set(&party);
+                            for (unsigned i=0;i<COOP_SAVE_QUICK_HISTORY;i++) {
+                                CoopSaveEntry entry; coop_save_inspect(&party,COOP_SAVE_QUICK_HISTORY_FIRST+i,&entry);
+                                if (entry.status==COOP_CHECKPOINT_OK && (!found || entry.info.epoch>newest.info.epoch)) { newest=entry; found=true; }
+                            }
+                            good &= found && coop_runtime_checkpoint_request(COOP_CONTROL_LOAD,&newest,"");
+                        }
+                    }
+                    sent=true;
+                }
+                if (own && !quantity_input && (step==18 || step==19 || (step>=22 && step<=25)) && intgame_mode_get()==INTGAME_MODE_QUANTITY) {
+                    number(step==18 ? 7 : step==19 || step==23 ? 11 : step==22 ? 37 : step==24 ? 13 : 1000000);
+                    TigMessage mouse={.type=TIG_MESSAGE_MOUSE}; mouse.data.mouse.x=740; mouse.data.mouse.y=560;
+                    mouse.data.mouse.event=TIG_MESSAGE_MOUSE_MOVE; tig_message_enqueue(&mouse);
+                    mouse.data.mouse.event=TIG_MESSAGE_MOUSE_IDLE; tig_message_enqueue(&mouse);
+                    quantity_input=true;
+                }
+                if (step==18 || step==19) {
+                    ready=!own || (quantity_input && !coop_services_busy(service) && intgame_mode_get()!=INTGAME_MODE_QUANTITY
+                        && item_ammo_quantity_get(pc,1)==ammo_before+(step==18 ? -7 : 11)
+                        && item_gold_get(pc)+item_gold_get(npc)==gold+npc_gold
+                        && (step==18 ? item_gold_get(pc)>gold : item_gold_get(pc)<gold));
+                } else if (step==20 || step==26) ready=!view->active && (!own || !inven_ui_is_created());
+                else if (step==21) ready=!own || (inven_ui_is_created() && coop_items_loot_target(items)==chest && !coop_items_busy(items));
+                else if (step>=22 && step<=25) {
+                    ready=!own || (quantity_input && !coop_items_busy(items) && intgame_mode_get()!=INTGAME_MODE_QUANTITY
+                        && (step==23 ? item_ammo_quantity_get(pc,1)==ammo_before+11 && item_ammo_quantity_get(chest,1)==other_before-11
+                            : item_gold_get(pc)==gold+(step==24 ? -13 : step==22 ? 37 : other_before)
+                                && item_gold_get(chest)==(step==24 ? other_before+13 : step==22 ? other_before-37 : 0)));
+                } else {
+                    if (step>=31 && control->phase==COOP_CONTROL_VOTING && !voted)
+                        voted=coop_runtime_control(COOP_CONTROL_VOTE,step==33 && member==2 ? 0 : 1,control->proposal,0);
+                    ready=control->phase==COOP_CONTROL_IDLE && control->notice==(step==33 ? COOP_CONTROL_DECLINED : COOP_CONTROL_OK)
+                        && coop_runtime_epoch()==baseline_epoch+(step==33 ? 0 : 1)
+                        && script_global_var_get(0)==(step<=30 ? 60000+(int)step : step==31 ? 60030 : step==32 ? 60029 : 99933);
+                    if (ready && step==30) {
+                        CoopSaveSet party; CoopSaveEntry entries[2]; good &= coop_runtime_save_set(&party);
+                        for (unsigned i=0;i<2;i++) coop_save_inspect(&party,COOP_SAVE_QUICK_HISTORY_FIRST+i,&entries[i]);
+                        ready &= entries[0].status==COOP_CHECKPOINT_OK && entries[1].status==COOP_CHECKPOINT_OK
+                            && entries[0].info.epoch!=entries[1].info.epoch
+                            && entries[0].info.epoch+3>=coop_runtime_epoch() && entries[1].info.epoch+3>=coop_runtime_epoch();
+                    }
+                    if (ready) ready &= item_ammo_quantity_get(pc,1)==115 && item_ammo_quantity_get(npc,1)==46 && item_ammo_quantity_get(chest,1)==26
+                        && !item_gold_get(chest) && item_gold_get(pc)+item_gold_get(npc)==2000100;
+                }
+                if (ready) {
+                    if (step==26 && host) {
+                        stack_services=coop_services_executed(service); stack_items=coop_items_executed(items);
+                        good &= stack_services==4 && stack_items==5;
+                    }
+                    if (step==30 && own) {
+                        if (!panel_seen) {
+                            good &= coop_saves_ui_open(COOP_SAVES_LOAD); panel_seen=now;
+                            TigMessage mouse={.type=TIG_MESSAGE_MOUSE}; mouse.data.mouse.x=(hrp_iso_window_width_get()-760)/2+680;
+                            mouse.data.mouse.y=hrp_iso_window_height_get()-518; mouse.data.mouse.event=TIG_MESSAGE_MOUSE_LEFT_BUTTON_UP; tig_message_enqueue(&mouse);
+                            ready=false;
+                        } else {
+                            const CoopSavePage* page=coop_save_catalog_current(coop_runtime_save_catalog());
+                            ready=!coop_save_catalog_pending(coop_runtime_save_catalog()) && page && page->page==COOP_SAVE_QUICK_HISTORY_FIRST/COOP_SAVE_PAGE_ROWS && page->count==2;
+                            if (ready) { good &= image(phase,framebuffer); coop_saves_ui_close(); }
+                        }
+                    }
+                    if (ready && step==25 && !image(phase,framebuffer)) good=false;
+                    if (ready) {
+                    fprintf(stderr,"ARCMP stack/quick step=%u pc_gold=%d npc_gold=%d bullets=%d marker=%d epoch=%u\n",step,item_gold_get(pc),item_gold_get(npc),item_ammo_quantity_get(pc,1),script_global_var_get(0),coop_runtime_epoch());
+                    char text[64]; snprintf(text,sizeof(text),"service-done:%u",phase);
+                    good &= coop_session_chat(session,text); done=true; completed=phase;
+                    }
+                }
+            }
             if (phase && !done && now - at > (recovery ? step == 65 ? 125000u : 30000u : 12000u)) {
                 image(phase, framebuffer);
                 fprintf(stderr, "ARCMP service probe timeout phase=%u step=%u sent=%d done=%d view=%u/%u tokenbusy=%d mode=%u quantity=%d\n", phase, step, sent, done, view->revision, view->mode, coop_services_busy(service), intgame_mode_get(), quantity_input);
@@ -886,7 +1018,9 @@ bool coop_services_probe(int argc, char** argv)
     bool acts = member >= 0 && (unsigned)member >= first_owner && (unsigned)member < first_owner + probe_owners;
     unsigned expected_actions = first_phase > 1 ? 0 : first_step == 1 ? 9 : first_step == 13 ? 7 : 3;
     unsigned expected_denials = first_phase > 1 ? 0 : first_step == 1 ? 8 : first_step == 13 ? 4 : 0;
-    if (callbacks_only) good = good && game && coop_gameplay_finished(game) && callback_checks == (host ? 34u : 0u);
+    if (stack_mode) good=good && game && completed==phase_count() && coop_gameplay_finished(game)
+        && guarded==!host && stack_services==(host ? 4u : 0u) && stack_items==(host ? 5u : 0u);
+    else if (callbacks_only) good = good && game && coop_gameplay_finished(game) && callback_checks == (host ? 34u : 0u);
     else {
     good = good && game && completed == phase_count() && replays == (acts ? expected_actions : 0) && denials == (acts ? expected_denials : 0)
         && guarded == !host && coop_gameplay_finished(game)
@@ -897,9 +1031,9 @@ bool coop_services_probe(int argc, char** argv)
     FILE* report = fopen("arcmp-services-result.json", "wb");
     if (!report) good = false;
     if (report) {
-        fprintf(report, "{\"verified\":%s,\"phases\":%u,\"first_phase\":%u,\"replays\":%u,\"denials\":%u,\"replica_guard\":%s,\"executed\":%u,\"rejected\":%u,\"transfers\":%u,\"member\":%d,\"recoveries\":%u,\"drops\":%u,\"callback_guards\":%u,\"conflicts\":%u,\"device_credit\":%u,\"device_damage\":[%d,%d]}\n",
+        fprintf(report, "{\"verified\":%s,\"phases\":%u,\"first_phase\":%u,\"replays\":%u,\"denials\":%u,\"replica_guard\":%s,\"executed\":%u,\"rejected\":%u,\"transfers\":%u,\"member\":%d,\"recoveries\":%u,\"drops\":%u,\"callback_guards\":%u,\"conflicts\":%u,\"device_credit\":%u,\"device_damage\":[%d,%d],\"stack_trades\":%u,\"stack_moves\":%u}\n",
             good ? "true" : "false", completed, first_phase, replays, denials, guarded ? "true" : "false", service ? coop_services_executed(service) : 0, service ? coop_services_rejected(service) : 0,
-            game ? coop_items_executed(coop_gameplay_items(game)) : 0, member, recoveries, drops, callback_checks, conflicts, device_credit, device_damage[0], device_damage[1]);
+            game ? coop_items_executed(coop_gameplay_items(game)) : 0, member, recoveries, drops, callback_checks, conflicts, device_credit, device_damage[0], device_damage[1], stack_services, stack_items);
         if (fclose(report)) good = false;
     }
     fprintf(stderr, "ARCMP service probe %s phases=%u replays=%u denials=%u\n", good ? "PASS" : "FAIL", completed, replays, denials);

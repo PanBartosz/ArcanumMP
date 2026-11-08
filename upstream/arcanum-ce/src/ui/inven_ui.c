@@ -46,9 +46,8 @@ typedef enum InvenUiPanel {
 
 static bool coop_loot_presenting;
 static unsigned coop_quantity_action;
-static uint32_t coop_quantity_access;
 static uint8_t coop_quantity_recipient;
-static ObjectID coop_quantity_item, coop_trade_item;
+static ObjectID coop_quantity_item, coop_quantity_target, coop_trade_item;
 static unsigned coop_trade_quantity = 1;
 static bool coop_trade_selling;
 static void coop_trade_hover(int64_t item);
@@ -2169,7 +2168,7 @@ static bool coop_item_request(CoopItemOperation operation, int64_t item, uint8_t
 bool inven_ui_coop_quantity_active(void) { return coop_quantity_action != 0; }
 int inven_ui_coop_quantity_limit(int available) { return coop_quantity_action == 1 && available > 1000000 ? 1000000 : available; }
 void inven_ui_coop_quantity_cancel(void) { fprintf(stderr, "ARCMP quantity close action=%u\n", coop_quantity_action); coop_quantity_action = 0; }
-bool inven_ui_coop_quantity_submit(int amount)
+int inven_ui_coop_quantity_submit(int amount)
 {
     if (!coop_quantity_action) return false;
     fprintf(stderr, "ARCMP quantity submit action=%u amount=%d\n", coop_quantity_action, amount);
@@ -2177,13 +2176,23 @@ bool inven_ui_coop_quantity_submit(int amount)
     if (item && amount > 0) {
         if (coop_quantity_action == 1) {
             coop_trade_item = coop_quantity_item; coop_trade_quantity = (unsigned)amount;
-            coop_trade_hover(item);
-        } else if (coop_quantity_action == 2) coop_item_request(COOP_ITEM_GIVE_AMOUNT, item, coop_quantity_recipient, amount);
-        else if (coop_quantity_action == 5 || coop_quantity_access == coop_items_loot_generation(coop_gameplay_items(coop_runtime_gameplay()))) {
+            if (!coop_runtime_service_confirm(item,coop_trade_quantity)) {
+                intgame_message_window_display_feedback(coop_tr("Wait for the current trade, then confirm the quantity again.")); return -1;
+            }
+        } else if (coop_quantity_action == 2) {
+            if (!coop_item_request(COOP_ITEM_GIVE_AMOUNT, item, coop_quantity_recipient, amount)) return -1;
+        } else {
+            CoopItems* items=coop_gameplay_items(coop_runtime_gameplay());
+            int64_t target=coop_items_loot_target(items);
+            bool same_access=coop_quantity_action==5 || (target && !coop_items_stealing(items)
+                && objid_is_equal(obj_get_id(target),coop_quantity_target));
+            if (!same_access) { intgame_message_window_display_feedback(coop_tr("The inventory access changed. Select the stack again.")); return 1; }
             CoopItemOperation operation = coop_quantity_action == 3 ? COOP_LOOT_TAKE_AMOUNT
                 : coop_quantity_action == 4 ? COOP_LOOT_PUT_AMOUNT : COOP_ITEM_DROP_AMOUNT;
-            coop_item_request(operation, item, 0, amount);
-        } else intgame_message_window_display_feedback(coop_tr("The inventory access changed. Select the stack again."));
+            if (!coop_item_request(operation, item, 0, amount)) return -1;
+        }
+    } else if (amount>0) {
+        intgame_message_window_display_feedback(coop_tr("The selected stack is no longer available. Select it again."));
     }
     return true;
 }
@@ -2191,7 +2200,8 @@ static bool coop_quantity_open(int64_t item, unsigned action, uint8_t recipient)
 {
     if (coop_quantity_action || !item) return false;
     coop_quantity_item = obj_get_id(item); coop_quantity_recipient = recipient; coop_quantity_action = action;
-    coop_quantity_access = coop_items_loot_generation(coop_gameplay_items(coop_runtime_gameplay()));
+    int64_t target=coop_items_loot_target(coop_gameplay_items(coop_runtime_gameplay()));
+    coop_quantity_target=target ? obj_get_id(target) : (ObjectID){0};
     qword_739F68 = item;
     coop_item_cancel_drag();
     if (action == 1) coop_runtime_service_item(OBJ_HANDLE_NULL, false);
@@ -2225,7 +2235,7 @@ static void coop_trade_hover(int64_t item)
 }
 static void coop_trade_buy(int64_t item, bool single)
 {
-    if (!item || coop_services_busy(coop_gameplay_services(coop_runtime_gameplay()))) return;
+    if (!item) return;
     int type = obj_field_int32_get(item, OBJ_F_TYPE);
     if ((type == OBJ_TYPE_AMMO || type == OBJ_TYPE_GOLD) && !single
         && !objid_is_equal(obj_get_id(item), coop_trade_item)) { coop_quantity_open(item, 1, 0); return; }

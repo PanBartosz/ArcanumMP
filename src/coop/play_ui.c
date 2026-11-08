@@ -556,6 +556,13 @@ bool coop_play_control_hint(int x,int y,char* text,size_t size)
         }
     }
     if (log_button!=TIG_WINDOW_HANDLE_INVALID && inside(log_button_rect,x,y)) {
+        int local=x-log_button_rect.x;
+        if (local>=log_button_rect.width-96 && local<log_button_rect.width-60) {
+            snprintf(text,size,"%s",coop_tr("Quick save (F9)\nSave the party now. Keep the newest quick save and two earlier copies; open Quick history in Load campaign to choose an older one.")); return true;
+        }
+        if (local>=log_button_rect.width-60 && local<log_button_rect.width-24) {
+            snprintf(text,size,"%s",coop_tr("Quick load (F10)\nLoad the host's newest quick save. Every player must agree; declining keeps the current game.")); return true;
+        }
         snprintf(text,size,coop_tr("Combat log: click the journal to show/hide it (F11). Click UI to %s moving/resizing HUD panels. Drag title strips to move; bottom-right grips resize. Each panel has saved transparency in Settings."),coop_hud_editing() ? coop_tr("finish") : coop_tr("start")); return true;
     }
     if (coop_play_ui_blocking()) return false;
@@ -587,9 +594,17 @@ static bool log_button_input(TigMessage* msg)
     if (x>=log_button_rect.width-24 && x<log_button_rect.width && y>=0 && y<log_button_rect.height
         && !(coop_hud_editing() && x>=log_button_rect.width-18 && y>=log_button_rect.height-18)
         && msg->data.mouse.event==TIG_MESSAGE_MOUSE_LEFT_BUTTON_DOWN && !msg->data.mouse.repeat) { coop_hud_edit_toggle(); return true; }
-    if (coop_hud_input(HUD_LOG_BUTTON,log_button,&log_button_rect,msg,log_button_rect.width-25,64,36,false)) return true;
+    if (coop_hud_input(HUD_LOG_BUTTON,log_button,&log_button_rect,msg,log_button_rect.width-25,148,36,false)) return true;
     if (!inside(log_button_rect,msg->data.mouse.x,msg->data.mouse.y)) return false;
-    if (msg->data.mouse.event==TIG_MESSAGE_MOUSE_LEFT_BUTTON_DOWN && !msg->data.mouse.repeat) coop_play_ui_open(PLAY_TAB_LOG);
+    if (msg->data.mouse.event==TIG_MESSAGE_MOUSE_LEFT_BUTTON_DOWN && !msg->data.mouse.repeat) {
+        if (x>=log_button_rect.width-96 && x<log_button_rect.width-24) {
+            bool load=x>=log_button_rect.width-60;
+            TigMessage key={.type=TIG_MESSAGE_KEYBOARD};
+            key.data.keyboard.scancode=load ? SDL_SCANCODE_F10 : SDL_SCANCODE_F9;
+            key.data.keyboard.key=load ? SDLK_F10 : SDLK_F9; key.data.keyboard.pressed=true;
+            tig_message_enqueue(&key);
+        } else coop_play_ui_open(PLAY_TAB_LOG);
+    }
     return true;
 }
 void coop_play_ui_tick(uint64_t now)
@@ -607,8 +622,8 @@ void coop_play_ui_tick(uint64_t now)
     if (!world) { if (log_button!=TIG_WINDOW_HANDLE_INVALID) { coop_hud_detach(HUD_LOG_BUTTON); tig_window_destroy(log_button); } log_button=TIG_WINDOW_HANDLE_INVALID; }
     else {
         TigRect actions=action_defaults();
-        int x=SDL_min(hrp_iso_window_width_get()-80,SDL_max(hrp_iso_window_width_get()/2+410,actions.x+actions.width+12));
-        TigRect r=coop_hud_rect(HUD_LOG_BUTTON,(TigRect){x,hrp_iso_window_height_get()-244,74,44},64,36);
+        int x=SDL_min(hrp_iso_window_width_get()-162,SDL_max(hrp_iso_window_width_get()/2+410,actions.x+actions.width+12));
+        TigRect r=coop_hud_rect(HUD_LOG_BUTTON,(TigRect){x,hrp_iso_window_height_get()-244,156,44},148,36);
         if (log_button!=TIG_WINDOW_HANDLE_INVALID && memcmp(&r,&log_button_rect,sizeof(r))) { coop_hud_detach(HUD_LOG_BUTTON); tig_window_destroy(log_button); log_button=TIG_WINDOW_HANDLE_INVALID; }
         bool created=log_button==TIG_WINDOW_HANDLE_INVALID;
         if (created) { TigWindowData d={.flags=TIG_WINDOW_MESSAGE_FILTER,.rect=r,.message_filter=log_button_input}; if (tig_window_create(&d,&log_button)==TIG_OK) { log_button_rect=r; coop_hud_attach(HUD_LOG_BUTTON,log_button); } }
@@ -616,8 +631,15 @@ void coop_play_ui_tick(uint64_t now)
         bool open=window!=TIG_WINDOW_HANDLE_INVALID && tab==PLAY_TAB_LOG;
         if (log_button!=TIG_WINDOW_HANDLE_INVALID && (created || coop_hud_changed(HUD_LOG_BUTTON) || was_open!=open || was_editing!=coop_hud_editing())) {
             box(log_button,(TigRect){0,0,r.width,r.height},open);
-            int size=SDL_min(r.height-4,r.width-26);
+            int size=SDL_min(r.height-4,r.width-100);
             coop_hud_icon(log_button,(TigRect){2,(r.height-size)/2,size,size},open);
+            for (unsigned i=0;i<2;i++) {
+                TigRect button={r.width-96+(int)i*36,4,34,r.height-8};
+                coop_hud_surface(log_button,HUD_ART_BUTTON,button,false);
+                int icon_size=SDL_min(button.width-2,button.height-2);
+                coop_hud_art(log_button,i ? HUD_ART_QUICK_LOAD : HUD_ART_QUICK_SAVE,
+                    (TigRect){button.x+(button.width-icon_size)/2,button.y+(button.height-icon_size)/2,icon_size,icon_size});
+            }
             TigRect control={r.width-23,(r.height-18)/2,22,20};
             tig_font_push(coop_play_chrome_font(MM_COLOR_GOLD));
             tig_window_text_write(log_button,coop_hud_editing() ? coop_tr("OK") : coop_tr("UI"),&control); tig_font_pop();

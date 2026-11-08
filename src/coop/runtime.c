@@ -65,6 +65,7 @@ typedef struct CoopRuntime {
     uint64_t autosave_last_wall;
     const char* autosave_wait;
     bool autosave_scanned, autosave_error_seen;
+    bool quick_load_pending;
     bool autosaving_travel;
     bool autosaving;
     uint32_t seen_roster, reconnect_prepared;
@@ -210,6 +211,30 @@ static bool store_checkpoint(CoopRuntime* r, const char* path, const uint8_t* by
     fprintf(stderr, "ARCMP checkpoint file=%s epoch=%u map=%u status=%u bytes=%zu\n", path, r->epoch, info.map, status, size);
     return status == COOP_CHECKPOINT_OK || status == COOP_CHECKPOINT_COMMITTED_UNSYNCED;
 }
+static bool backup_quicksave(CoopRuntime* r, const CoopSaveSet* party)
+{
+    CoopSaveEntry current; coop_save_inspect(party,0,&current);
+    /* The legacy quick slot is global. A different party's file is not one of
+     * this party's historical saves, and remains subject to the original slot. */
+    if (current.status==COOP_CHECKPOINT_MISSING || current.status==COOP_CHECKPOINT_OWNER
+        || current.status==COOP_CHECKPOINT_CONTENT) return true;
+    if (current.status!=COOP_CHECKPOINT_OK) return false;
+    CoopSaveEntry selected={0}; bool found=false;
+    for (unsigned n=0;n<COOP_SAVE_QUICK_HISTORY;n++) {
+        CoopSaveEntry entry; coop_save_inspect(party,COOP_SAVE_QUICK_HISTORY_FIRST+n,&entry);
+        if (entry.status!=COOP_CHECKPOINT_OK && entry.status!=COOP_CHECKPOINT_MISSING) continue;
+        if (!found || (entry.status==COOP_CHECKPOINT_MISSING && selected.status!=COOP_CHECKPOINT_MISSING)
+            || (entry.status==selected.status && (entry.modified<selected.modified
+                || (entry.modified==selected.modified && entry.info.epoch<selected.info.epoch)))) { selected=entry; found=true; }
+    }
+    if (!found) return false;
+    char source[COOP_SAVE_PATH],destination[COOP_SAVE_PATH];
+    if (!coop_save_path(party,0,source) || !coop_save_path(party,selected.slot,destination)) return false;
+    CoopCheckpointInfo info; uint8_t* bytes=NULL; size_t size=0;
+    if (coop_checkpoint_load_checked(source,r->content,r->owner,current.fingerprint,&info,&bytes,&size)!=COOP_CHECKPOINT_OK) return false;
+    CoopCheckpointStatus status=coop_checkpoint_save(destination,&info,bytes,size); free(bytes);
+    return status==COOP_CHECKPOINT_OK || status==COOP_CHECKPOINT_COMMITTED_UNSYNCED;
+}
 static bool store_slot(CoopRuntime* r, unsigned slot, const uint8_t* bytes, size_t size, const char* description)
 {
     CoopSaveSet party; CoopSaveEntry previous; char path[COOP_SAVE_PATH];
@@ -218,7 +243,11 @@ static bool store_slot(CoopRuntime* r, unsigned slot, const uint8_t* bytes, size
         coop_save_inspect(&party, slot, &previous);
         if (previous.status != COOP_CHECKPOINT_OK && previous.status != COOP_CHECKPOINT_MISSING) return false;
     }
-    bool saved = store_checkpoint(r, path, bytes, size, description[0] ? description : "Party checkpoint");
+    if (!slot && !backup_quicksave(r,&party)) {
+        coop_play_event(PLAY_NOTICE,0,0,"Quick save failed. Previous saves retained.","Could not preserve the quick-save history. Check free disk space and write access.");
+        return false;
+    }
+    bool saved = store_checkpoint(r, path, bytes, size, description[0] ? description : !slot ? "Quick save" : "Party checkpoint");
     if (saved && slot<COOP_SAVE_AUTOSAVE_FIRST) r->autosave_elapsed=0;
     return saved;
 }
@@ -286,6 +315,7 @@ static unsigned control_validate(void* context, uint8_t sender, const CoopContro
         if (request->bed.bytes[0] && !bed) return COOP_CONTROL_LOCATION;
         return coop_engine_rest_validate(pc, bed, request->value);
     }
+    if (request->action == COOP_CONTROL_SAVE && request->value >= COOP_SAVE_QUICK_HISTORY_FIRST) return COOP_CONTROL_UNAVAILABLE;
     if (request->action == COOP_CONTROL_SAVE && request->value >= COOP_SAVE_AUTOSAVE_FIRST && sender != 0) return COOP_CONTROL_OWNER;
     if (request->action == COOP_CONTROL_LOAD || request->action == COOP_CONTROL_SAVE) return validate_checkpoint(r, request);
     return COOP_CONTROL_OK;
@@ -353,6 +383,16 @@ static bool control_route(CoopControlAction action, unsigned value, uint32_t pro
 bool coop_runtime_control(CoopControlAction action, unsigned value, uint32_t proposal, int64_t bed)
 {
     return control_route(action, value, proposal, bed, NULL, 0);
+}
+bool coop_runtime_quick_load(void)
+{
+    if (!playing_allowed() || !runtime->controls || coop_saves_ui_active()) return false;
+    const CoopControlView* view=coop_controls_current(runtime->controls);
+    if (!view || view->phase!=COOP_CONTROL_IDLE || coop_controls_pending(runtime->controls)) return false;
+    if (runtime->quick_load_pending) return true;
+    if (!coop_save_catalog_request(runtime->saves,0)) return false;
+    runtime->quick_load_pending=true;
+    return true;
 }
 bool coop_runtime_pause_toggle(void)
 {
@@ -1423,6 +1463,17 @@ void coop_runtime_tick(uint64_t now)
     }
     autosave(r, now);
     coop_save_catalog_poll(r->saves, now, (r->phase == COOP_RUNTIME_LOBBY || r->phase == COOP_RUNTIME_PLAYING) && !r->presenting && !r->present_recovering);
+    if (r->quick_load_pending) {
+        if (!playing_allowed() || coop_saves_ui_active()) r->quick_load_pending=false;
+        else if (!coop_save_catalog_pending(r->saves)) {
+            const CoopSavePage* page=coop_save_catalog_current(r->saves);
+            r->quick_load_pending=false;
+            if (!page || page->page || !page->count || page->entries[0].status!=COOP_CHECKPOINT_OK)
+                coop_play_event(PLAY_NOTICE,0,0,"No quick save is available for this party yet.","Use Quick save or F9 to create one.");
+            else if (!coop_runtime_checkpoint_request(COOP_CONTROL_LOAD,&page->entries[0],""))
+                coop_play_event(PLAY_NOTICE,0,0,"Quick load is unavailable while another party action is pending.","");
+        }
+    }
     if (r->ending_at) {
         if (now >= r->ending_at) { mainmenu_ui_reset(); mainmenu_ui_return_to_title(); gameuilib_wants_mainmenu_set(); }
         return;
@@ -1822,6 +1873,10 @@ bool coop_runtime_progression_change(int64_t actor, CoopProgressionKind kind, un
 bool coop_runtime_service_item(int64_t item, bool buy)
 {
     return coop_runtime_service_quantity(item, 1, buy);
+}
+bool coop_runtime_service_confirm(int64_t item, unsigned quantity)
+{
+    return playing_allowed() && coop_services_buy_quantity(coop_gameplay_services(runtime->gameplay),item,quantity);
 }
 bool coop_runtime_service_quantity(int64_t item, unsigned quantity, bool buy)
 {

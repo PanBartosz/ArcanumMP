@@ -2533,7 +2533,7 @@ int64_t item_gold_obj(int64_t obj)
         return obj_field_handle_get(obj, OBJ_F_CRITTER_GOLD);
     }
     if (type == OBJ_TYPE_CONTAINER) {
-        return sub_462540(obj, 9056, 0);
+        return sub_462540(obj, sub_4685A0(BP_GOLD), 0);
     }
 
     return OBJ_HANDLE_NULL;
@@ -3238,7 +3238,7 @@ int64_t item_ammo_obj(int64_t obj, int ammo_type)
     case OBJ_TYPE_NPC:
         return obj_field_handle_get(obj, dword_5B32A0[ammo_type]);
     case OBJ_TYPE_CONTAINER:
-        return sub_462540(obj, dword_5B32B0[ammo_type], 0);
+        return sub_462540(obj, sub_4685A0(dword_5B32B0[ammo_type]), 0);
     default:
         return OBJ_HANDLE_NULL;
     }

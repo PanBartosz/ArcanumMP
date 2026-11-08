@@ -22,7 +22,10 @@ in place until you choose to follow again. Compact and expanded views share
 this personal setting.
 
 **HUD and portrait controls:** the journal-and-sword button shows/hides the log; **UI** beside it
-enables move/resize handles. Saved layouts and individual transparency are in
+enables move/resize handles. Two adjacent icons now provide **Quick save**
+(journal and quill) and **Quick load** (open ledger and return arrow). Hover for
+help and the F9/F10 shortcuts. Their strip retains its saved position and opacity.
+Saved layouts and individual transparency are in
 B → Settings. Enemy turn-order portraits accept attacks and targeted abilities;
 right-click focuses them. [Layout and targeting controls](PROTOCOL58_FEATURES.md).
 
@@ -75,6 +78,13 @@ A left click attacks an enemy engaged with any human or their followers, even
 when your character has not drawn a weapon. After an engaged fight ends, your
 character sheathes the weapon and the ordinary cursor returns.
 The person starting a conversation chooses replies; the others observe.
+For ammunition and gold, the native quantity chooser controls the number to
+trade or transfer. Confirming a trade quantity sends that exact amount after
+the host prices and validates it; moving the mouse does not cancel the intent.
+If another item action is busy, the chooser stays open so you can confirm again.
+Zero or Cancel makes no transfer. Loot containers now recognize existing money
+and ammunition stacks correctly.
+
 Inventory, equipment, advancement and quickbars belong to the local character.
 The host runs the shared world and controls game difficulty/combat timing.
 
@@ -124,7 +134,7 @@ unconsciousness still apply.
 | Older chat / latest messages | Page Up / Page Down; wheel over chat; End |
 | Discovered documents | F7 |
 | Conversation journal | F8 |
-| Shared quick save / propose quick load | F9 / F10 |
+| Shared quick save / propose latest quick load | Journal/quill and return-arrow buttons beside the log, or F9 / F10 |
 | Named save or load | Native Save/Load menu or F12 → Save party / Load campaign |
 | Give a party member gold | F12 → Give gold; choose recipient and amount |
 | Autosave settings / newest automatic save | F12 → Autosave / Autosaves |
@@ -153,6 +163,13 @@ Conversations and equipment access use the existing shared interaction lock.
 **Give gold** transfers an exact amount from your purse. Stand within eight
 tiles of a connected, conscious party member, select them and type an amount
 or use 25 / 100 / All. The host validates both balances before applying it.
+
+Quick save keeps **three copies**: the newest in the existing quick slot, plus
+two earlier copies. **F12 → Load campaign → Quick history** opens those older
+copies directly; choose one and propose a load. Quick load asks the host for the
+newest quick save and opens the normal party vote. A client does not need its
+own copy to propose it. A refusal keeps the current game. Automatic saves and
+named saves have separate slots.
 
 **Load campaign** works during play, even without a quick save. Choose a named
 save, quick save, recovery or autosave from the host’s browser. Every player

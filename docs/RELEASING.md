@@ -37,13 +37,13 @@ details are in [MEDIA.md](MEDIA.md#decoder-build-and-license).
 
 `dist/README.md` is the local handoff catalog. It is generated/maintained beside
 the archives and is intentionally not part of Git. Current prepared gameplay
-builds use protocol 63 and the optimized configuration described in the
+builds use protocol 64 and the optimized configuration described in the
 [QoL report](QOL_BENCHMARKS.md). The exact source revision is in each archive's
 name and `package.json`; documentation-only commits do not create game binaries.
 
 | Local path | Purpose |
 | --- | --- |
-| `dist/public-v0.5.0/` | Current public drop-ins, staging trees and checksums |
+| `dist/public-v0.6.0/` | Current public drop-ins, staging trees and checksums |
 | `dist/arcanum-mp-*-p59-*` | Previous optimized builds retained for rollback |
 | `dist/arcanum-mp-*-p58-0840f41*` | Previous HUD-art drop-ins retained for comparison |
 | `dist/archive/` | Older release archives/checksums, kept for rollback |

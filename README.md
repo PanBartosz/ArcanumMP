@@ -7,8 +7,8 @@ their own character while the host runs the shared campaign. The new
 playability tools also support single-player use.
 
 [Website & trailer](https://panbartosz.github.io/ArcanumMP/) ·
-[Download for Windows](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.5.0/ArcanumMP-v0.5.0-Windows-x86_64.zip) ·
-[Download for Linux](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.5.0/ArcanumMP-v0.5.0-Linux-x86_64.tar.gz)
+[Download for Windows](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.6.0/ArcanumMP-v0.6.0-Windows-x86_64.zip) ·
+[Download for Linux](https://github.com/PanBartosz/ArcanumMP/releases/download/v0.6.0/ArcanumMP-v0.6.0-Linux-x86_64.tar.gz)
 
 ![ArcanumMP: four connected game instances](site/assets/images/poster.jpg)
 
@@ -36,7 +36,8 @@ playability tools also support single-player use.
   widescreen/classic presentation, UI/text sizing, remappable commands,
   automatic turn-based triggers and configurable walk/run approaches.
 - **Keep your campaign:** named saves, loading by party vote during play,
-  configurable periodic/travel autosaves, recovery and reserved player ownership.
+  three quick-save copies, configurable periodic/travel autosaves, recovery and
+  reserved player ownership.
 - **Read the fight:** native floating status text and personal critical-hit screen shake.
 - **Quiet persistent spells:** a personal switch mutes repeating spell sounds
   immediately, while keeping casts, impacts, dialogue and music audible.
@@ -90,7 +91,7 @@ Widescreen and UI-size changes apply after restart. See
 
 ## Compatibility
 
-**Latest release: v0.5.0.** All players should use matching mod builds
+**Latest release: v0.6.0.** All players should use matching mod builds
 and game data. Keep your saves, player identity and settings when updating.
 The prebuilt Linux executable requires glibc 2.44 or newer; older distributions
 can use the [source build](docs/BUILDING.md). Both bundles target x86-64.

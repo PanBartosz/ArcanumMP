@@ -113,3 +113,20 @@ releases. Preserve saves, player profiles and verified content migrations.
 - [x] Preserve older-save readers and verify five retained 0.3.0/0.4.0 saves.
 
 [Mechanics and scoped validation](COORDINATION.md#shared-party-access-and-playthrough-corrections-in-050).
+
+
+## Completed in 0.6.0
+
+- [x] Confirm selected ammunition quantities through asynchronous host pricing;
+  preserve intent across mouse movement and keep a busy quantity chooser open.
+- [x] Correct gold/ammo prototype lookup and stack merging inside containers.
+- [x] Restore full submerged-corpse sprite rectangles and allow cooperative
+  corpse selection while armed through the normal validated loot route.
+- [x] Generated quick-save/load icons matching the HUD, with shortcuts in help.
+- [x] Retain the newest quick save plus two older copies and direct Quick history.
+- [x] Host-catalog quick load with unanimous consent, including clients without
+  a local quick file; preserve older formats/paths and named/automatic slots.
+- [x] 21 connected Linux/Windows-Wine stages, native before/after corpse checks,
+  100/150% text views, retained old saves and portable checks.
+
+[Mechanics and scoped validation](COORDINATION.md#stack-transfers-corpse-rendering-and-quick-history-in-060).

@@ -304,3 +304,81 @@ Private evidence: `build/localization/party-access-050/`,
 Original game assets, player saves and private diagnostic files are not included
 in public source or releases. The separate black map after original crafting
 remains unreproduced and open in the campaign TODO.
+
+
+## Stack transfers, corpse rendering and quick history in 0.6.0
+
+Native stack selection records confirmed purchase intent through asynchronous
+host pricing. Passive hover cannot cancel that intent. The quote remains bound
+to its item, quantity and conversation; the host revalidates price, ownership,
+quantity and native insertion before transfer. Closing/changing the conversation
+cancels unsent intent. A busy item action keeps the quantity chooser open for
+retry. Cancelled/zero input makes no mutation. Loot confirmation requires access
+to the same target, with current host access-generation and parent checks.
+
+Container gold/ammunition lookup compared a prototype number with an object's
+`OBJ_F_PROTOTYPE_HANDLE`. Resolving the number to its native prototype restores
+correct container totals and destination-stack merging, including merchant
+substitute inventories. Existing item instances and older saves are retained.
+
+The retained three-player Tarant Sewers-02 snapshot contains 21 submerged flat
+corpses. Their render path used a standing sprite's last-15-row offset while
+requesting a full flat rectangle, clipping most of the source. Flat sprites now
+use their complete source rectangle; upright wading keeps its offset. Ordinary
+wall/roof occlusion remains. A second native rule excluded dead targets whenever
+the local PC was armed. Cooperative targeting now includes those corpses;
+ordinary clicks enter the existing validated loot route. Forced attacks retain
+their deliberate modifier and turn/action admission is unchanged. Four same-state native before/after frames show
+1,803–3,762 changed world pixels across the restored bodies. This identifies the
+submerged-sprite failure, rather than every possible corpse occlusion report.
+
+The HUD strip beside the log has separately generated quill/journal and
+return-arrow/ledger icons. F9/F10 remain in tooltips. Saved HUD element indices,
+position and opacity are retained; an old narrow strip expands to fit. The
+[imagegen source prompts](../assets/ui/quick-save-load-prompts.md) and PNGs are
+retained with embedded 48×48 BMPs. Native views cover 100/150% text.
+
+Quick save keeps `arcmp-campaign.acsave` as the newest copy. Before replacing
+it, the checkpoint reader verifies and copies its previous contents to the
+missing/oldest of two party-specific slots 68/69 through the atomic writer. A
+backup failure leaves the canonical copy intact and reports an error. Existing
+quick/named/recovery/autosave paths and archive formats remain. Manual writes
+to history slots are rejected. The catalog now has 70 entries/18 pages, with
+two entries on the last page. Autosaves retain their page and direct shortcut.
+Network protocol 64 gates the expanded catalog.
+
+Quick load queries the host's slot 0 and fingerprint, then uses the ordinary
+unanimous proposal. It works without a local client copy. A missing save gives
+feedback; refusal keeps the running state. The browser's Quick history control
+opens the older copies directly.
+
+### Scoped validation
+
+A 21-stage scenario on two Linux and two Windows/Wine engines, mixed Polish/
+English, exercises native mouse clicks and the real quantity UI. A Windows
+client sells seven bullets, buys eleven, takes 37 gold and eleven bullets,
+puts back thirteen gold, then takes the remaining full gold stack. Pointer
+movement over quantity confirmation does not cancel the trade. The host records
+four trades and five item commands including opening loot. Inventories conserve
+187 bullets; the two wallets total 2,000,100 after the chest's 100 gold is
+collected. Duplicate trade requests cause no additional transfers.
+
+The same scenario clicks the visible quick-save control four times with four
+world markers. The newest copy has epoch 5; history copies have epochs 3/4 on
+every peer. The client opens the actual two-entry history page. Its local quick
+file is hidden in the private fixture; clicking quick load still restores the
+host's latest marker after votes. Loading history restores the earlier marker.
+A declined final quick-load vote leaves marker 99933 and epoch 7 unchanged.
+All four engines finish successfully.
+
+All 34 portable checks pass. Five retained 0.3.0/0.4.0 named/automatic saves load
+through normal content migration/native restore. The 0.5.0 three-player sewer
+save also restores with its owners. Original Steam files are hashed/preserved.
+Private evidence is under `build/localization/stack-network-060-release/` and
+`stack-corpse-060/`; fixture failures are retained separately and do not count
+as accepted results.
+
+A separate native pixel-picking check keeps the saved local PC armed. Six sewer
+corpses have 44–124 selectable sample points each with the corrected cooperative
+filter; the legacy filter excluded them. This is checked independently of the
+submerged-sprite source-rectangle correction.

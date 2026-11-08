@@ -17,7 +17,7 @@ static CoopSavesMode mode;
 static unsigned page, selection, confirm;
 static uint32_t displayed, roster;
 static bool editing, text_was_active, name_dirty, select_latest;
-static const TigRect shortcuts[]={{372,8,112,28},{492,8,126,28},{626,8,116,28}};
+static const TigRect shortcuts[]={{248,8,112,28},{366,8,112,28},{484,8,128,28},{618,8,124,28}};
 static char name[COOP_CHECKPOINT_DESCRIPTION], feedback[180];
 static uint64_t drawn;
 static const TigRect buttons[] = { { 18, 350, 100, 30 }, { 126, 350, 100, 30 }, { 236, 350, 154, 30 },
@@ -105,8 +105,8 @@ static void draw(void)
     TigRect whole = { 0, 0, bounds.width, bounds.height };
     coop_hud_frame(window,whole,true);
     const char* heading = mode == COOP_SAVES_SAVE ? coop_tr("SAVE PARTY CAMPAIGN") : mode == COOP_SAVES_LOAD ? coop_tr("LOAD PARTY CAMPAIGN") : coop_tr("RESUME PARTY CAMPAIGN");
-    text(heading, 18, 12, 345, MM_COLOR_GOLD);
-    const char* jumps[]={coop_tr("Quick save"),coop_tr("Autosaves"),coop_tr("Recovery")};
+    text(heading, 18, 12, 220, MM_COLOR_GOLD);
+    const char* jumps[]={coop_tr("Quick save"),coop_tr("Autosaves"),coop_tr("Recovery"),coop_tr("Quick history")};
     for (unsigned i=0;i<SDL_arraysize(shortcuts);i++) {
         coop_hud_surface(window,HUD_ART_BUTTON,shortcuts[i],false);
         text(jumps[i],shortcuts[i].x+7,shortcuts[i].y+5,shortcuts[i].width-14,MM_COLOR_GOLD);
@@ -124,7 +124,8 @@ static void draw(void)
         TigRect box = { 18, 72 + (int)row * 54, 724, 50 };
         if (row == selection) tig_window_box(window, &box, tig_color_make(186, 141, 67));
         char automatic[24];
-        snprintf(automatic, sizeof(automatic), coop_tr("Autosave %u"), entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? entry->slot - COOP_SAVE_AUTOSAVE_FIRST + 1 : 0);
+        if (entry->slot>=COOP_SAVE_QUICK_HISTORY_FIRST) snprintf(automatic,sizeof(automatic),coop_tr("Quick save %u"),entry->slot-COOP_SAVE_QUICK_HISTORY_FIRST+2);
+        else snprintf(automatic, sizeof(automatic), coop_tr("Autosave %u"), entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? entry->slot - COOP_SAVE_AUTOSAVE_FIRST + 1 : 0);
         const char* kind = entry->slot == 0 ? coop_tr("Quick save") : entry->slot == COOP_SAVE_RECOVERY ? coop_tr("Recovery")
             : entry->slot >= COOP_SAVE_AUTOSAVE_FIRST ? automatic : NULL;
         if (kind) snprintf(label, sizeof(label), "%s | %s", kind, entry->status == COOP_CHECKPOINT_OK
@@ -174,7 +175,7 @@ static bool input(TigMessage* message)
             if (key == SDL_SCANCODE_LEFT || key == SDL_SCANCODE_PAGEUP) { if (page) request_page(page - 1); }
             else if (key == SDL_SCANCODE_RIGHT || key == SDL_SCANCODE_PAGEDOWN) request_page(page + 1);
             else if (key == SDL_SCANCODE_HOME) request_page(0);
-            else if (key == SDL_SCANCODE_END) { request_page(COOP_SAVE_PAGES - 1); select_latest=true; }
+            else if (key == SDL_SCANCODE_END) { request_page(COOP_SAVE_RECOVERY/COOP_SAVE_PAGE_ROWS); select_latest=true; }
             else if (key == SDL_SCANCODE_R) request_page(page);
             else if (key >= SDL_SCANCODE_1 && key <= SDL_SCANCODE_4) choose((unsigned)(key - SDL_SCANCODE_1));
         }
@@ -188,8 +189,9 @@ static bool input(TigMessage* message)
         if (y >= 72 && y < 288 && x >= 18 && x < 742) choose((unsigned)(y - 72) / 54);
         else if (y >= 316 && y < 343 && x >= 18 && x < 742 && mode == COOP_SAVES_SAVE) { editing = true; confirm = 0; }
         else if (inside(&shortcuts[0],x,y)) request_page(0);
-        else if (inside(&shortcuts[1],x,y)) { request_page(COOP_SAVE_PAGES-1); select_latest=true; }
-        else if (inside(&shortcuts[2],x,y)) request_page(COOP_SAVE_PAGES-1);
+        else if (inside(&shortcuts[1],x,y)) { request_page(COOP_SAVE_RECOVERY/COOP_SAVE_PAGE_ROWS); select_latest=true; }
+        else if (inside(&shortcuts[2],x,y)) request_page(COOP_SAVE_RECOVERY/COOP_SAVE_PAGE_ROWS);
+        else if (inside(&shortcuts[3],x,y)) request_page(COOP_SAVE_QUICK_HISTORY_FIRST/COOP_SAVE_PAGE_ROWS);
         else for (unsigned i = 0; i < 6; i++) if (inside(&buttons[i], x, y)) {
             if (i == 0 && page) request_page(page - 1);
             else if (i == 1) request_page(page + 1);
@@ -227,7 +229,7 @@ bool coop_saves_ui_open(CoopSavesMode requested)
 bool coop_saves_ui_open_autosaves(CoopSavesMode requested)
 {
     if (!coop_saves_ui_open(requested)) return false;
-    request_page(COOP_SAVE_PAGES-1); select_latest=true; draw(); return true;
+    request_page(COOP_SAVE_RECOVERY/COOP_SAVE_PAGE_ROWS); select_latest=true; draw(); return true;
 }
 void coop_saves_ui_tick(void)
 {
@@ -248,7 +250,7 @@ void coop_saves_ui_tick(void)
             unsigned newest=0; uint64_t modified=0; bool found=false;
             for (unsigned i=0;i<current->count;i++) {
                 const CoopSaveEntry* entry=&current->entries[i];
-                if (entry->slot>=COOP_SAVE_AUTOSAVE_FIRST && entry->status==COOP_CHECKPOINT_OK
+                if (entry->slot>=COOP_SAVE_AUTOSAVE_FIRST && entry->slot<COOP_SAVE_QUICK_HISTORY_FIRST && entry->status==COOP_CHECKPOINT_OK
                     && (!found || entry->modified>=modified)) { newest=i; modified=entry->modified; found=true; }
             }
             choose(newest); select_latest=false;

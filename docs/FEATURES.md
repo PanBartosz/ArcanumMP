@@ -1,4 +1,4 @@
-# Campaign feature inventory — 2026-11-06
+# Campaign feature inventory — 2026-11-08
 
 The planned families below have source implementations and retained scoped
 runtime evidence. This is an implementation inventory, not proof that every
@@ -37,7 +37,7 @@ connect using retained checkpoints. Record future reproducible playthrough bugs
 in the campaign TODO; scoped coverage limits are not new feature requirements.
 
 Scoped evidence remains reusable after unrelated changes. Current source uses
-protocol63. The [0.5.0 party corrections](COORDINATION.md#shared-party-access-and-playthrough-corrections-in-050) add shared story possessions/companion services, off-turn inspection, visible log follow and periodic-save scheduling. Earlier work includes [HUD layout, targeting and rendering corrections](PROTOCOL58_FEATURES.md),
+protocol64. The [0.6.0 stack, corpse and quick-save corrections](COORDINATION.md#stack-transfers-corpse-rendering-and-quick-history-in-060) preserve older save readers. The [0.5.0 party corrections](COORDINATION.md#shared-party-access-and-playthrough-corrections-in-050) add shared story possessions/companion services, off-turn inspection, visible log follow and periodic-save scheduling. Earlier work includes [HUD layout, targeting and rendering corrections](PROTOCOL58_FEATURES.md),
 [combat log and modern playability tools](PROTOCOL57_FEATURES.md),
 [zoom, widescreen, UI sizing, status badges and interaction preferences](PROTOCOL56_FEATURES.md),
 [dense-area and experience-gauge fixes](PROTOCOL55_FIXES.md),

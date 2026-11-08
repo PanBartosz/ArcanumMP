@@ -2,9 +2,35 @@
 
 Published player releases and earlier engineering milestones are listed below.
 All players should use matching executables and game data. Current compatibility is
-**protocol 63**.
+**protocol 64**.
 
 ## Unreleased
+
+### v0.6.0 — stack transfers, visible sewer corpses and quick-save history
+
+- Confirm the selected ammunition quantity through asynchronous host pricing.
+  Keep purchase intent when the pointer leaves the stack; validate the actual
+  item and price before transfer. A busy item action keeps the quantity chooser
+  open for retry instead of discarding the chosen amount.
+- Fix native gold/ammunition lookup inside containers: resolve prototype handles
+  before comparing them. Restore correct totals, merging and quantity checks
+  for loot and merchant stock.
+- Draw the full source rectangle for flat submerged sprites. The previous feet
+  offset clipped most sewer corpses; standing wading sprites keep their native
+  treatment. Ordinary wall and roof occlusion remains. Cooperative characters
+  can also select dead enemies while armed; ordinary clicks use the validated
+  loot route instead of excluding all corpses from the target filter.
+- Add separately generated quick-save and quick-load icons beside the log:
+  a leather journal/quill and an open ledger/return arrow, matching the HUD art.
+  Shortcuts remain F9/F10 and appear in hover help.
+- Keep the newest quick save and two earlier party-specific copies. Open
+  **Load campaign → Quick history** to select an older one. Quick load queries
+  the host's latest slot and uses the existing unanimous vote, including when
+  the initiating client has no local quick-save copy.
+- Retain manual/automatic slot paths and save formats; add history slots 68/69.
+  Autosaves keep their direct shortcut and End-key destination. Network protocol
+  is 64; update all participants together. Added controls and feedback are Polish
+  translated; generated art is embedded in both drop-ins.
 
 ### v0.5.0 — shared party access and playthrough corrections
 

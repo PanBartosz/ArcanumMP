@@ -40,6 +40,8 @@ bool coop_runtime_native_load_allowed(void);
 CoopControls* coop_runtime_controls(void);
 CoopSession* coop_runtime_session(void);
 bool coop_runtime_control(CoopControlAction action, unsigned value, uint32_t proposal, int64_t bed);
+bool coop_runtime_quick_load(void);
+bool coop_runtime_service_confirm(int64_t item, unsigned quantity);
 bool coop_runtime_control_message(uint8_t sender, uint8_t type, const uint8_t* bytes, size_t size);
 bool coop_runtime_paused(void);
 /* Host script/UI presentation calls are handled synchronously while the

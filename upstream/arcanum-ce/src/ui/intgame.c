@@ -7,6 +7,7 @@
 #include "coop/dialogue_ui.h"
 #include "coop/engine_documents.h"
 #include "coop/runtime.h"
+#include "coop/campaign.h"
 
 #include <stdio.h>
 
@@ -1881,7 +1882,7 @@ bool sub_54B5D0(TigMessage* msg)
         }
         if (msg->data.keyboard.scancode == SDL_SCANCODE_PAUSE) { coop_play_pause_toggle(); return true; }
         if (msg->data.keyboard.scancode == SDL_SCANCODE_F9) { coop_runtime_control(COOP_CONTROL_SAVE, 0, 0, 0); return true; }
-        if (msg->data.keyboard.scancode == SDL_SCANCODE_F10) { coop_runtime_control(COOP_CONTROL_LOAD, 0, 0, 0); return true; }
+        if (msg->data.keyboard.scancode == SDL_SCANCODE_F10) { coop_runtime_quick_load(); return true; }
     }
 
     if (intgame_iso_window_type == ROTWIN_TYPE_QUANTITY && msg->type == TIG_MESSAGE_KEYBOARD) {
@@ -2188,7 +2189,9 @@ bool sub_54B5D0(TigMessage* msg)
                 }
 
                 if (msg->data.button.button_handle == intgame_quantity_buttons[INTGAME_QUANTITY_BUTTON_OK].button_handle) {
-                    if (!inven_ui_coop_quantity_submit(intgame_quantity)) sub_578B80(intgame_quantity);
+                    int submitted=inven_ui_coop_quantity_submit(intgame_quantity);
+                    if (submitted<0) return true;
+                    if (!submitted) sub_578B80(intgame_quantity);
                     intgame_mode_set(INTGAME_MODE_MAIN);
                     return true;
                 }
@@ -2584,7 +2587,9 @@ bool sub_54B5D0(TigMessage* msg)
                 return true;
             case SDLK_RETURN:
                 if (intgame_iso_window_type == ROTWIN_TYPE_QUANTITY) {
-                    if (!inven_ui_coop_quantity_submit(intgame_quantity)) sub_578B80(intgame_quantity);
+                    int submitted=inven_ui_coop_quantity_submit(intgame_quantity);
+                    if (submitted<0) return true;
+                    if (!submitted) sub_578B80(intgame_quantity);
                     intgame_mode_set(INTGAME_MODE_MAIN);
                     gsound_play_sfx(0, 1);
                 } else if (!mainmenu_ui_is_active()) {
@@ -5288,8 +5293,13 @@ void sub_551F80(void)
                 target_flags_set(TGT_OBJECT | TGT_OBJ_NO_SELF | TGT_OBJ_NO_T_WALL | TGT_TILE);
                 qword_5C7280 = TGT_OBJECT | TGT_OBJ_NO_SELF | TGT_OBJ_NO_T_WALL;
             } else {
-                target_flags_set(TGT_OBJECT | TGT_OBJ_NO_SELF | TGT_OBJ_NO_ST_CRITTER_DEAD | TGT_OBJ_NO_T_WALL | TGT_TILE | TGT_NON_PARTY_CRITTERS);
-                qword_5C7280 = TGT_OBJECT | TGT_OBJ_NO_SELF | TGT_OBJ_NO_ST_CRITTER_DEAD | TGT_OBJ_NO_T_WALL | TGT_NON_PARTY_CRITTERS;
+                /* Cooperative clicks already route dead NPCs to the validated
+                 * loot action. Being armed must not hide those targets from
+                 * just one player while their companions can loot them. */
+                uint64_t flags=TGT_OBJECT | TGT_OBJ_NO_SELF | TGT_OBJ_NO_T_WALL | TGT_NON_PARTY_CRITTERS;
+                if (!coop_campaign_active()) flags|=TGT_OBJ_NO_ST_CRITTER_DEAD;
+                target_flags_set(flags | TGT_TILE);
+                qword_5C7280=flags;
             }
             return;
         }

@@ -848,7 +848,12 @@ void object_draw(GameDrawInfo* draw_info)
                                                                 }
 
                                                                 src_rect.x = dst_rect.x - tmp_rect.x;
-                                                                src_rect.y = dst_rect.y - tmp_rect.y + eye_candy_rect.height - 15;
+                                                                /* Upright sprites show their submerged feet.
+                                                                 * Flat sprites (notably sewer corpses) use the
+                                                                 * complete rectangle. Offsetting that rectangle
+                                                                 * to its last 15 rows clips most of the body. */
+                                                                src_rect.y = dst_rect.y - tmp_rect.y;
+                                                                if ((obj_flags & OF_FLAT) == 0) src_rect.y += eye_candy_rect.height - 15;
                                                                 src_rect.width = dst_rect.width;
                                                                 src_rect.height = dst_rect.height;
 
